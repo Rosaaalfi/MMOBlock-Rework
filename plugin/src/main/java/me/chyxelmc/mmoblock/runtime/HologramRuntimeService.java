@@ -88,7 +88,7 @@ public final class HologramRuntimeService {
         if (world == null) {
             return false;
         }
-        final Location center = new Location(world, block.x() + 0.5D, block.y() + 0.5D, block.z() + 0.5D);
+        final Location center = new Location(world, block.originX() + 0.5D, block.originY() + 0.5D, block.originZ() + 0.5D);
         return !world.getNearbyPlayers(center, radius).isEmpty();
     }
 
@@ -122,9 +122,17 @@ public final class HologramRuntimeService {
             return;
         }
 
-        final Location location = new Location(world, block.x() + 0.5D, block.y() + definition.displayHeight(), block.z() + 0.5D);
+        final Location location = resolveBaseLocation(block, definition, state, world);
         this.backend.upsert(block, location, renderedLines);
      }
+
+    private Location resolveBaseLocation(final PlacedBlock block, final BlockDefinition definition, final RenderState state, final World world) {
+        final boolean dead = state == RenderState.DEAD;
+        final double baseX = dead ? block.originX() : block.x();
+        final double baseY = dead ? block.originY() : block.y();
+        final double baseZ = dead ? block.originZ() : block.z();
+        return new Location(world, baseX + 0.5D, baseY + definition.displayHeight(), baseZ + 0.5D);
+    }
 
     private RenderedLine resolveLine(final DisplayLine line, final RenderState state, final String progressBar, final String respawnTime) {
         if (line.item() != null && !line.item().isBlank()) {

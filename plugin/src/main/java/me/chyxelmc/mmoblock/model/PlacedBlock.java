@@ -9,9 +9,12 @@ public final class PlacedBlock {
     private final UUID uniqueId;
     private final String type;
     private final String world;
-    private final double x;
-    private final double y;
-    private final double z;
+    private final double originX;
+    private final double originY;
+    private final double originZ;
+    private double x;
+    private double y;
+    private double z;
     private final String facing;
     private String status;
     private UUID interactionEntityId;
@@ -27,9 +30,28 @@ public final class PlacedBlock {
         final String facing,
         final String status
     ) {
+        this(uniqueId, type, world, x, y, z, x, y, z, facing, status);
+    }
+
+    public PlacedBlock(
+        final UUID uniqueId,
+        final String type,
+        final String world,
+        final double originX,
+        final double originY,
+        final double originZ,
+        final double x,
+        final double y,
+        final double z,
+        final String facing,
+        final String status
+    ) {
         this.uniqueId = uniqueId;
         this.type = type;
         this.world = world;
+        this.originX = originX;
+        this.originY = originY;
+        this.originZ = originZ;
         this.x = x;
         this.y = y;
         this.z = z;
@@ -61,6 +83,18 @@ public final class PlacedBlock {
         return z;
     }
 
+    public double originX() {
+        return this.originX;
+    }
+
+    public double originY() {
+        return this.originY;
+    }
+
+    public double originZ() {
+        return this.originZ;
+    }
+
     public String facing() {
         return facing;
     }
@@ -87,6 +121,18 @@ public final class PlacedBlock {
 
     public void setRespawnAt(final Long respawnAt) {
         this.respawnAt = respawnAt;
+    }
+
+    public void setCurrentLocation(final double x, final double y, final double z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+
+    public void resetCurrentLocationToOrigin() {
+        this.x = this.originX;
+        this.y = this.originY;
+        this.z = this.originZ;
     }
 
     public boolean matches(final String type, final String worldName, final double x, final double y, final double z) {

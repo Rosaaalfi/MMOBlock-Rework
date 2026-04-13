@@ -31,6 +31,7 @@ import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.block.Block;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadLocalRandom;
 
 public final class BlockRuntimeService {
 
@@ -418,6 +420,15 @@ public final class BlockRuntimeService {
                      return;
                  }
 
+                 final Location respawnLocation = resolveRespawnLocation(block, latestDefinition, world);
+                 if (respawnLocation != null) {
+                     final double oldX = block.x();
+                     final double oldY = block.y();
+                     final double oldZ = block.z();
+                     block.setCurrentLocation(respawnLocation.getX(), respawnLocation.getY(), respawnLocation.getZ());
+                     this.ecsState.updateBlockPosition(block, oldX, oldY, oldZ);
+                 }
+
                  if (!isChunkLoaded(world, block.x(), block.z())) {
                      this.lifecycleSystem.markActive(block);
                      block.setRespawnAt(null);
@@ -542,7 +553,7 @@ public final class BlockRuntimeService {
 
      private boolean isThrottled(final UUID blockId, final UUID playerId) {
          final long now = System.currentTimeMillis();
-         final long minDelay = this.plugin.getConfig().getLong("interactionThrottleMs", 50L);
+         final long minDelay = this.blockConfigService.interactionThrottleMs();
         return this.miningSystem.isThrottled(blockId, playerId, now, minDelay);
     }
 
@@ -654,6 +665,89 @@ public final class BlockRuntimeService {
                 this.hologramRuntimeService.showActive(block, definition);
             }
         }
+    }
+
+    private Location resolveRespawnLocation(final PlacedBlock block, final BlockDefinition definition, final World world) {
+        final int originBlockX = (int) Math.floor(block.originX());
+        final int originBlockY = (int) Math.floor(block.originY());
+        final int originBlockZ = (int) Math.floor(block.originZ());
+
+        if (!definition.randomLocationEnabled() || definition.randomLocationRadius() <= 0.0D) {
+            final Location safeOrigin = findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ);
+            return safeOrigin != null ? safeOrigin : new Location(world, originBlockX, originBlockY, originBlockZ);
+        }
+
+        final double radius = definition.randomLocationRadius();
+        final int maxAttempts = 24;
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            final double angle = ThreadLocalRandom.current().nextDouble(0.0D, Math.PI * 2.0D);
+            final double distance = Math.sqrt(ThreadLocalRandom.current().nextDouble()) * radius;
+            final int targetBlockX = originBlockX + (int) Math.round(Math.cos(angle) * distance);
+            final int targetBlockZ = originBlockZ + (int) Math.round(Math.sin(angle) * distance);
+
+            final Location safe = findSafeBlockLocation(world, targetBlockX, originBlockY, targetBlockZ);
+            if (safe != null) {
+                return safe;
+            }
+        }
+
+        final Location safeOrigin = findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ);
+        return safeOrigin != null ? safeOrigin : new Location(world, originBlockX, originBlockY, originBlockZ);
+    }
+
+    private Location findSafeBlockLocation(final World world, final int blockX, final int baseY, final int blockZ) {
+        final int minY = world.getMinHeight();
+        final int maxY = world.getMaxHeight();
+        final int startY = Math.max(minY, baseY);
+        final int topY = maxY - 2;
+
+        for (int y = startY; y <= topY; y++) {
+            final Block feet = world.getBlockAt(blockX, y, blockZ);
+            final Block head = world.getBlockAt(blockX, y + 1, blockZ);
+            if (!feet.isPassable() || !head.isPassable()) {
+                continue;
+            }
+
+            final int groundedY = resolveGroundedSpawnY(world, blockX, y, blockZ, minY);
+            if (groundedY < 0) {
+                continue;
+            }
+            return new Location(world, blockX, groundedY, blockZ);
+        }
+        return null;
+    }
+
+    private int resolveGroundedSpawnY(final World world, final int blockX, final int initialY, final int blockZ, final int minY) {
+        if (isGroundSupport(world, blockX, initialY, blockZ)) {
+            return initialY;
+        }
+
+        // If support below is AIR, try dropping down up to 3 blocks to find ground support.
+        final int maxDownAttempts = 3;
+        for (int down = 1; down <= maxDownAttempts; down++) {
+            final int candidateY = initialY - down;
+            if (candidateY < minY) {
+                return -1;
+            }
+
+            final Block feet = world.getBlockAt(blockX, candidateY, blockZ);
+            final Block head = world.getBlockAt(blockX, candidateY + 1, blockZ);
+            if (!feet.isPassable() || !head.isPassable()) {
+                continue;
+            }
+            if (isGroundSupport(world, blockX, candidateY, blockZ)) {
+                return candidateY;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isGroundSupport(final World world, final int blockX, final int spawnY, final int blockZ) {
+        if (spawnY - 1 < world.getMinHeight()) {
+            return false;
+        }
+        final Block support = world.getBlockAt(blockX, spawnY - 1, blockZ);
+        return !support.getType().isAir();
     }
 
 

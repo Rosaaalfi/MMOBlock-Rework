@@ -34,6 +34,9 @@ public final class DatabaseManager {
                     unique_id VARCHAR(36) PRIMARY KEY,
                     type VARCHAR(32) NOT NULL,
                     world VARCHAR(64) NOT NULL,
+                    origin_x DOUBLE,
+                    origin_y DOUBLE,
+                    origin_z DOUBLE,
                     x DOUBLE NOT NULL,
                     y DOUBLE NOT NULL,
                     z DOUBLE NOT NULL,
@@ -41,6 +44,9 @@ public final class DatabaseManager {
                     status VARCHAR(16) NOT NULL
                 )
                 """);
+            statement.execute("ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS origin_x DOUBLE");
+            statement.execute("ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS origin_y DOUBLE");
+            statement.execute("ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS origin_z DOUBLE");
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS mmoblock_respawn (
                     unique_id VARCHAR(36) PRIMARY KEY,

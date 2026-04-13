@@ -20,7 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class BlockEcsState {
 
     private final Map<UUID, PlacedBlock> blocks = new ConcurrentHashMap<>();
-    private final Map<PositionKey, UUID> blockIdByPosition = new ConcurrentHashMap<>();
+    private final Map<PositionKey, UUID> blockIdByOriginPosition = new ConcurrentHashMap<>();
+    private final Map<PositionKey, UUID> blockIdByCurrentPosition = new ConcurrentHashMap<>();
     private final Map<ChunkKey, Set<UUID>> blocksByChunk = new ConcurrentHashMap<>();
     private final Set<UUID> activeMiningBlockIds = ConcurrentHashMap.newKeySet();
     private final Map<UUID, MiningProgressComponent> miningComponents = new ConcurrentHashMap<>();
@@ -31,10 +32,12 @@ public final class BlockEcsState {
         final PlacedBlock previous = this.blocks.put(block.uniqueId(), block);
         if (previous != null) {
             removeFromChunkIndex(previous);
-            this.blockIdByPosition.remove(positionKeyFor(previous));
+            this.blockIdByOriginPosition.remove(positionKeyFor(previous.originX(), previous.originY(), previous.originZ(), previous.world()));
+            this.blockIdByCurrentPosition.remove(positionKeyFor(previous.x(), previous.y(), previous.z(), previous.world()));
         }
         addToChunkIndex(block);
-        this.blockIdByPosition.put(positionKeyFor(block), block.uniqueId());
+        this.blockIdByOriginPosition.put(positionKeyFor(block.originX(), block.originY(), block.originZ(), block.world()), block.uniqueId());
+        this.blockIdByCurrentPosition.put(positionKeyFor(block.x(), block.y(), block.z(), block.world()), block.uniqueId());
         this.miningComponents.putIfAbsent(block.uniqueId(), new MiningProgressComponent());
         this.throttleComponents.putIfAbsent(block.uniqueId(), new ClickThrottleComponent());
     }
@@ -59,7 +62,8 @@ public final class BlockEcsState {
         final PlacedBlock removed = this.blocks.remove(uniqueId);
         if (removed != null) {
             removeFromChunkIndex(removed);
-            this.blockIdByPosition.remove(positionKeyFor(removed));
+            this.blockIdByOriginPosition.remove(positionKeyFor(removed.originX(), removed.originY(), removed.originZ(), removed.world()));
+            this.blockIdByCurrentPosition.remove(positionKeyFor(removed.x(), removed.y(), removed.z(), removed.world()));
         }
         this.activeMiningBlockIds.remove(uniqueId);
         this.miningComponents.remove(uniqueId);
@@ -67,13 +71,25 @@ public final class BlockEcsState {
         this.respawnComponents.remove(uniqueId);
     }
 
+    public void updateBlockPosition(final PlacedBlock block, final double oldX, final double oldY, final double oldZ) {
+        this.blockIdByCurrentPosition.remove(new PositionKey(block.world(), toPositionBits(oldX), toPositionBits(oldY), toPositionBits(oldZ)));
+        this.blockIdByCurrentPosition.put(positionKeyFor(block.x(), block.y(), block.z(), block.world()), block.uniqueId());
+        removeChunkMembership(block.world(), oldX, oldZ, block.uniqueId());
+        addToChunkIndex(block);
+    }
+
     public PlacedBlock blockAt(final String worldName, final double x, final double y, final double z) {
-        final UUID id = this.blockIdByPosition.get(new PositionKey(worldName, toPositionBits(x), toPositionBits(y), toPositionBits(z)));
+        final PositionKey key = new PositionKey(worldName, toPositionBits(x), toPositionBits(y), toPositionBits(z));
+        UUID id = this.blockIdByOriginPosition.get(key);
+        if (id == null) {
+            id = this.blockIdByCurrentPosition.get(key);
+        }
         return id == null ? null : this.blocks.get(id);
     }
 
     public boolean containsAt(final String worldName, final double x, final double y, final double z) {
-        return this.blockIdByPosition.containsKey(new PositionKey(worldName, toPositionBits(x), toPositionBits(y), toPositionBits(z)));
+        final PositionKey key = new PositionKey(worldName, toPositionBits(x), toPositionBits(y), toPositionBits(z));
+        return this.blockIdByOriginPosition.containsKey(key) || this.blockIdByCurrentPosition.containsKey(key);
     }
 
     public Collection<PlacedBlock> blocksInChunk(final String worldName, final int chunkX, final int chunkZ) {
@@ -146,7 +162,8 @@ public final class BlockEcsState {
 
     public void clear() {
         this.blocks.clear();
-        this.blockIdByPosition.clear();
+        this.blockIdByOriginPosition.clear();
+        this.blockIdByCurrentPosition.clear();
         this.blocksByChunk.clear();
         this.activeMiningBlockIds.clear();
         this.miningComponents.clear();
@@ -161,12 +178,16 @@ public final class BlockEcsState {
     }
 
     private void removeFromChunkIndex(final PlacedBlock block) {
-        final ChunkKey key = chunkKeyFor(block);
+        removeChunkMembership(block.world(), block.x(), block.z(), block.uniqueId());
+    }
+
+    private void removeChunkMembership(final String worldName, final double x, final double z, final UUID blockId) {
+        final ChunkKey key = new ChunkKey(worldName, toChunkCoordinate(x), toChunkCoordinate(z));
         final Set<UUID> ids = this.blocksByChunk.get(key);
         if (ids == null) {
             return;
         }
-        ids.remove(block.uniqueId());
+        ids.remove(blockId);
         if (ids.isEmpty()) {
             this.blocksByChunk.remove(key);
         }
@@ -176,8 +197,8 @@ public final class BlockEcsState {
         return new ChunkKey(block.world(), toChunkCoordinate(block.x()), toChunkCoordinate(block.z()));
     }
 
-    private PositionKey positionKeyFor(final PlacedBlock block) {
-        return new PositionKey(block.world(), toPositionBits(block.x()), toPositionBits(block.y()), toPositionBits(block.z()));
+    private PositionKey positionKeyFor(final double x, final double y, final double z, final String worldName) {
+        return new PositionKey(worldName, toPositionBits(x), toPositionBits(y), toPositionBits(z));
     }
 
     private int toChunkCoordinate(final double blockCoordinate) {

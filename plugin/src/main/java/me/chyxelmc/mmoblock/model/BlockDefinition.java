@@ -10,6 +10,8 @@ public record BlockDefinition(
     double hitboxWidth,
     double hitboxHeight,
     long respawnTimeSeconds,
+    boolean randomLocationEnabled,
+    double randomLocationRadius,
     boolean useRealBlockModel,
     Material realBlockMaterial,
     Sound soundOnClick,

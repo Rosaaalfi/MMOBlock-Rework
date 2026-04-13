@@ -38,6 +38,7 @@ public final class BlockConfigService {
     private ValidationReport lastBlockReport = ValidationReport.empty();
     private ValidationReport lastToolReport = ValidationReport.empty();
     private ValidationReport lastDropReport = ValidationReport.empty();
+    private long interactionThrottleMs;
 
     public BlockConfigService(final MMOBlock plugin) {
         this.plugin = plugin;
@@ -45,6 +46,10 @@ public final class BlockConfigService {
 
     public void reloadAll() {
         this.plugin.reloadConfig();
+
+        this.interactionThrottleMs = this.plugin.getConfig()
+                .getLong("interactionThrottleMs", 1000L);
+
         reloadBlocks();
         reloadDrops();
         reloadTools();
@@ -73,6 +78,9 @@ public final class BlockConfigService {
                 final double width = hitbox != null ? hitbox.getDouble("width", 1.0D) : 1.0D;
                 final double height = hitbox != null ? hitbox.getDouble("height", 1.0D) : 1.0D;
                 final long respawn = section.getLong("respawnTime", 60L);
+                final ConfigurationSection randomLocation = section.getConfigurationSection("randomLocation");
+                final boolean randomLocationEnabled = randomLocation != null && randomLocation.getBoolean("enabled", false);
+                final double randomLocationRadius = randomLocationEnabled ? Math.max(0.0D, randomLocation.getDouble("radius", 0.0D)) : 0.0D;
                 boolean useRealBlockModel = section.getBoolean("modelType.block.enabled", false);
                 final String configuredModelBlock = section.getString("modelType.block.block");
                 if (!useRealBlockModel && configuredModelBlock != null && !configuredModelBlock.isBlank()) {
@@ -104,6 +112,8 @@ public final class BlockConfigService {
                         width,
                         height,
                         respawn,
+                        randomLocationEnabled,
+                        randomLocationRadius,
                         useRealBlockModel,
                         realBlockMaterial,
                         soundOnClick,
@@ -516,6 +526,10 @@ public final class BlockConfigService {
         if (!outFile.exists()) {
             this.plugin.saveResource(resourcePath, false);
         }
+    }
+
+    public long interactionThrottleMs() {
+        return this.interactionThrottleMs;
     }
 
     public static final class ValidationReport {

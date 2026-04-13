@@ -2,11 +2,21 @@ exampleEntity:
   name: Example
   respawnTime: 60 # Time in seconds for the entity to respawn after being killed
   deadDelay: 5 # Time in seconds for the entity to disappear after being killed
+  randomLocation: # Whether the entity should respawn at a random location around the original spawn location. If false, the entity will respawn at the original spawn location.
+    enabled: true
+    radius: 5 # The radius in blocks around the original spawn location where the entity can respawn. The entity will respawn at a random location within this radius.
+  particleBreak:
+    enabled: true
+    source:
+      type: VANILLA
+      value: "minecraft:lava"
+    fallback:
+      type: VANILLA
+      value: "minecraft:stone"
   sound:
     onClick: block.stone.hit # Sound to play when the entity is clicked.
     onDead: block.stone.break # Sound to play when the entity is killed.
     onRespawn: block.stone.place # Sound to play when the entity respawns.
-  particleBreak: true # Whether to spawn particles when the entity is killed. The particles will be the same as the block used for the entity's model, if the block model is enabled. If the MMOBLOCK model is enabled, the particles will be the same as the block defined in the MMOBLOCK model.
   breakAnimation: true # Whether to play the block breaking animation when the entity is click. using packet block breaking animation.
   hitbox: # AABB hitbox for the entity. The hitbox will be centered on the entity's location.
     width: 1.0 # The width of the entity's hitbox.
@@ -36,13 +46,13 @@ exampleEntity:
     - exampleTools
   display: # Use holograms to display information about the entity. You can have up to 4 lines of text.
     - line: 1 #top line of the hologram
-      text: "&6Example Entity"
+      item: minecraft:diamond # display an item in the hologram. The item will be displayed as a drop item like in the hologram.
     - line: 2 #second line of the hologram, below the first line
+      text: "&6Example Entity"
+    - line: 3 #third line of the hologram, below the second line
       text: "<gray>This is an example entity.</gray>"
       click: "&7[&r{progress_bar}&7]" # replace the text with a progress bar. The progress bar will be replaced with the actual progress bar in the plugin, when player interacts with the entity. You can use {progress_bar} to represent the progress bar in the text.
-    - line: 3 #third line of the hologram, below the second line
+    - line: 4 #fourth line of the hologram, below the third line
       text: "&7Click to Mine!"
       dead: "&7Respawns in: &c{respawn_time}s" # replace the text with the respawn time. The respawn time will be replaced with the actual respawn time in the plugin, when the entity is dead. You can use {respawn_time} to represent the respawn time in the text.
-    - line: 4 #fourth line of the hologram, below the third line
-      item: minecraft:diamond # display an item in the hologram. The item will be displayed as a drop item like in the hologram.
   displayHeight: 2.5 # height of the all hologram lines above the entity's location. This will be the height of the first line of the hologram. The second line will be 0.25 blocks below the first line, the third line will be 0.25 blocks below the second line, and the fourth line will be 0.25 blocks below the third line.
