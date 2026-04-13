@@ -1,0 +1,29 @@
+debug:
+  load: "&e[MMOBlock] &7Mode debug aktif."
+commands:
+  usage:
+    place: "&e/mmoblock place <blockid/entityid> x y z world facing"
+    remove: "&e/mmoblock remove <blockid/entityid> x y z world"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&cSubcommand tidak dikenal."
+  world_not_found: "&cWorld tidak ditemukan: {world}"
+  place:
+    usage: "&ePenggunaan: /mmoblock place <blockid/entityid> x y z world facing(north, south, east, west)"
+    invalid_facing: "&cFacing tidak valid: {facing} (gunakan north, south, east, west)"
+    failed: "&cGagal menaruh block: {reason}"
+    success: "&aBerhasil menaruh {id} di {world} {x} {y} {z}"
+  remove:
+    usage: "&ePenggunaan: /mmoblock remove <blockid/entityid> x y z world"
+    not_found: "&cBlock tidak ditemukan di lokasi tersebut."
+    success: "&aBerhasil menghapus {id} di {world} {x} {y} {z}"
+  reload:
+    all: "&aBerhasil reload config, blocks, drops, lang, dan tools."
+    config: "&aBerhasil reload config.yml"
+blocks:
+  not_active: "&c[MMOBlock] Block belum aktif."
+  too_fast: "&c[MMOBlock] Terlalu cepat, tunggu sebentar."
+  config_missing: "&c[MMOBlock] Konfigurasi block tidak ditemukan."
+  tool_not_allowed: "&c[MMOBlock] Tool tidak diizinkan untuk block ini."
+  mining_progress: "&e[MMOBlock] Progress mining: {progress}/{needed} &7[{progress_bar}&7]"
+  broken: "&a[MMOBlock] Block hancur. Respawn dalam {respawn} detik"
+

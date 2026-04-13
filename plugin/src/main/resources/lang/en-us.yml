@@ -1,0 +1,28 @@
+debug:
+  load: "&e[MMOBlock] &7Debug mode is enabled." #custom logger on console use bukkit
+commands:
+  usage:
+    place: "&e/mmoblock place <blockid/entityid> x y z world facing"
+    remove: "&e/mmoblock remove <blockid/entityid> x y z world"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&cUnknown subcommand."
+  world_not_found: "&cWorld not found: {world}"
+  place:
+    usage: "&eUsage: /mmoblock place <blockid/entityid> x y z world facing(north, south, east, west)"
+    invalid_facing: "&cInvalid facing: {facing} (use north, south, east, west)"
+    failed: "&cFailed to place block: {reason}"
+    success: "&aPlaced {id} at {world} {x} {y} {z}"
+  remove:
+    usage: "&eUsage: /mmoblock remove <blockid/entityid> x y z world"
+    not_found: "&cBlock not found at that location."
+    success: "&aRemoved {id} at {world} {x} {y} {z}"
+  reload:
+    all: "&aReloaded config, blocks, drops, lang, and tools."
+    config: "&aReloaded config.yml"
+blocks:
+  not_active: "&c[MMOBlock] Block is not active."
+  too_fast: "&c[MMOBlock] Slow down a bit."
+  config_missing: "&c[MMOBlock] Block config missing."
+  tool_not_allowed: "&c[MMOBlock] Tool is not allowed for this block."
+  mining_progress: "&e[MMOBlock] Mining progress: {progress}/{needed} &7[{progress_bar}&7]"
+  broken: "&a[MMOBlock] Block broken. Respawning in {respawn}s"

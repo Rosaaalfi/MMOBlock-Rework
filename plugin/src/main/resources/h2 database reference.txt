@@ -1,0 +1,13 @@
+Table: mmoblock_block
+Column      |Type       |Note
+unique_id   |VARCHAR(36)|Primary Key (UUID)
+type        |VARCHAR(32)|ID Entity/Block (misal: exampleEntity dari folder ~/blocks/exampleEntity.yml)
+world       |VARCHAR(64)|Nama world
+"x, y, z"   |DOUBLE     |Koordinat presisi
+"facing"    |VARCHAR(16)|Arah hadap fixed (misal: north, south, east, west)
+status      |VARCHAR(16)|"active, wait, respawning"
+
+Table: mmoblock_respawn
+Column      |Type       |Note
+unique_id   |VARCHAR(36)|Foreign Key ke mmoblock_block
+last_respawn|BIGINT     |Waktu target (System.currentTimeMillis + delay)

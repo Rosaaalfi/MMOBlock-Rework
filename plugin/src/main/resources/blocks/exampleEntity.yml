@@ -1,0 +1,48 @@
+exampleEntity:
+  name: Example
+  respawnTime: 60 # Time in seconds for the entity to respawn after being killed
+  deadDelay: 5 # Time in seconds for the entity to disappear after being killed
+  sound:
+    onClick: block.stone.hit # Sound to play when the entity is clicked.
+    onDead: block.stone.break # Sound to play when the entity is killed.
+    onRespawn: block.stone.place # Sound to play when the entity respawns.
+  particleBreak: true # Whether to spawn particles when the entity is killed. The particles will be the same as the block used for the entity's model, if the block model is enabled. If the MMOBLOCK model is enabled, the particles will be the same as the block defined in the MMOBLOCK model.
+  breakAnimation: true # Whether to play the block breaking animation when the entity is click. using packet block breaking animation.
+  hitbox: # AABB hitbox for the entity. The hitbox will be centered on the entity's location.
+    width: 1.0 # The width of the entity's hitbox.
+    height: 1.0 # The height of the entity's hitbox.
+  raycastOutline: # use for outlining model mmoblock and modelengine entities, as well as block entities when looking at them. This will make it easier for players to see the entity and interact with it.
+    enabled: false # use glow effect to outline the entity when looking at it. This will make it easier for players to see the entity and interact with it.
+    color: "&0" # The color of the raycast outline. You can use any color code from https://minecraftcolorcodes.com/.
+  modelType:
+    block:
+      enabled: true
+      block: minecraft:diamond_block # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
+    mmoblock:
+      enabled: false # Enable MMOBLOCK for this entity. If false.
+      model: example_ore.bbmodel # Custom models from MMOBLOCK can be defined in the model section.
+      size: 1.0 # The size of the MMOBLOCK model.
+      onDead: death # Custom animations from MMOBLOCK can be defined in the animations section. Example of a death animation from MMOBLOCK.
+      onCLick: click # Example of a click animation from MMOBLOCK.
+    modelEngine:
+      enabled: false # Enable ModelEngine for this entity. If false, the plugin will use the default Minecraft model.
+      model: iron_crystal:1.0 # Custom models from ModelEngine can be defined in the model section.
+      onClick: example_onClick_animation;0.1;0.1;1.0  # Custom animations from ModelEngine can be defined in the animations section.
+      onDead: example_onDead_animation;0.1;0.1;1.0  # Example of a death animation from ModelEngine.
+      #model: exampleEntity:<modelsize>
+      #onClick: exampleEntity:onClickAnimation;<animationSpeed>;<lerpIn>;<lerpOut>
+      #onDead: exampleEntity:onDeadAnimation;<animationSpeed>;<lerpIn>;<lerpOut>
+  allowedTools:
+    - exampleTools
+  display: # Use holograms to display information about the entity. You can have up to 4 lines of text.
+    - line: 1 #top line of the hologram
+      text: "&6Example Entity"
+    - line: 2 #second line of the hologram, below the first line
+      text: "<gray>This is an example entity.</gray>"
+      click: "&7[&r{progress_bar}&7]" # replace the text with a progress bar. The progress bar will be replaced with the actual progress bar in the plugin, when player interacts with the entity. You can use {progress_bar} to represent the progress bar in the text.
+    - line: 3 #third line of the hologram, below the second line
+      text: "&7Click to Mine!"
+      dead: "&7Respawns in: &c{respawn_time}s" # replace the text with the respawn time. The respawn time will be replaced with the actual respawn time in the plugin, when the entity is dead. You can use {respawn_time} to represent the respawn time in the text.
+    - line: 4 #fourth line of the hologram, below the third line
+      item: minecraft:diamond # display an item in the hologram. The item will be displayed as a drop item like in the hologram.
+  displayHeight: 2.5 # height of the all hologram lines above the entity's location. This will be the height of the first line of the hologram. The second line will be 0.25 blocks below the first line, the third line will be 0.25 blocks below the second line, and the fourth line will be 0.25 blocks below the third line.

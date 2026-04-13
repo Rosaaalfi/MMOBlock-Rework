@@ -1,0 +1,39 @@
+name: MMOBlock
+prefix: "Chyxel"
+version: '${version}'
+
+# The error happened because 'dependencies' expects sub-keys 'bootstrap' or 'server'
+# dependencies:
+#   server:
+#     DecentHolograms:
+#       load: BEFORE
+#       required: false
+
+# Same applies to soft-dependencies
+dependencies:
+  server:
+    ModelEngine:
+      load: BEFORE
+      required: false
+    ItemsAdder:
+      load: BEFORE
+      required: false
+    DecentHolograms:
+      load: BEFORE
+      required: false
+
+main: me.chyxelmc.mmoblock.MMOBlock
+bootstrapper: me.chyxelmc.mmoblock.MMOBlockBootstrap
+loader: me.chyxelmc.mmoblock.MMOBlockLoader
+api-version: '1.19'
+load: POSTWORLD
+
+
+permissions:
+  mmoblock.admin:
+    description: Allows using MMOBlock admin commands
+    default: op
+
+authors:
+  - Aniko
+website: chyxelmc.me

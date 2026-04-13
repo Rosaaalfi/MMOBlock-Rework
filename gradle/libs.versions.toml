@@ -1,0 +1,20 @@
+[versions]
+paper-api-1_19_4 = "1.19.4-R0.1-SNAPSHOT"
+paper-api-1_20_4 = "1.20.4-R0.1-SNAPSHOT"
+paper-api-1_21_1 = "1.21.1-R0.1-SNAPSHOT"
+paper-api-1_21_4 = "1.21.4-R0.1-SNAPSHOT"
+paper-api-1_21_11 = "1.21.11-R0.1-SNAPSHOT"
+
+minecraft-runtime = "1.21.11"
+
+run-task = "3.0.2"
+
+[libraries]
+paperApiV1194 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_19_4" }
+paperApiV1204 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_20_4" }
+paperApiV1211 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_21_1" }
+paperApiV1214 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_21_4" }
+paperApiV12111 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_21_11" }
+
+[plugins]
+run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }

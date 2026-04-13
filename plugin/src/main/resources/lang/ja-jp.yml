@@ -1,0 +1,29 @@
+debug:
+  load: "&e[MMOBlock] &7デバッグモードが有効です。"
+commands:
+  usage:
+    place: "&e/mmoblock place <blockid/entityid> x y z world facing"
+    remove: "&e/mmoblock remove <blockid/entityid> x y z world"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&c不明なサブコマンドです。"
+  world_not_found: "&cワールドが見つかりません: {world}"
+  place:
+    usage: "&e使用方法: /mmoblock place <blockid/entityid> x y z world facing(north, south, east, west)"
+    invalid_facing: "&c向きが無効です: {facing} (north, south, east, west)"
+    failed: "&cブロック設置に失敗しました: {reason}"
+    success: "&a{id} を {world} {x} {y} {z} に設置しました"
+  remove:
+    usage: "&e使用方法: /mmoblock remove <blockid/entityid> x y z world"
+    not_found: "&cその座標にブロックが見つかりません。"
+    success: "&a{id} を {world} {x} {y} {z} から削除しました"
+  reload:
+    all: "&aconfig, blocks, drops, lang, tools を再読み込みしました。"
+    config: "&aconfig.yml を再読み込みしました"
+blocks:
+  not_active: "&c[MMOBlock] ブロックはまだ有効ではありません。"
+  too_fast: "&c[MMOBlock] 連打が速すぎます。"
+  config_missing: "&c[MMOBlock] ブロック設定が見つかりません。"
+  tool_not_allowed: "&c[MMOBlock] このブロックにそのツールは使えません。"
+  mining_progress: "&e[MMOBlock] 採掘進捗: {progress}/{needed} &7[{progress_bar}&7]"
+  broken: "&a[MMOBlock] ブロックを破壊しました。{respawn}秒後にリスポーンします"
+

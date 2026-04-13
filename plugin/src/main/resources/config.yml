@@ -1,0 +1,38 @@
+debug: false #logging debug info to console
+bStats: true #send anonymous stats to bStats
+updateChecker: true #check for updates on https://voxel.shop/
+lang: en-us
+hologramLib: "Vanilla" #the hologram library to use, either "DecentHolograms" or "Vanilla". DecentHolograms is more customizable and has better performance, but Vanilla is more compatible with other plugins.
+databases:
+  mysql:
+    enabled: false
+    host: localhost
+    port: 3306
+    database: voxelshop
+    username: root
+    password: password
+  redis:
+    enabled: false
+    host: localhost
+    port: 6379
+    password: password
+    database: 0
+  h2:
+    enabled: true
+    file: data.db
+
+progressbar:
+  progressing: "&a|"
+  noprogress: "<gray>|</gray>"
+  barlength: 16
+
+hologram:
+  packet:
+    spacing:
+      text: 0.25
+      item: 0.30
+      block: 0.30
+    offset:
+      text: 0.00
+      item: 0.00
+      block: 0.00

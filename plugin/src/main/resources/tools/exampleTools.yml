@@ -1,0 +1,19 @@
+exampleTools:
+  - material: DIAMOND_PICKAXE
+    # have 3 different click types, left_click, right_click, and both_click. You can choose to use one or more of them.
+    both_click:
+      decreaseDurability: 15
+      clickNeeded: 4
+    allowedDrops:
+        - exampleDrops # Reference to the drops defined in exampleDrops.yml
+  - material: NETHERITE_PICKAXE
+    left_click:
+      decreaseDurability: 10
+      clickNeeded: 3
+    allowedDrops:
+        - exampleDrops
+  - material: NETHERITE_PICKAXE
+    right_click:
+      decreaseDurability: 10
+      clickNeeded: 3
+    allowedDrops: []

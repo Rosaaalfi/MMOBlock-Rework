@@ -1,0 +1,10 @@
+exampleDrops:
+  - material: iron_ingot # material to drop
+    total: [ 1-2 ] # 1-2 items
+    chances: 0.4 # 40% chance
+    drop_type: inventory #inventory, front_ground(front of player), and center_ground(center of entity).
+  - experience: [ 10-20 ] # 10-20 experience
+    chances: 0.5 # 50% chance
+    drop_type: front_ground #front_ground(front of player), and center_ground(center of entity).
+  - command: "give %player% minecraft:diamond 5" # command to execute when the drop is successful. %player% will be replaced with the player's name.
+    chances: 0.1 # 10% chance
