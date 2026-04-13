@@ -11,7 +11,10 @@ import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -33,6 +36,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class NmsAdapter_v1_19_4 implements NmsAdapter {
+
+    private static final EntityType<net.minecraft.world.entity.Interaction> CUSTOM_INTERACTION_TYPE = createCustomInteractionType();
 
     private final Map<String, PacketHologramState> packetHologramEntityIds = new ConcurrentHashMap<>();
 
@@ -67,11 +72,13 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
     ) {
         try {
             final ServerLevel level = ((CraftWorld) world).getHandle();
-            final net.minecraft.world.entity.Interaction handle = new net.minecraft.world.entity.Interaction(
-                net.minecraft.world.entity.EntityType.INTERACTION,
+            final OptimizedInteraction handle = new OptimizedInteraction(
+                CUSTOM_INTERACTION_TYPE,
                 level
             );
             handle.setPos(location.getX(), location.getY(), location.getZ());
+            handle.setNoGravity(true);
+            handle.setSilent(true);
             applyCustomAabb(handle, location, width, height);
             level.addFreshEntity(handle);
 
@@ -83,6 +90,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
             interaction.setInteractionWidth(Math.max(0.25F, width));
             interaction.setInteractionHeight(Math.max(0.25F, height));
             interaction.setResponsive(true);
+            interaction.setPersistent(false);
             interaction.getPersistentDataContainer().set(uniqueIdKey, PersistentDataType.STRING, blockUniqueId.toString());
             return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
         } catch (final RuntimeException exception) {
@@ -109,7 +117,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
     public void sendBreakAnimation(final World world, final Location location, final int entityId, final int stage) {
         final BlockPos pos = BlockPos.containing(location.getX(), location.getY(), location.getZ());
         final ClientboundBlockDestructionPacket packet = new ClientboundBlockDestructionPacket(entityId, pos, stage);
-        for (final Player viewer : world.getPlayers()) {
+        for (final Player viewer : world.getNearbyPlayers(location, 128.0D)) {
             if (!(viewer instanceof CraftPlayer craftPlayer)) {
                 continue;
             }
@@ -121,11 +129,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
     public void showFakeBlock(final World world, final Location location, final Material material) {
         final BlockPos pos = BlockPos.containing(location.getX(), location.getY(), location.getZ());
         final ClientboundBlockUpdatePacket packet = new ClientboundBlockUpdatePacket(pos, CraftMagicNumbers.getBlock(material).defaultBlockState());
-        final double radiusSquared = 128.0D * 128.0D;
-        for (final Player viewer : world.getPlayers()) {
-            if (viewer.getLocation().distanceSquared(location) > radiusSquared) {
-                continue;
-            }
+        for (final Player viewer : world.getNearbyPlayers(location, 128.0D)) {
             if (viewer instanceof CraftPlayer craftPlayer) {
                 craftPlayer.getHandle().connection.send(packet);
             }
@@ -137,11 +141,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
         final ServerLevel level = ((CraftWorld) world).getHandle();
         final BlockPos pos = BlockPos.containing(location.getX(), location.getY(), location.getZ());
         final ClientboundBlockUpdatePacket packet = new ClientboundBlockUpdatePacket(pos, level.getBlockState(pos));
-        final double radiusSquared = 128.0D * 128.0D;
-        for (final Player viewer : world.getPlayers()) {
-            if (viewer.getLocation().distanceSquared(location) > radiusSquared) {
-                continue;
-            }
+        for (final Player viewer : world.getNearbyPlayers(location, 128.0D)) {
             if (viewer instanceof CraftPlayer craftPlayer) {
                 craftPlayer.getHandle().connection.send(packet);
             }
@@ -164,8 +164,9 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
         final String key = sessionKey(player.getUniqueId(), hologramUniqueId);
         final PacketHologramState previous = this.packetHologramEntityIds.get(key);
         final List<PacketLineSignature> signatures = packetLineSignatures(lines);
+        final PacketBaseSignature baseSignature = packetBaseSignature(baseLocation);
 
-        if (previous != null && previous.matches(signatures, lines.size()) && !previous.entityIds().isEmpty()) {
+        if (previous != null && previous.matches(signatures, lines.size(), baseSignature) && !previous.entityIds().isEmpty()) {
             for (int i = 0; i < lines.size(); i++) {
                 final net.minecraft.world.entity.Entity display = createDisplay(level, baseLocation, lines.get(i));
                 if (display == null) {
@@ -177,7 +178,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
                     handle.connection.send(new ClientboundSetEntityDataPacket(previous.entityIds().get(i), values));
                 }
             }
-            this.packetHologramEntityIds.put(key, new PacketHologramState(previous.entityIds(), signatures));
+            this.packetHologramEntityIds.put(key, new PacketHologramState(previous.entityIds(), signatures, baseSignature));
             return;
         }
 
@@ -211,7 +212,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
                 handle.connection.send(new ClientboundSetEntityDataPacket(display.getId(), values));
             }
         }
-        this.packetHologramEntityIds.put(key, new PacketHologramState(List.copyOf(newIds), signatures));
+        this.packetHologramEntityIds.put(key, new PacketHologramState(List.copyOf(newIds), signatures, baseSignature));
     }
 
     @Override
@@ -227,6 +228,12 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
             return;
         }
         craftPlayer.getHandle().connection.send(new ClientboundRemoveEntitiesPacket(ids.stream().mapToInt(Integer::intValue).toArray()));
+    }
+
+    @Override
+    public void clearPacketHologramCacheForPlayer(final UUID playerUniqueId) {
+        final String prefix = playerUniqueId + ":";
+        this.packetHologramEntityIds.keySet().removeIf(key -> key.startsWith(prefix));
     }
 
     private net.minecraft.world.entity.Entity createDisplay(final ServerLevel level, final Location base, final HologramLine line) {
@@ -246,6 +253,9 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
         display.setBillboardConstraints(Display.BillboardConstraints.VERTICAL);
         display.setInterpolationDelay(0);
         display.setInterpolationDuration(2);
+        display.setViewRange(0.4F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
         display.setBackgroundColor(0);
         display.setText(Component.literal(text == null ? "" : text));
         return display;
@@ -257,6 +267,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
         }
         final ItemEntity itemEntity = new ItemEntity(level, x, y, z, CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(material)));
         itemEntity.setNoGravity(true);
+        itemEntity.setSilent(true);
         itemEntity.setPos(x, y, z);
         return itemEntity;
     }
@@ -280,6 +291,10 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
         return signatures;
     }
 
+    private PacketBaseSignature packetBaseSignature(final Location baseLocation) {
+        return new PacketBaseSignature(baseLocation.getWorld().getName(), baseLocation.getX(), baseLocation.getY(), baseLocation.getZ());
+    }
+
     private void applyCustomAabb(
         final net.minecraft.world.entity.Interaction handle,
         final Location location,
@@ -296,13 +311,53 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
         handle.setBoundingBox(new AABB(minX, minY, minZ, maxX, maxY, maxZ));
     }
 
-    private record PacketHologramState(List<Integer> entityIds, List<PacketLineSignature> signatures) {
-
-        private boolean matches(final List<PacketLineSignature> otherSignatures, final int lineCount) {
-            return this.entityIds.size() == lineCount && this.signatures.equals(otherSignatures);
+    private static EntityType<net.minecraft.world.entity.Interaction> createCustomInteractionType() {
+        try {
+            @SuppressWarnings("unchecked")
+            final EntityType<net.minecraft.world.entity.Interaction> customType =
+                (EntityType<net.minecraft.world.entity.Interaction>) (EntityType<?>) EntityType.Builder
+                .of(net.minecraft.world.entity.Interaction::new, MobCategory.MISC)
+                .clientTrackingRange(2)
+                .build("custom_interaction");
+            return customType;
+        } catch (final RuntimeException ignored) {
+            return EntityType.INTERACTION;
         }
     }
 
+
+    private record PacketHologramState(List<Integer> entityIds, List<PacketLineSignature> signatures, PacketBaseSignature baseSignature) {
+
+        private boolean matches(final List<PacketLineSignature> otherSignatures, final int lineCount, final PacketBaseSignature otherBaseSignature) {
+            return this.entityIds.size() == lineCount
+                && this.signatures.equals(otherSignatures)
+                && this.baseSignature.equals(otherBaseSignature);
+        }
+    }
+
+    private record PacketBaseSignature(String worldName, double x, double y, double z) {
+    }
+
     private record PacketLineSignature(NmsAdapter.HologramLineType type, double offsetY) {
+    }
+
+    private static final class OptimizedInteraction extends net.minecraft.world.entity.Interaction {
+
+        private OptimizedInteraction(
+            final net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.Interaction> type,
+            final Level level
+        ) {
+            super(type, level);
+        }
+
+        @Override
+        public void tick() {
+            // Intentionally no-op to avoid per-tick CPU work for static interaction hitboxes.
+        }
+
+        @Override
+        public void inactiveTick() {
+            // Intentionally no-op while chunk is inactive.
+        }
     }
 }

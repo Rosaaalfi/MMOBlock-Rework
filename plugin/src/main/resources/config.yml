@@ -27,6 +27,7 @@ progressbar:
 
 hologram:
   packet:
+    maxUpdatesPerTick: 200
     spacing:
       text: 0.25
       item: 0.30

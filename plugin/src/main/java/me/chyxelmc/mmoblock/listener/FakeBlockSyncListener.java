@@ -22,6 +22,7 @@ public final class FakeBlockSyncListener implements Listener {
     private final BlockRuntimeService runtimeService;
     private final org.bukkit.plugin.Plugin plugin;
     private final Map<UUID, Long> lastChunkSyncAt = new ConcurrentHashMap<>();
+    private final Map<UUID, ChunkPos> lastKnownChunk = new ConcurrentHashMap<>();
 
     public FakeBlockSyncListener(final org.bukkit.plugin.Plugin plugin, final BlockRuntimeService runtimeService) {
         this.plugin = plugin;
@@ -31,16 +32,19 @@ public final class FakeBlockSyncListener implements Listener {
     @EventHandler
     public void onJoin(final PlayerJoinEvent event) {
         syncNowAndDelayed(event.getPlayer());
+        updateKnownChunk(event.getPlayer());
     }
 
     @EventHandler
     public void onTeleport(final PlayerTeleportEvent event) {
         syncNowAndDelayed(event.getPlayer());
+        updateKnownChunk(event.getPlayer());
     }
 
     @EventHandler
     public void onChangedWorld(final PlayerChangedWorldEvent event) {
         syncNowAndDelayed(event.getPlayer());
+        updateKnownChunk(event.getPlayer());
     }
 
     @EventHandler
@@ -57,19 +61,32 @@ public final class FakeBlockSyncListener implements Listener {
         }
 
         final Player player = event.getPlayer();
+        final ChunkPos currentChunk = new ChunkPos(event.getTo().getChunk().getX(), event.getTo().getChunk().getZ());
+        final ChunkPos previousChunk = this.lastKnownChunk.put(player.getUniqueId(), currentChunk);
+        if (currentChunk.equals(previousChunk)) {
+            return;
+        }
+
         final long now = System.currentTimeMillis();
         final Long last = this.lastChunkSyncAt.get(player.getUniqueId());
         if (last != null && (now - last) < MOVE_SYNC_THROTTLE_MS) {
             return;
         }
         this.lastChunkSyncAt.put(player.getUniqueId(), now);
-        this.runtimeService.syncFakeBlocksForPlayer(player);
+        this.runtimeService.syncFakeBlocksForPlayerChunkWindow(player);
     }
 
     private void syncNowAndDelayed(final Player player) {
         this.runtimeService.syncFakeBlocksForPlayer(player);
         Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.runtimeService.syncFakeBlocksForPlayer(player), 2L);
         Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.runtimeService.syncFakeBlocksForPlayer(player), 20L);
+    }
+
+    private void updateKnownChunk(final Player player) {
+        this.lastKnownChunk.put(player.getUniqueId(), new ChunkPos(player.getLocation().getChunk().getX(), player.getLocation().getChunk().getZ()));
+    }
+
+    private record ChunkPos(int x, int z) {
     }
 }
 

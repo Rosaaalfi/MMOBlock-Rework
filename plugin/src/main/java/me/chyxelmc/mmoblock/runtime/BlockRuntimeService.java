@@ -33,6 +33,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +46,8 @@ public final class BlockRuntimeService {
     private static final double FAKE_BLOCK_SYNC_RADIUS_SQUARED = 128.0D * 128.0D;
     private static final long MINING_PROGRESS_RESET_TIMEOUT_MS = 5000L;
     private static final long MINING_PROGRESS_RESET_CHECK_TICKS = 20L;
+    private static final int MOVE_SYNC_CHUNK_RADIUS = 1;
+    private static final double DEAD_UPDATE_NEARBY_RADIUS = 16.0D;
 
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
@@ -91,34 +94,31 @@ public final class BlockRuntimeService {
             return PlaceResult.error("Unknown block id: " + type);
         }
 
-        final boolean occupied = this.ecsState.blocks().stream()
-            .anyMatch(block -> block.world().equals(world.getName())
-                && almostEquals(block.x(), x)
-                && almostEquals(block.y(), y)
-                && almostEquals(block.z(), z));
-        if (occupied) {
+        if (this.ecsState.containsAt(world.getName(), x, y, z)) {
             return PlaceResult.error("Block already exists at that position");
         }
 
         final UUID uniqueId = UUID.randomUUID();
         final PlacedBlock placedBlock = new PlacedBlock(uniqueId, definition.id(), world.getName(), x, y, z, facing, LifecycleSystem.STATUS_ACTIVE);
 
-        if (!spawnInteraction(placedBlock, definition, world)) {
+        if (isChunkLoaded(world, x, z) && !spawnInteraction(placedBlock, definition, world)) {
             return PlaceResult.error("Failed to spawn interaction entity");
         }
 
         this.ecsState.putBlock(placedBlock);
         this.persistenceSystem.persistBlockAsync(placedBlock);
-        this.hologramRuntimeService.showActive(placedBlock, definition);
+        if (isChunkLoaded(world, x, z)) {
+            this.hologramRuntimeService.showActive(placedBlock, definition);
+        }
         return PlaceResult.success(placedBlock);
     }
 
     public boolean remove(final String type, final World world, final double x, final double y, final double z) {
-        final PlacedBlock placedBlock = this.ecsState.blocks().stream()
-            .filter(block -> block.matches(type, world.getName(), x, y, z))
-            .findFirst()
-            .orElse(null);
+        final PlacedBlock placedBlock = this.ecsState.blockAt(world.getName(), x, y, z);
         if (placedBlock == null) {
+            return false;
+        }
+        if (!placedBlock.type().equalsIgnoreCase(type)) {
             return false;
         }
 
@@ -174,6 +174,9 @@ public final class BlockRuntimeService {
 
              this.ecsState.putBlock(block);
              if (this.lifecycleSystem.isActive(block)) {
+                 if (!isChunkLoaded(world, block.x(), block.z())) {
+                     continue;
+                 }
                  if (!spawnInteraction(block, definition, world)) {
                      this.plugin.getLogger().warning("Failed to restore interaction for block " + block.uniqueId());
                  } else {
@@ -186,7 +189,7 @@ public final class BlockRuntimeService {
              if (respawnAt == null) {
                  this.lifecycleSystem.markActive(block);
                  this.persistenceSystem.persistBlockAsync(block);
-                 if (spawnInteraction(block, definition, world)) {
+                 if (isChunkLoaded(world, block.x(), block.z()) && spawnInteraction(block, definition, world)) {
                      this.hologramRuntimeService.showActive(block, definition);
                  }
                  continue;
@@ -195,7 +198,9 @@ public final class BlockRuntimeService {
              this.lifecycleSystem.markRespawning(block);
              this.persistenceSystem.persistBlockAsync(block);
              final long delay = Math.max(1L, respawnAt - System.currentTimeMillis());
-             this.hologramRuntimeService.showDead(block, definition, TimeUnit.MILLISECONDS.toSeconds(delay));
+             if (isChunkLoaded(world, block.x(), block.z())) {
+                 this.hologramRuntimeService.showDead(block, definition, TimeUnit.MILLISECONDS.toSeconds(delay));
+             }
              scheduleRespawn(block, world, delay);
          }
      }
@@ -219,6 +224,30 @@ public final class BlockRuntimeService {
         this.hologramRuntimeService.syncForPlayer(player, this.ecsState.blocks());
     }
 
+    public void syncFakeBlocksForPlayerChunkWindow(final Player player) {
+        final int chunkX = player.getLocation().getChunk().getX();
+        final int chunkZ = player.getLocation().getChunk().getZ();
+        final Collection<PlacedBlock> candidateBlocks = this.ecsState.blocksInChunkWindow(
+            player.getWorld().getName(),
+            chunkX,
+            chunkZ,
+            MOVE_SYNC_CHUNK_RADIUS
+        );
+        this.visualSyncSystem.syncFakeBlocksForPlayer(
+            player,
+            candidateBlocks,
+            this.blockConfigService::findBlock,
+            LifecycleSystem.STATUS_ACTIVE,
+            FAKE_BLOCK_SYNC_RADIUS_SQUARED
+        );
+        this.hologramRuntimeService.syncForPlayer(player, candidateBlocks);
+    }
+
+    public void handlePlayerQuit(final UUID playerUniqueId) {
+        this.hologramRuntimeService.handleViewerQuit(playerUniqueId);
+        this.nmsAdapter.clearPacketHologramCacheForPlayer(playerUniqueId);
+    }
+
     void shutdown() {
         stopMiningProgressResetTask();
         for (final PlacedBlock block : this.ecsState.blocks()) {
@@ -230,7 +259,7 @@ public final class BlockRuntimeService {
             }
             despawnInteraction(block);
         }
-        this.hologramRuntimeService.clearAll();
+        this.hologramRuntimeService.shutdown();
         this.ecsState.clear();
     }
 
@@ -245,16 +274,50 @@ public final class BlockRuntimeService {
             this::cleanupMissingDefinition,
             this.lifecycleSystem::markActive,
             this.persistenceSystem::persistBlockAsync,
-            this::spawnInteraction,
-            this.hologramRuntimeService::showActive,
-            (block, definition, delayMillis) -> this.hologramRuntimeService.showDead(
-                block,
-                definition,
-                TimeUnit.MILLISECONDS.toSeconds(delayMillis)
-            ),
+            (block, definition, world) -> isChunkLoaded(world, block.x(), block.z()) && this.spawnInteraction(block, definition, world),
+            (block, definition) -> {
+                final World world = this.plugin.getServer().getWorld(block.world());
+                if (world != null && isChunkLoaded(world, block.x(), block.z())) {
+                    this.hologramRuntimeService.showActive(block, definition);
+                }
+            },
+            (block, definition, delayMillis) -> {
+                final World world = this.plugin.getServer().getWorld(block.world());
+                if (world != null && isChunkLoaded(world, block.x(), block.z())) {
+                    this.hologramRuntimeService.showDead(block, definition, TimeUnit.MILLISECONDS.toSeconds(delayMillis));
+                }
+            },
             this::scheduleRespawn,
             this::despawnInteraction
         );
+    }
+
+    public void handleChunkLoad(final World world, final int chunkX, final int chunkZ) {
+        for (final PlacedBlock block : this.ecsState.blocksInChunk(world.getName(), chunkX, chunkZ)) {
+            final BlockDefinition definition = this.blockConfigService.findBlock(block.type());
+            if (definition == null) {
+                continue;
+            }
+            if (this.lifecycleSystem.isActive(block)) {
+                if (spawnInteraction(block, definition, world)) {
+                    this.hologramRuntimeService.showActive(block, definition);
+                }
+                continue;
+            }
+
+            if (this.lifecycleSystem.isRespawning(block)) {
+                final long secondsLeft = Math.max(0L, (block.respawnAt() == null ? 0L : block.respawnAt() - System.currentTimeMillis()) / 1000L);
+                this.hologramRuntimeService.showDead(block, definition, secondsLeft);
+            }
+        }
+    }
+
+    public void handleChunkUnload(final World world, final int chunkX, final int chunkZ) {
+        for (final PlacedBlock block : this.ecsState.blocksInChunk(world.getName(), chunkX, chunkZ)) {
+            despawnInteraction(block);
+            this.hologramRuntimeService.remove(block);
+            this.visualSyncSystem.clearBreakAnimation(world, block);
+        }
     }
 
     private Component processMiningClick(final PlacedBlock block, final Player player, final String clickType) {
@@ -341,7 +404,10 @@ public final class BlockRuntimeService {
              delayMillis,
              () -> {
                  final BlockDefinition definition = this.blockConfigService.findBlock(block.type());
-                 if (definition != null && this.lifecycleSystem.isRespawning(block)) {
+                 if (definition != null
+                     && this.lifecycleSystem.isRespawning(block)
+                     && isChunkLoaded(world, block.x(), block.z())
+                     && this.hologramRuntimeService.hasNearbyPlayers(block, DEAD_UPDATE_NEARBY_RADIUS)) {
                      this.hologramRuntimeService.updateDeadRespawnTime(block, definition);
                  }
              },
@@ -349,6 +415,14 @@ public final class BlockRuntimeService {
                  final BlockDefinition latestDefinition = this.blockConfigService.findBlock(block.type());
                  if (latestDefinition == null) {
                      cleanupMissingDefinition(block);
+                     return;
+                 }
+
+                 if (!isChunkLoaded(world, block.x(), block.z())) {
+                     this.lifecycleSystem.markActive(block);
+                     block.setRespawnAt(null);
+                     this.persistenceSystem.persistBlockAsync(block);
+                     this.persistenceSystem.deleteRespawnAsync(block.uniqueId());
                      return;
                  }
 
@@ -503,6 +577,12 @@ public final class BlockRuntimeService {
         return Math.abs(a - b) < 0.000001D;
     }
 
+    private boolean isChunkLoaded(final World world, final double x, final double z) {
+        final int chunkX = (int) Math.floor(x) >> 4;
+        final int chunkZ = (int) Math.floor(z) >> 4;
+        return world.isChunkLoaded(chunkX, chunkZ);
+    }
+
     private void playConfiguredSound(final World world, final PlacedBlock block, final Sound sound) {
         if (sound == null) {
             return;
@@ -553,7 +633,12 @@ public final class BlockRuntimeService {
 
     private void resetInactiveMiningProgress() {
         final long now = System.currentTimeMillis();
-        for (final PlacedBlock block : this.ecsState.blocks()) {
+        for (final UUID blockId : this.miningSystem.activeMiningBlockIds()) {
+            final PlacedBlock block = this.ecsState.getBlock(blockId);
+            if (block == null) {
+                this.miningSystem.clearAllProgress(blockId);
+                continue;
+            }
             if (!this.lifecycleSystem.isActive(block)) {
                 continue;
             }

@@ -2,7 +2,9 @@ package me.chyxelmc.mmoblock;
 
 import me.chyxelmc.mmoblock.command.MMOBlockCommand;
 import me.chyxelmc.mmoblock.config.BlockConfigService;
+import me.chyxelmc.mmoblock.listener.ChunkLifecycleListener;
 import me.chyxelmc.mmoblock.listener.FakeBlockSyncListener;
+import me.chyxelmc.mmoblock.listener.HologramCleanupListener;
 import me.chyxelmc.mmoblock.listener.InteractionListener;
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapterRegistry;
@@ -83,6 +85,8 @@ public final class MMOBlock extends JavaPlugin {
         });
         getServer().getPluginManager().registerEvents(new InteractionListener(this.blockRuntimeService), this);
         getServer().getPluginManager().registerEvents(new FakeBlockSyncListener(this, this.blockRuntimeService), this);
+        getServer().getPluginManager().registerEvents(new ChunkLifecycleListener(this.blockRuntimeService), this);
+        getServer().getPluginManager().registerEvents(new HologramCleanupListener(this.blockRuntimeService), this);
 
         this.runtimeCoordinator.restoreFromPersistence();
 

@@ -51,6 +51,10 @@ public interface NmsAdapter {
         // Optional adapter feature.
     }
 
+    default void clearPacketHologramCacheForPlayer(final UUID playerUniqueId) {
+        // Optional adapter feature.
+    }
+
     record HologramLine(HologramLineType type, String text, Material material, double offsetY) {
 
         public static HologramLine text(final String text, final double offsetY) {
