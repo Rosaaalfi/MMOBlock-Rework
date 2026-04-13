@@ -37,6 +37,7 @@ public final class MMOBlock extends JavaPlugin {
 
     @Override
     public void onEnable() {
+
         saveDefaultConfig();
         this.nmsAdapter = NmsAdapterRegistry.resolveCurrent(getLogger());
         this.nmsAdapter.validateNms();

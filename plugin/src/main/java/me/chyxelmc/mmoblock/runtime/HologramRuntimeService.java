@@ -305,7 +305,7 @@ public final class HologramRuntimeService {
             switch (line.type()) {
                 case TEXT -> {
                     if (entity instanceof TextDisplay textDisplay) {
-                        textDisplay.setBillboard(Display.Billboard.CENTER);
+                        textDisplay.setBillboard(Display.Billboard.HORIZONTAL);
                         textDisplay.setSeeThrough(true);
                         textDisplay.setDefaultBackground(false);
                         textDisplay.text(TextColorUtil.toComponent(line.text()));

@@ -12,7 +12,7 @@ import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
-import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
 import org.bukkit.Location;
@@ -250,7 +250,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
     private net.minecraft.world.entity.Entity createTextDisplay(final ServerLevel level, final double x, final double y, final double z, final String text) {
         final Display.TextDisplay display = new Display.TextDisplay(net.minecraft.world.entity.EntityType.TEXT_DISPLAY, level);
         display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.VERTICAL);
+        display.setBillboardConstraints(Display.BillboardConstraints.HORIZONTAL);
         display.setInterpolationDelay(0);
         display.setInterpolationDuration(2);
         display.setText(Component.literal(text == null ? "" : text));
@@ -261,29 +261,17 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
         if (material == null) {
             return null;
         }
-        final Display.ItemDisplay display = new Display.ItemDisplay(net.minecraft.world.entity.EntityType.ITEM_DISPLAY, level);
-        display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.FIXED);
-        display.setInterpolationDelay(0);
-        display.setInterpolationDuration(4);
-        display.setItemTransform(ItemDisplayContext.GROUND);
-        display.setTransformation(createPacketDisplayTransformation(spinDegrees));
-        display.setItemStack(CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(material)));
-        return display;
+        final ItemEntity itemEntity = new ItemEntity(level, x, y, z, CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(material)));
+        itemEntity.setNoGravity(true);
+        itemEntity.setPos(x, y, z);
+        return itemEntity;
     }
 
     private net.minecraft.world.entity.Entity createBlockDisplay(final ServerLevel level, final double x, final double y, final double z, final Material material, final float spinDegrees) {
-        if (material == null || !material.isBlock()) {
+        if (material == null) {
             return null;
         }
-        final Display.BlockDisplay display = new Display.BlockDisplay(net.minecraft.world.entity.EntityType.BLOCK_DISPLAY, level);
-        display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.FIXED);
-        display.setInterpolationDelay(0);
-        display.setInterpolationDuration(4);
-        display.setTransformation(createPacketDisplayTransformation(spinDegrees));
-        display.setBlockState(CraftMagicNumbers.getBlock(material).defaultBlockState());
-        return display;
+        return createItemDisplay(level, x, y, z, material, spinDegrees);
     }
 
     private float packetDisplaySpinDegrees() {

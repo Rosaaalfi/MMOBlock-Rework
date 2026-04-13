@@ -12,6 +12,7 @@ import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
@@ -26,19 +27,56 @@ import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.craftbukkit.util.CraftMagicNumbers;
+import io.papermc.paper.adventure.PaperAdventure;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class NmsAdapter_v1_21_1 implements NmsAdapter {
 
-    private static final float PACKET_DISPLAY_SCALE = 0.35F;
-    private static final float PACKET_DISPLAY_SPIN_SPEED_DEGREES = 45.0F;
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+    private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
+    private static final float PACKET_DISPLAY_ITEM_SCALE = 0.22F;
+    private static final float PACKET_DISPLAY_BLOCK_SCALE = 0.24F;
+    private static final float PACKET_DISPLAY_SPIN_SPEED_DEGREES = 20.0F;
+    private static final int PACKET_DISPLAY_INTERPOLATION_DURATION = 10;
+    private static final int TEXT_DISPLAY_INTERPOLATION_DURATION = 2;
+
+    private static final float ITEM_DISPLAY_TILT_DEGREES = -15.0F;
+    private static final float BLOCK_DISPLAY_TILT_DEGREES = -8.0F;
+
+    private static final Map<Character, String> LEGACY_TO_MINI_MESSAGE = Map.ofEntries(
+        Map.entry('0', "<black>"),
+        Map.entry('1', "<dark_blue>"),
+        Map.entry('2', "<dark_green>"),
+        Map.entry('3', "<dark_aqua>"),
+        Map.entry('4', "<dark_red>"),
+        Map.entry('5', "<dark_purple>"),
+        Map.entry('6', "<gold>"),
+        Map.entry('7', "<gray>"),
+        Map.entry('8', "<dark_gray>"),
+        Map.entry('9', "<blue>"),
+        Map.entry('a', "<green>"),
+        Map.entry('b', "<aqua>"),
+        Map.entry('c', "<red>"),
+        Map.entry('d', "<light_purple>"),
+        Map.entry('e', "<yellow>"),
+        Map.entry('f', "<white>"),
+        Map.entry('k', "<obfuscated>"),
+        Map.entry('l', "<bold>"),
+        Map.entry('m', "<strikethrough>"),
+        Map.entry('n', "<underlined>"),
+        Map.entry('o', "<italic>"),
+        Map.entry('r', "<reset>")
+    );
 
     private final Map<String, PacketHologramState> packetHologramEntityIds = new ConcurrentHashMap<>();
 
@@ -250,10 +288,10 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
     private net.minecraft.world.entity.Entity createTextDisplay(final ServerLevel level, final double x, final double y, final double z, final String text) {
         final Display.TextDisplay display = new Display.TextDisplay(net.minecraft.world.entity.EntityType.TEXT_DISPLAY, level);
         display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.VERTICAL);
+        display.setBillboardConstraints(Display.BillboardConstraints.HORIZONTAL);
         display.setTransformationInterpolationDelay(0);
-        display.setTransformationInterpolationDuration(2);
-        display.setText(Component.literal(text == null ? "" : text));
+        display.setTransformationInterpolationDuration(TEXT_DISPLAY_INTERPOLATION_DURATION);
+        display.setText(parseVanillaText(text));
         return display;
     }
 
@@ -261,43 +299,94 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
         if (material == null) {
             return null;
         }
-        final Display.ItemDisplay display = new Display.ItemDisplay(net.minecraft.world.entity.EntityType.ITEM_DISPLAY, level);
-        display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.FIXED);
-        display.setTransformationInterpolationDelay(0);
-        display.setTransformationInterpolationDuration(4);
-        display.setItemTransform(ItemDisplayContext.GROUND);
-        display.setTransformation(createPacketDisplayTransformation(spinDegrees));
-        display.setItemStack(CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(material)));
-        return display;
+        final ItemEntity itemEntity = new ItemEntity(level, x, y, z, CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(material)));
+        itemEntity.setNoGravity(true);
+        itemEntity.setPos(x, y, z);
+        return itemEntity;
     }
 
     private net.minecraft.world.entity.Entity createBlockDisplay(final ServerLevel level, final double x, final double y, final double z, final Material material, final float spinDegrees) {
-        if (material == null || !material.isBlock()) {
+        if (material == null) {
             return null;
         }
-        final Display.BlockDisplay display = new Display.BlockDisplay(net.minecraft.world.entity.EntityType.BLOCK_DISPLAY, level);
-        display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.FIXED);
-        display.setTransformationInterpolationDelay(0);
-        display.setTransformationInterpolationDuration(4);
-        display.setTransformation(createPacketDisplayTransformation(spinDegrees));
-        display.setBlockState(CraftMagicNumbers.getBlock(material).defaultBlockState());
-        return display;
+        return createItemDisplay(level, x, y, z, material, spinDegrees);
     }
 
     private float packetDisplaySpinDegrees() {
         return (System.currentTimeMillis() % 4000L) * PACKET_DISPLAY_SPIN_SPEED_DEGREES / 4000.0F;
     }
 
-    private Transformation createPacketDisplayTransformation(final float spinDegrees) {
-        final Quaternionf spin = new Quaternionf().rotateY((float) Math.toRadians(spinDegrees));
+    private Transformation createItemDisplayTransformation(final float spinDegrees) {
+        final Quaternionf spin = new Quaternionf()
+            .rotateX((float) Math.toRadians(ITEM_DISPLAY_TILT_DEGREES))
+            .rotateY((float) Math.toRadians(spinDegrees));
         return new Transformation(
             new Vector3f(0.0F, 0.0F, 0.0F),
             spin,
-            new Vector3f(PACKET_DISPLAY_SCALE, PACKET_DISPLAY_SCALE, PACKET_DISPLAY_SCALE),
+            new Vector3f(PACKET_DISPLAY_ITEM_SCALE, PACKET_DISPLAY_ITEM_SCALE, PACKET_DISPLAY_ITEM_SCALE),
             new Quaternionf()
         );
+    }
+
+    private Transformation createBlockDisplayTransformation(final float spinDegrees) {
+        final Quaternionf spin = new Quaternionf()
+            .rotateX((float) Math.toRadians(BLOCK_DISPLAY_TILT_DEGREES))
+            .rotateY((float) Math.toRadians(spinDegrees));
+        return new Transformation(
+            new Vector3f(0.0F, 0.0F, 0.0F),
+            spin,
+            new Vector3f(PACKET_DISPLAY_BLOCK_SCALE, PACKET_DISPLAY_BLOCK_SCALE, PACKET_DISPLAY_BLOCK_SCALE),
+            new Quaternionf()
+        );
+    }
+
+    private Component parseVanillaText(final String text) {
+        final String safeText = text == null ? "" : text;
+        if (safeText.isEmpty()) {
+            return Component.empty();
+        }
+
+        if (safeText.indexOf('§') >= 0 && safeText.indexOf('<') < 0) {
+            return PaperAdventure.asVanilla(LEGACY_SECTION.deserialize(safeText));
+        }
+
+        final String miniMessageText = ampersandToMiniMessage(safeText);
+        try {
+            return PaperAdventure.asVanilla(MINI_MESSAGE.deserialize(miniMessageText));
+        } catch (final RuntimeException exception) {
+            return PaperAdventure.asVanilla(LEGACY_SECTION.deserialize(safeText));
+        }
+    }
+
+    private String ampersandToMiniMessage(final String input) {
+        if (input.isEmpty()) {
+            return input;
+        }
+
+        final StringBuilder out = new StringBuilder(input.length() + 16);
+        for (int i = 0; i < input.length(); i++) {
+            final char current = input.charAt(i);
+            if (current == '&' && i + 1 < input.length()) {
+                final char next = Character.toLowerCase(input.charAt(i + 1));
+                if (next == '#' && i + 7 < input.length()) {
+                    final String hex = input.substring(i + 2, i + 8);
+                    if (hex.matches("[0-9a-fA-F]{6}")) {
+                        out.append("<#").append(hex.toLowerCase(Locale.ROOT)).append('>');
+                        i += 7;
+                        continue;
+                    }
+                }
+
+                final String tag = LEGACY_TO_MINI_MESSAGE.get(next);
+                if (tag != null) {
+                    out.append(tag);
+                    i++;
+                    continue;
+                }
+            }
+            out.append(current);
+        }
+        return out.toString();
     }
 
     private String sessionKey(final UUID playerUniqueId, final UUID hologramUniqueId) {

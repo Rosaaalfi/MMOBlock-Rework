@@ -13,6 +13,7 @@ import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
@@ -45,9 +46,12 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
     private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
     private static final float PACKET_DISPLAY_ITEM_SCALE = 0.22F;
     private static final float PACKET_DISPLAY_BLOCK_SCALE = 0.24F;
-    private static final float PACKET_DISPLAY_SPIN_SPEED_DEGREES = 30.0F;
-    private static final int PACKET_DISPLAY_INTERPOLATION_DURATION = 8;
+    private static final float PACKET_DISPLAY_SPIN_SPEED_DEGREES = 20.0F;
+    private static final int PACKET_DISPLAY_INTERPOLATION_DURATION = 10;
     private static final int TEXT_DISPLAY_INTERPOLATION_DURATION = 2;
+
+    private static final float ITEM_DISPLAY_TILT_DEGREES = -15.0F;
+    private static final float BLOCK_DISPLAY_TILT_DEGREES = -8.0F;
 
     private static final Map<Character, String> LEGACY_TO_MINI_MESSAGE = Map.ofEntries(
         Map.entry('0', "<black>"),
@@ -284,7 +288,7 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
     private net.minecraft.world.entity.Entity createTextDisplay(final ServerLevel level, final double x, final double y, final double z, final String text) {
         final Display.TextDisplay display = new Display.TextDisplay(net.minecraft.world.entity.EntityType.TEXT_DISPLAY, level);
         display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.VERTICAL);
+        display.setBillboardConstraints(Display.BillboardConstraints.HORIZONTAL);
         display.setTransformationInterpolationDelay(0);
         display.setTransformationInterpolationDuration(TEXT_DISPLAY_INTERPOLATION_DURATION);
         display.setText(parseVanillaText(text));
@@ -295,29 +299,17 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
         if (material == null) {
             return null;
         }
-        final Display.ItemDisplay display = new Display.ItemDisplay(net.minecraft.world.entity.EntityType.ITEM_DISPLAY, level);
-        display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.FIXED);
-        display.setTransformationInterpolationDelay(0);
-        display.setTransformationInterpolationDuration(PACKET_DISPLAY_INTERPOLATION_DURATION);
-        display.setItemTransform(ItemDisplayContext.GROUND);
-        display.setTransformation(createItemDisplayTransformation(spinDegrees));
-        display.setItemStack(CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(material)));
-        return display;
+        final ItemEntity itemEntity = new ItemEntity(level, x, y, z, CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(material)));
+        itemEntity.setNoGravity(true);
+        itemEntity.setPos(x, y, z);
+        return itemEntity;
     }
 
     private net.minecraft.world.entity.Entity createBlockDisplay(final ServerLevel level, final double x, final double y, final double z, final Material material, final float spinDegrees) {
-        if (material == null || !material.isBlock()) {
+        if (material == null) {
             return null;
         }
-        final Display.BlockDisplay display = new Display.BlockDisplay(net.minecraft.world.entity.EntityType.BLOCK_DISPLAY, level);
-        display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.FIXED);
-        display.setTransformationInterpolationDelay(0);
-        display.setTransformationInterpolationDuration(PACKET_DISPLAY_INTERPOLATION_DURATION);
-        display.setTransformation(createBlockDisplayTransformation(spinDegrees));
-        display.setBlockState(CraftMagicNumbers.getBlock(material).defaultBlockState());
-        return display;
+        return createItemDisplay(level, x, y, z, material, spinDegrees);
     }
 
     private float packetDisplaySpinDegrees() {
@@ -326,7 +318,7 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
 
     private Transformation createItemDisplayTransformation(final float spinDegrees) {
         final Quaternionf spin = new Quaternionf()
-            .rotateX((float) Math.toRadians(-12.5D))
+            .rotateX((float) Math.toRadians(ITEM_DISPLAY_TILT_DEGREES))
             .rotateY((float) Math.toRadians(spinDegrees));
         return new Transformation(
             new Vector3f(0.0F, 0.0F, 0.0F),
@@ -338,7 +330,7 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
 
     private Transformation createBlockDisplayTransformation(final float spinDegrees) {
         final Quaternionf spin = new Quaternionf()
-            .rotateX((float) Math.toRadians(-5.0D))
+            .rotateX((float) Math.toRadians(BLOCK_DISPLAY_TILT_DEGREES))
             .rotateY((float) Math.toRadians(spinDegrees));
         return new Transformation(
             new Vector3f(0.0F, 0.0F, 0.0F),
