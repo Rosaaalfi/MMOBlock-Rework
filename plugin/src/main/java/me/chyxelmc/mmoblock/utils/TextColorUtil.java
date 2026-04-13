@@ -3,7 +3,6 @@ package me.chyxelmc.mmoblock.utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.Locale;
 import java.util.Map;
@@ -39,52 +38,6 @@ public final class TextColorUtil {
         Map.entry('n', "<underlined>"),
         Map.entry('o', "<italic>"),
         Map.entry('r', "<reset>")
-    );
-
-    private static final Map<String, String> DECENT_HOLOGRAM_TAGS = Map.ofEntries(
-        Map.entry("<black>", hex(NamedTextColor.BLACK)),
-        Map.entry("</black>", closeHex(NamedTextColor.BLACK)),
-        Map.entry("<dark_blue>", hex(NamedTextColor.DARK_BLUE)),
-        Map.entry("</dark_blue>", closeHex(NamedTextColor.DARK_BLUE)),
-        Map.entry("<dark_green>", hex(NamedTextColor.DARK_GREEN)),
-        Map.entry("</dark_green>", closeHex(NamedTextColor.DARK_GREEN)),
-        Map.entry("<dark_aqua>", hex(NamedTextColor.DARK_AQUA)),
-        Map.entry("</dark_aqua>", closeHex(NamedTextColor.DARK_AQUA)),
-        Map.entry("<dark_red>", hex(NamedTextColor.DARK_RED)),
-        Map.entry("</dark_red>", closeHex(NamedTextColor.DARK_RED)),
-        Map.entry("<dark_purple>", hex(NamedTextColor.DARK_PURPLE)),
-        Map.entry("</dark_purple>", closeHex(NamedTextColor.DARK_PURPLE)),
-        Map.entry("<gold>", hex(NamedTextColor.GOLD)),
-        Map.entry("</gold>", closeHex(NamedTextColor.GOLD)),
-        Map.entry("<gray>", hex(NamedTextColor.GRAY)),
-        Map.entry("</gray>", closeHex(NamedTextColor.GRAY)),
-        Map.entry("<dark_gray>", hex(NamedTextColor.DARK_GRAY)),
-        Map.entry("</dark_gray>", closeHex(NamedTextColor.DARK_GRAY)),
-        Map.entry("<blue>", hex(NamedTextColor.BLUE)),
-        Map.entry("</blue>", closeHex(NamedTextColor.BLUE)),
-        Map.entry("<green>", hex(NamedTextColor.GREEN)),
-        Map.entry("</green>", closeHex(NamedTextColor.GREEN)),
-        Map.entry("<aqua>", hex(NamedTextColor.AQUA)),
-        Map.entry("</aqua>", closeHex(NamedTextColor.AQUA)),
-        Map.entry("<red>", hex(NamedTextColor.RED)),
-        Map.entry("</red>", closeHex(NamedTextColor.RED)),
-        Map.entry("<light_purple>", hex(NamedTextColor.LIGHT_PURPLE)),
-        Map.entry("</light_purple>", closeHex(NamedTextColor.LIGHT_PURPLE)),
-        Map.entry("<yellow>", hex(NamedTextColor.YELLOW)),
-        Map.entry("</yellow>", closeHex(NamedTextColor.YELLOW)),
-        Map.entry("<white>", hex(NamedTextColor.WHITE)),
-        Map.entry("</white>", closeHex(NamedTextColor.WHITE)),
-        Map.entry("<bold>", "&l"),
-        Map.entry("</bold>", "&r"),
-        Map.entry("<italic>", "&o"),
-        Map.entry("</italic>", "&r"),
-        Map.entry("<underlined>", "&n"),
-        Map.entry("</underlined>", "&r"),
-        Map.entry("<strikethrough>", "&m"),
-        Map.entry("</strikethrough>", "&r"),
-        Map.entry("<obfuscated>", "&k"),
-        Map.entry("</obfuscated>", "&r"),
-        Map.entry("<reset>", "&r")
     );
 
     private TextColorUtil() {
@@ -132,24 +85,5 @@ public final class TextColorUtil {
         return LEGACY_SECTION.serialize(component);
     }
 
-    public static String toDecentHologramsText(final String input) {
-        if (input == null || input.isEmpty()) {
-            return "";
-        }
-
-        String normalized = ampersandToMiniMessage(input);
-        for (final Map.Entry<String, String> entry : DECENT_HOLOGRAM_TAGS.entrySet()) {
-            normalized = normalized.replace(entry.getKey(), entry.getValue());
-        }
-        return normalized;
-    }
-
-    private static String hex(final NamedTextColor color) {
-        return "<#" + String.format(Locale.ROOT, "%06x", color.value()) + ">";
-    }
-
-    private static String closeHex(final NamedTextColor color) {
-        return "</#" + String.format(Locale.ROOT, "%06x", color.value()) + ">";
-    }
 }
 

@@ -2,7 +2,6 @@ debug: false #logging debug info to console
 bStats: true #send anonymous stats to bStats
 updateChecker: true #check for updates on https://voxel.shop/
 lang: en-us
-hologramLib: "Vanilla" #the hologram library to use, either "DecentHolograms" or "Vanilla". DecentHolograms is more customizable and has better performance, but Vanilla is more compatible with other plugins.
 databases:
   mysql:
     enabled: false

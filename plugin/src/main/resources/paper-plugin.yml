@@ -2,23 +2,12 @@ name: MMOBlock
 prefix: "Chyxel"
 version: '${version}'
 
-# The error happened because 'dependencies' expects sub-keys 'bootstrap' or 'server'
-# dependencies:
-#   server:
-#     DecentHolograms:
-#       load: BEFORE
-#       required: false
-
-# Same applies to soft-dependencies
 dependencies:
   server:
     ModelEngine:
       load: BEFORE
       required: false
     ItemsAdder:
-      load: BEFORE
-      required: false
-    DecentHolograms:
       load: BEFORE
       required: false
 

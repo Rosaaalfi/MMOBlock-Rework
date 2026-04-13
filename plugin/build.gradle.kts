@@ -9,7 +9,6 @@ plugins {
 
 dependencies {
     compileOnly(libs.paperApiV12111)
-    compileOnly("com.github.decentsoftware-eu:decentholograms:2.8.13")
     compileOnly("net.kyori:adventure-text-minimessage:4.26.1")
     compileOnly("com.h2database:h2:2.2.224")
 

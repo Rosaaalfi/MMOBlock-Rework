@@ -30,6 +30,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,6 +43,8 @@ import java.util.concurrent.TimeUnit;
 public final class BlockRuntimeService {
 
     private static final double FAKE_BLOCK_SYNC_RADIUS_SQUARED = 128.0D * 128.0D;
+    private static final long MINING_PROGRESS_RESET_TIMEOUT_MS = 5000L;
+    private static final long MINING_PROGRESS_RESET_CHECK_TICKS = 20L;
 
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
@@ -57,6 +60,7 @@ public final class BlockRuntimeService {
     private final DropSystem dropSystem;
     private final LifecycleSystem lifecycleSystem;
     private final ReconcileSystem reconcileSystem;
+    private BukkitTask miningProgressResetTask;
 
     public BlockRuntimeService(
         final MMOBlock plugin,
@@ -78,6 +82,7 @@ public final class BlockRuntimeService {
         this.dropSystem = new DropSystem(plugin, blockConfigService);
         this.lifecycleSystem = new LifecycleSystem();
         this.reconcileSystem = new ReconcileSystem();
+        startMiningProgressResetTask();
     }
 
     public PlaceResult place(final String type, final World world, final double x, final double y, final double z, final String facing) {
@@ -215,6 +220,7 @@ public final class BlockRuntimeService {
     }
 
     void shutdown() {
+        stopMiningProgressResetTask();
         for (final PlacedBlock block : this.ecsState.blocks()) {
             cancelRespawnTask(block.uniqueId());
             final BlockDefinition definition = this.blockConfigService.findBlock(block.type());
@@ -274,7 +280,7 @@ public final class BlockRuntimeService {
         playConfiguredSound(player.getWorld(), block, definition.soundOnClick());
 
         applyDurability(item, action.decreaseDurability());
-          final int progress = this.miningSystem.incrementProgress(block.uniqueId(), player.getUniqueId());
+          final int progress = this.miningSystem.incrementProgress(block.uniqueId(), player.getUniqueId(), System.currentTimeMillis());
         if (definition.breakAnimation()) {
               this.visualSyncSystem.sendBreakAnimation(block, action, progress, false);
         }
@@ -302,6 +308,7 @@ public final class BlockRuntimeService {
     }
 
     private void handleBlockBreak(final PlacedBlock block, final BlockDefinition definition, final ToolAction action, final Player player) {
+        this.miningSystem.clearAllProgress(block.uniqueId());
         this.dropSystem.executeDrops(block, action, player);
         if (definition.breakAnimation()) {
             this.visualSyncSystem.sendBreakAnimation(block, action, action.clickNeeded(), true);
@@ -525,6 +532,43 @@ public final class BlockRuntimeService {
 
     private Location blockCenterLocation(final PlacedBlock block, final World world) {
         return new Location(world, block.x() + 0.5D, block.y() + 0.5D, block.z() + 0.5D);
+    }
+
+    private void startMiningProgressResetTask() {
+        stopMiningProgressResetTask();
+        this.miningProgressResetTask = this.plugin.getServer().getScheduler().runTaskTimer(
+            this.plugin,
+            this::resetInactiveMiningProgress,
+            MINING_PROGRESS_RESET_CHECK_TICKS,
+            MINING_PROGRESS_RESET_CHECK_TICKS
+        );
+    }
+
+    private void stopMiningProgressResetTask() {
+        if (this.miningProgressResetTask != null) {
+            this.miningProgressResetTask.cancel();
+            this.miningProgressResetTask = null;
+        }
+    }
+
+    private void resetInactiveMiningProgress() {
+        final long now = System.currentTimeMillis();
+        for (final PlacedBlock block : this.ecsState.blocks()) {
+            if (!this.lifecycleSystem.isActive(block)) {
+                continue;
+            }
+            if (this.miningSystem.evictInactiveProgress(block.uniqueId(), now, MINING_PROGRESS_RESET_TIMEOUT_MS).isEmpty()) {
+                continue;
+            }
+            if (this.miningSystem.hasAnyProgress(block.uniqueId())) {
+                continue;
+            }
+
+            final BlockDefinition definition = this.blockConfigService.findBlock(block.type());
+            if (definition != null) {
+                this.hologramRuntimeService.showActive(block, definition);
+            }
+        }
     }
 
 

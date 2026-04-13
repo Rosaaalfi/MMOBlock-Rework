@@ -1,7 +1,6 @@
 package me.chyxelmc.mmoblock.nms.v1_21_11;
 
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
-import com.mojang.math.Transformation;
 import io.papermc.paper.adventure.PaperAdventure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -14,7 +13,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
 import org.bukkit.Location;
@@ -23,14 +21,12 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.util.CraftMagicNumbers;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.craftbukkit.util.CraftMagicNumbers;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 import java.util.ArrayList;
@@ -44,14 +40,7 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
 
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
     private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.legacySection();
-    private static final float PACKET_DISPLAY_ITEM_SCALE = 0.22F;
-    private static final float PACKET_DISPLAY_BLOCK_SCALE = 0.24F;
-    private static final float PACKET_DISPLAY_SPIN_SPEED_DEGREES = 20.0F;
-    private static final int PACKET_DISPLAY_INTERPOLATION_DURATION = 10;
     private static final int TEXT_DISPLAY_INTERPOLATION_DURATION = 2;
-
-    private static final float ITEM_DISPLAY_TILT_DEGREES = -15.0F;
-    private static final float BLOCK_DISPLAY_TILT_DEGREES = -8.0F;
 
     private static final Map<Character, String> LEGACY_TO_MINI_MESSAGE = Map.ofEntries(
         Map.entry('0', "<black>"),
@@ -208,11 +197,10 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
         final String key = sessionKey(player.getUniqueId(), hologramUniqueId);
         final PacketHologramState previous = this.packetHologramEntityIds.get(key);
         final List<PacketLineSignature> signatures = packetLineSignatures(lines);
-        final float spinDegrees = packetDisplaySpinDegrees();
 
         if (previous != null && previous.matches(signatures, lines.size()) && !previous.entityIds().isEmpty()) {
             for (int i = 0; i < lines.size(); i++) {
-                final net.minecraft.world.entity.Entity display = createDisplay(level, baseLocation, lines.get(i), spinDegrees);
+                final net.minecraft.world.entity.Entity display = createDisplay(level, baseLocation, lines.get(i));
                 if (display == null) {
                     continue;
                 }
@@ -232,7 +220,7 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
 
         final List<Integer> newIds = new ArrayList<>();
         for (final HologramLine line : lines) {
-            final net.minecraft.world.entity.Entity display = createDisplay(level, baseLocation, line, spinDegrees);
+            final net.minecraft.world.entity.Entity display = createDisplay(level, baseLocation, line);
             if (display == null) {
                 continue;
             }
@@ -274,28 +262,29 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
         craftPlayer.getHandle().connection.send(new ClientboundRemoveEntitiesPacket(ids.stream().mapToInt(Integer::intValue).toArray()));
     }
 
-    private net.minecraft.world.entity.Entity createDisplay(final ServerLevel level, final Location base, final HologramLine line, final float spinDegrees) {
+    private net.minecraft.world.entity.Entity createDisplay(final ServerLevel level, final Location base, final HologramLine line) {
         final double x = base.getX();
         final double y = base.getY() - line.offsetY();
         final double z = base.getZ();
         return switch (line.type()) {
             case TEXT -> createTextDisplay(level, x, y, z, line.text());
-            case ITEM -> createItemDisplay(level, x, y, z, line.material(), spinDegrees);
-            case BLOCK -> createBlockDisplay(level, x, y, z, line.material(), spinDegrees);
+            case ITEM -> createItemDisplay(level, x, y, z, line.material());
+            case BLOCK -> createBlockDisplay(level, x, y, z, line.material());
         };
     }
 
     private net.minecraft.world.entity.Entity createTextDisplay(final ServerLevel level, final double x, final double y, final double z, final String text) {
         final Display.TextDisplay display = new Display.TextDisplay(net.minecraft.world.entity.EntityType.TEXT_DISPLAY, level);
         display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.HORIZONTAL);
+        display.setBillboardConstraints(Display.BillboardConstraints.VERTICAL);
         display.setTransformationInterpolationDelay(0);
         display.setTransformationInterpolationDuration(TEXT_DISPLAY_INTERPOLATION_DURATION);
+        display.getEntityData().set(Display.TextDisplay.DATA_BACKGROUND_COLOR_ID, 0);
         display.setText(parseVanillaText(text));
         return display;
     }
 
-    private net.minecraft.world.entity.Entity createItemDisplay(final ServerLevel level, final double x, final double y, final double z, final Material material, final float spinDegrees) {
+    private net.minecraft.world.entity.Entity createItemDisplay(final ServerLevel level, final double x, final double y, final double z, final Material material) {
         if (material == null) {
             return null;
         }
@@ -305,39 +294,11 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
         return itemEntity;
     }
 
-    private net.minecraft.world.entity.Entity createBlockDisplay(final ServerLevel level, final double x, final double y, final double z, final Material material, final float spinDegrees) {
+    private net.minecraft.world.entity.Entity createBlockDisplay(final ServerLevel level, final double x, final double y, final double z, final Material material) {
         if (material == null) {
             return null;
         }
-        return createItemDisplay(level, x, y, z, material, spinDegrees);
-    }
-
-    private float packetDisplaySpinDegrees() {
-        return (System.currentTimeMillis() % 4000L) * PACKET_DISPLAY_SPIN_SPEED_DEGREES / 4000.0F;
-    }
-
-    private Transformation createItemDisplayTransformation(final float spinDegrees) {
-        final Quaternionf spin = new Quaternionf()
-            .rotateX((float) Math.toRadians(ITEM_DISPLAY_TILT_DEGREES))
-            .rotateY((float) Math.toRadians(spinDegrees));
-        return new Transformation(
-            new Vector3f(0.0F, 0.0F, 0.0F),
-            spin,
-            new Vector3f(PACKET_DISPLAY_ITEM_SCALE, PACKET_DISPLAY_ITEM_SCALE, PACKET_DISPLAY_ITEM_SCALE),
-            new Quaternionf()
-        );
-    }
-
-    private Transformation createBlockDisplayTransformation(final float spinDegrees) {
-        final Quaternionf spin = new Quaternionf()
-            .rotateX((float) Math.toRadians(BLOCK_DISPLAY_TILT_DEGREES))
-            .rotateY((float) Math.toRadians(spinDegrees));
-        return new Transformation(
-            new Vector3f(0.0F, 0.0F, 0.0F),
-            spin,
-            new Vector3f(PACKET_DISPLAY_BLOCK_SCALE, PACKET_DISPLAY_BLOCK_SCALE, PACKET_DISPLAY_BLOCK_SCALE),
-            new Quaternionf()
-        );
+        return createItemDisplay(level, x, y, z, material);
     }
 
     private Component parseVanillaText(final String text) {
