@@ -1,85 +1,82 @@
 # 🪨 MMOBlock
 
-**MMOBlock** adalah solusi terbaik untuk membuat sistem "Mining RPG" di server Minecraft kamu. Dengan plugin ini, kamu bisa meletakkan blok interaktif di mana saja yang bisa ditambang pemain, memberikan hadiah, dan muncul kembali secara otomatis.
+**MMOBlock** is a high-performance plugin for [PaperMC](https://papermc.io/) that allows you to create fully customizable, interactive block entities. Players can mine these blocks with specific tools, earn rewards, and watch them respawn automatically—all managed through easy-to-use config files.
 
 > [!TIP]
-> Cocok untuk server bertema Survival, Skyblock, atau RPG yang ingin memiliki area tambang khusus (seperti batu meteor, kristal langka, atau pohon abadi).
+> Perfect for RPG, Survival, or Skyblock servers looking to add "Custom Ore" systems, renewable resource nodes, or interactive world events.
 
 ---
 
-## ✨ Fitur Utama
+## ✨ Features
 
-* 🧱 **Blok Kustom:** Letakkan blok apa saja di mana saja. Tidak terbatas pada blok Vanilla.
-* ⛏️ **Sistem Ketahanan:** Tentukan berapa kali sebuah blok harus dipukul sebelum pecah (Click-based mining).
-* 🎁 **Hadiah Dinamis:** Berikan item, uang (vault), XP, atau jalankan perintah konsol saat blok hancur.
-* 🔁 **Auto Respawn:** Blok yang hancur akan muncul kembali secara otomatis sesuai waktu yang kamu tentukan.
-* 💬 **Hologram Keren:** Menampilkan nama blok, HP (progress bar), dan waktu mundur respawn di atas blok.
-* 🎨 **Dukungan Model 3D:** Mendukung **ModelEngine** dan **ItemsAdder** untuk tampilan blok yang lebih realistis dan unik.
-* 💾 **Penyimpanan Aman:** Data blok tersimpan rapi menggunakan database (H2, MySQL, atau Redis).
+* 🧱 **Custom Block Entities:** Place interactive blocks anywhere in your world that aren't restricted by standard Minecraft physics.
+* ⛏️ **Mining System:** Set "Click Durability" (e.g., hit a block 10 times to break it) and apply durability costs to tools.
+* 🎁 **Smart Drops:** Reward players with items, experience, or console commands with customizable drop chances.
+* 🔁 **Auto Respawn:** Blocks automatically reappear after a cooldown, making resource zones renewable.
+* 💬 **Hologram Displays:** Show live progress bars, block names, and respawn countdowns floating above the block.
+* 🎨 **3D Model Support:** Compatible with **Blockbench (.bbmodel)**, **ModelEngine**, and **ItemsAdder**.
+* 💾 **Reliable Storage:** Saves all block locations and states via H2 (default), MySQL, or Redis.
 
 ---
 
-## 🔧 Persyaratan Sistem
+## 🔧 Requirements
 
-| Syarat | Minimal |
+| Requirement | Minimum Version |
 |---|---|
-| **Server** | [PaperMC](https://papermc.io/) (atau turunannya seperti Purpur) |
-| **Java** | Versi 21 ke atas |
-| **Minecraft** | 1.19.4, 1.20.4, 1.21.x (Hingga versi terbaru) |
+| **Server Software** | [PaperMC](https://papermc.io/) or forks (Purpur, etc.) |
+| **Java Version** | Java 21 or higher |
+| **Minecraft** | 1.19.4 through 1.21.x |
 
 ---
 
-## 🚀 Cara Pemasangan
+## 📦 Installation
 
-1.  **Download** file `.jar` terbaru dari folder [Releases](../../releases).
-2.  **Upload** file tersebut ke folder `plugins` di server kamu.
-3.  **Restart** server untuk menghasilkan file konfigurasi otomatis.
-4.  (Opsional) Pasang **DecentHolograms** jika ingin fitur teks melayang yang lebih ringan dan stabil.
-
----
-
-## 🎮 Perintah & Izin (Commands)
-
-| Perintah | Deskripsi | Izin (Permission) |
-|---|---|---|
-| `/mmoblock place <id>` | Meletakkan blok sesuai ID yang dibuat di config | `mmoblock.admin` |
-| `/mmoblock remove` | Menghapus blok yang ada di depanmu | `mmoblock.admin` |
-| `/mmoblock reload` | Memperbarui perubahan di file config tanpa restart | `mmoblock.admin` |
+1. **Download** the latest `MMOBlock.jar` from the [Releases](../../releases) page.
+2. **Drop** the file into your server's `plugins/` folder.
+3. **Restart** your server to generate the default configuration files.
+4. (Optional) Install **DecentHolograms** for better performance on text displays.
 
 ---
 
-## 📁 Panduan Konfigurasi (Mudah Dimengerti)
+## 🎮 Commands & Permissions
 
-Plugin ini terbagi menjadi 3 bagian utama di dalam folder `plugins/MMOBlock/`:
+All commands require the `mmoblock.admin` permission (Default: OP).
 
-### 1. Folder `blocks/` (Pengaturan Blok)
-Di sini kamu mengatur identitas blok. Contohnya:
-- **Nama:** "Batu Kristal"
-- **Waktu Respawn:** 60 detik.
-- **Model:** Mau pakai blok berlian biasa atau model 3D kustom.
-
-### 2. Folder `tools/` (Pengaturan Alat)
-Di sini kamu mengatur alat apa yang bisa menghancurkan blok tersebut. 
-- *Contoh:* Blok Kristal hanya bisa hancur jika dipukul pakai **Pickaxe Berlian** sebanyak 10 kali.
-
-### 3. Folder `drops/` (Pengaturan Hadiah)
-Di sini kamu mengatur apa yang didapat pemain.
-- *Contoh:* Peluang 50% dapat 1 Berlian, 10% dapat 5 Berlian, atau 100% menjalankan perintah `/give`.
+| Command | Description |
+|---|---|
+| `/mmoblock place <id>` | Spawns a custom block at your location based on an ID. |
+| `/mmoblock remove` | Removes the custom block you are currently looking at. |
+| `/mmoblock reload` | Refreshes all config files (Blocks, Drops, Tools) instantly. |
 
 ---
 
-## 🛠️ Cara Membuat Blok Pertama Kamu
+## 📁 Understanding the Folders
 
-1.  Edit file di folder `blocks/example.yml`.
-2.  Masuk ke game, berdiri di lokasi yang diinginkan.
-3.  Ketik `/mmoblock place exampleEntity`.
-4.  Coba pukul menggunakan alat yang sesuai di folder `tools`.
+The plugin is organized into three simple parts within the `plugins/MMOBlock/` directory:
+
+### 1. `blocks/` (The "What")
+Define the block's appearance, its name, how long it takes to respawn, and the sounds it makes when hit.
+
+### 2. `tools/` (The "How")
+Define which tools are allowed to mine the block. For example, you can make a "Crystal" only breakable using a **Netherite Pickaxe**.
+
+### 3. `drops/` (The "Reward")
+Define what the player gets. You can set a 50% chance for an Iron Ingot, a 5% chance for a rare crate key (via command), and 100% chance for XP.
 
 ---
 
-## 📜 Lisensi & Dukungan
+## 🛠️ Creating Your First Block
+
+1.  Open the `blocks/example.yml` file to see how a block is structured.
+2.  Stand where you want the block to appear in-game.
+3.  Type `/mmoblock place exampleEntity`.
+4.  Test it! Use the tool defined in the `tools/` folder to see the progress bar and rewards in action.
+
+---
+
+## 📜 License & Support
 
 - **Website:** [chyxelmc.me](https://chyxelmc.me)
-- **Lapor Bug:** Silakan buka [GitHub Issues](../../issues).
+- **Issues:** Please report bugs via [GitHub Issues](../../issues).
 
-*Dibuat dengan ❤️ untuk komunitas Minecraft oleh Aniko.*
+*Developed with ❤️ by Aniko for the Minecraft community.*
