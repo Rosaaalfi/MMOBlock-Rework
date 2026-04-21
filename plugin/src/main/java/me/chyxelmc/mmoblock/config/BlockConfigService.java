@@ -97,34 +97,37 @@ public final class BlockConfigService {
                 final Sound soundOnRespawn = parseSound(section.getString("sound.onRespawn"), "sound.onRespawn", key, report);
                 final boolean particleBreak = section.getBoolean("particleBreak", false);
                 final boolean breakAnimation = section.getBoolean("breakAnimation", false);
-                final double displayHeight = section.getDouble("displayHeight", 1.6D);
+                final ConfigurationSection displaySection = section.getConfigurationSection("display");
+                final double displayHeight = displaySection != null
+                        ? displaySection.getDouble("displayHeight", section.getDouble("displayHeight", 1.6D))
+                        : section.getDouble("displayHeight", 1.6D);
                 final List<String> allowedTools = section.getStringList("allowedTools").stream()
-                    .map(value -> value.toLowerCase(Locale.ROOT))
-                    .toList();
+                        .map(value -> value.toLowerCase(Locale.ROOT))
+                        .toList();
                 if (allowedTools.isEmpty()) {
                     report.warn("Block '" + key + "' has no allowedTools configured.");
                 }
                 final List<DisplayLine> displayLines = parseDisplayLines(section, key, report);
                 this.blockDefinitions.put(
-                    key.toLowerCase(Locale.ROOT),
-                    new BlockDefinition(
-                        key,
-                        width,
-                        height,
-                        respawn,
-                        randomLocationEnabled,
-                        randomLocationRadius,
-                        useRealBlockModel,
-                        realBlockMaterial,
-                        soundOnClick,
-                        soundOnDead,
-                        soundOnRespawn,
-                        particleBreak,
-                        breakAnimation,
-                        displayHeight,
-                        allowedTools,
-                        displayLines
-                    )
+                        key.toLowerCase(Locale.ROOT),
+                        new BlockDefinition(
+                                key,
+                                width,
+                                height,
+                                respawn,
+                                randomLocationEnabled,
+                                randomLocationRadius,
+                                useRealBlockModel,
+                                realBlockMaterial,
+                                soundOnClick,
+                                soundOnDead,
+                                soundOnRespawn,
+                                particleBreak,
+                                breakAnimation,
+                                displayHeight,
+                                allowedTools,
+                                displayLines
+                        )
                 );
                 loaded++;
             }
@@ -315,7 +318,7 @@ public final class BlockConfigService {
             return yaml;
         } catch (final IOException | InvalidConfigurationException repairException) {
             this.plugin.getLogger().warning("Failed to auto-repair YAML file " + file.getName() + ": " + repairException.getMessage()
-                + " (original: " + originalException.getMessage() + ")");
+                    + " (original: " + originalException.getMessage() + ")");
             return null;
         }
     }
@@ -342,13 +345,13 @@ public final class BlockConfigService {
     }
 
     private void parseToolAction(
-        final Map<?, ?> raw,
-        final String groupId,
-        final String clickType,
-        final Material material,
-        final List<String> allowedDrops,
-        final List<ToolAction> actions,
-        final ValidationReport report
+            final Map<?, ?> raw,
+            final String groupId,
+            final String clickType,
+            final Material material,
+            final List<String> allowedDrops,
+            final List<ToolAction> actions,
+            final ValidationReport report
     ) {
         final Object sectionObject = raw.get(clickType);
         if (!(sectionObject instanceof Map<?, ?> section)) {
@@ -390,27 +393,81 @@ public final class BlockConfigService {
     }
 
     private List<DisplayLine> parseDisplayLines(
-        final ConfigurationSection section,
-        final String blockId,
-        final ValidationReport report
+            final ConfigurationSection section,
+            final String blockId,
+            final ValidationReport report
     ) {
-        final List<Map<?, ?>> lines = section.getMapList("display");
-        if (lines.isEmpty()) {
+        final List<Map<?, ?>> nestedLines = section.getMapList("display.lines");
+        if (!nestedLines.isEmpty()) {
+            return parseDisplayLineMaps(nestedLines);
+        }
+
+        final List<Map<?, ?>> legacyLines = section.getMapList("display");
+        if (!legacyLines.isEmpty()) {
+            return parseDisplayLineMaps(legacyLines);
+        }
+
+        final ConfigurationSection displaySection = section.getConfigurationSection("display");
+        final List<?> rawLines = displaySection != null ? displaySection.getList("lines", List.of()) : List.of();
+        if (rawLines.isEmpty()) {
             report.warn("Block '" + blockId + "' has no display lines.");
             return List.of();
         }
 
         final List<DisplayLine> parsed = new ArrayList<>();
-        for (final Map<?, ?> line : lines) {
-            final int number = parseInteger(line.get("line"), parsed.size() + 1);
-            final String text = line.get("text") == null ? null : String.valueOf(line.get("text"));
-            final String click = line.get("click") == null ? null : String.valueOf(line.get("click"));
-            final String dead = line.get("dead") == null ? null : String.valueOf(line.get("dead"));
-            final String item = line.get("item") == null ? null : String.valueOf(line.get("item"));
-            final String block = line.get("block") == null ? null : String.valueOf(line.get("block"));
+        for (final Object lineEntry : rawLines) {
+            if (!(lineEntry instanceof Map<?, ?>) && !(lineEntry instanceof ConfigurationSection)) {
+                continue;
+            }
+            final Object contents = resolveValue(lineEntry, "contents");
+            final int number = parseInteger(resolveValue(lineEntry, "line"), parsed.size() + 1);
+            final String text = valueAsString(contents, lineEntry, "text");
+            final String click = valueAsString(contents, lineEntry, "click");
+            final String dead = valueAsString(contents, lineEntry, "dead");
+            final String item = valueAsString(contents, lineEntry, "item");
+            final String block = valueAsString(contents, lineEntry, "block");
             parsed.add(new DisplayLine(number, text, click, dead, item, block));
         }
         return parsed;
+    }
+
+    private List<DisplayLine> parseDisplayLineMaps(final List<Map<?, ?>> lines) {
+        final List<DisplayLine> parsed = new ArrayList<>();
+        for (final Map<?, ?> line : lines) {
+            final Object contents = line.get("contents");
+            final int number = parseInteger(line.get("line"), parsed.size() + 1);
+            final String text = valueAsString(contents, line, "text");
+            final String click = valueAsString(contents, line, "click");
+            final String dead = valueAsString(contents, line, "dead");
+            final String item = valueAsString(contents, line, "item");
+            final String block = valueAsString(contents, line, "block");
+            parsed.add(new DisplayLine(number, text, click, dead, item, block));
+        }
+        return parsed;
+    }
+
+    private String valueAsString(final Object primary, final Object fallback, final String key) {
+        final Object rawPrimary = resolveValue(primary, key);
+        final Object raw = rawPrimary != null ? rawPrimary : resolveValue(fallback, key);
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof Boolean bool) {
+            // click/dead false should be treated as "not configured", so renderer can fallback to text.
+            return bool ? "true" : null;
+        }
+        final String value = String.valueOf(raw).trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    private Object resolveValue(final Object source, final String key) {
+        if (source instanceof Map<?, ?> map) {
+            return map.get(key);
+        }
+        if (source instanceof ConfigurationSection configurationSection) {
+            return configurationSection.get(key);
+        }
+        return null;
     }
 
     private List<String> normalizeStringList(final Object value) {
@@ -471,10 +528,10 @@ public final class BlockConfigService {
     }
 
     private Sound parseSound(
-        final String raw,
-        final String path,
-        final String blockId,
-        final ValidationReport report
+            final String raw,
+            final String path,
+            final String blockId,
+            final ValidationReport report
     ) {
         if (raw == null || raw.isBlank()) {
             return null;
@@ -566,4 +623,3 @@ public final class BlockConfigService {
         }
     }
 }
-

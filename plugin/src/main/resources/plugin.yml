@@ -1,0 +1,21 @@
+name: MMOBlock
+version: '${version}'
+main: me.chyxelmc.mmoblock.MMOBlock
+author: Aniko
+website: chyxelmc.me
+api-version: '1.19'
+load: POSTWORLD
+softdepend:
+  - ViaVersion
+  - ViaBackwards
+  - ViaRewind
+
+permissions:
+  mmoblock.admin:
+    description: Allows using MMOBlock admin commands
+    default: op
+
+commands:
+  mmoblock:
+    description: Manage MMOBlock interaction entities
+    usage: /<command> place <blockid> x y z world facing | /<command> remove <blockid> x y z world | /<command> reload [config|blocks|drops|lang|tools]

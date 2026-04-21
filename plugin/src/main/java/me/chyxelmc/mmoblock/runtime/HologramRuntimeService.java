@@ -31,12 +31,19 @@ public final class HologramRuntimeService {
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
     private final HologramBackend backend;
+    // Optional ECS integration: if present we create HologramComponent entities
+    private me.chyxelmc.mmoblock.nmsloader.ecs.EntityManager entityManager;
+    private final java.util.Map<java.util.UUID, java.util.UUID> hologramEntities = new java.util.concurrent.ConcurrentHashMap<>();
 
     public HologramRuntimeService(final MMOBlock plugin, final NmsAdapter nmsAdapter) {
         this.plugin = plugin;
         this.nmsAdapter = nmsAdapter;
         this.backend = chooseBackend();
         this.plugin.getLogger().info("Hologram backend: " + this.backend.name());
+    }
+
+    public void setEntityManager(final me.chyxelmc.mmoblock.nmsloader.ecs.EntityManager entityManager) {
+        this.entityManager = entityManager;
     }
 
     public void showActive(final PlacedBlock block, final BlockDefinition definition) {
@@ -64,6 +71,25 @@ public final class HologramRuntimeService {
     }
 
     public void remove(final PlacedBlock block) {
+        if (this.entityManager != null) {
+            final java.util.UUID ecsId = this.hologramEntities.remove(block.uniqueId());
+            if (ecsId != null) {
+                final me.chyxelmc.mmoblock.nmsloader.ecs.components.HologramComponent comp =
+                        this.entityManager.getComponent(ecsId, me.chyxelmc.mmoblock.nmsloader.ecs.components.HologramComponent.class);
+                if (comp != null) {
+                    try {
+                        comp.markRemoved();
+                    } catch (final Throwable ignored) {
+                    }
+                } else {
+                    try {
+                        this.entityManager.removeEntity(ecsId);
+                    } catch (final Throwable ignored) {
+                    }
+                }
+                return;
+            }
+        }
         this.backend.remove(block);
     }
 
@@ -72,14 +98,47 @@ public final class HologramRuntimeService {
     }
 
     public void shutdown() {
+        if (this.entityManager != null) {
+            // mark all ECS holograms removed
+            for (final java.util.Map.Entry<java.util.UUID, java.util.UUID> e : this.hologramEntities.entrySet()) {
+                try {
+                    final me.chyxelmc.mmoblock.nmsloader.ecs.components.HologramComponent comp =
+                            this.entityManager.getComponent(e.getValue(), me.chyxelmc.mmoblock.nmsloader.ecs.components.HologramComponent.class);
+                    if (comp != null) comp.markRemoved();
+                    this.entityManager.removeEntity(e.getValue());
+                } catch (final Throwable ignored) {
+                }
+            }
+            this.hologramEntities.clear();
+            return;
+        }
         this.backend.shutdown();
     }
 
     public void syncForPlayer(final Player player, final Collection<PlacedBlock> blocks) {
+        if (this.entityManager != null) {
+            for (final PlacedBlock block : blocks) {
+                final java.util.UUID ecsId = this.hologramEntities.get(block.uniqueId());
+                if (ecsId == null) continue;
+                final me.chyxelmc.mmoblock.nmsloader.ecs.components.HologramComponent comp =
+                        this.entityManager.getComponent(ecsId, me.chyxelmc.mmoblock.nmsloader.ecs.components.HologramComponent.class);
+                if (comp == null) continue;
+                try {
+                    // immediate upsert for this player
+                    this.nmsAdapter.upsertPacketHologram(player, comp.hologramUniqueId(), comp.baseLocation(), comp.lines());
+                } catch (final Throwable ignored) {
+                }
+            }
+            return;
+        }
         this.backend.syncForPlayer(player, blocks);
     }
 
     public void handleViewerQuit(final UUID playerUniqueId) {
+        if (this.entityManager != null) {
+            // nothing specific to do for ECS backend; the NMS adapter still maintains per-player caches
+            return;
+        }
         this.backend.handleViewerQuit(playerUniqueId);
     }
 
@@ -93,11 +152,11 @@ public final class HologramRuntimeService {
     }
 
     private void render(
-        final PlacedBlock block,
-        final BlockDefinition definition,
-        final RenderState state,
-        final String progressBar,
-        final String respawnTime
+            final PlacedBlock block,
+            final BlockDefinition definition,
+            final RenderState state,
+            final String progressBar,
+            final String respawnTime
     ) {
         final World world = this.plugin.getServer().getWorld(block.world());
         if (world == null || definition.displayLines().isEmpty()) {
@@ -106,15 +165,21 @@ public final class HologramRuntimeService {
         }
 
         final List<DisplayLine> sorted = definition.displayLines().stream()
-            .sorted(Comparator.comparingInt(DisplayLine::line))
-            .toList();
+                .sorted(Comparator.comparingInt(DisplayLine::line))
+                .toList();
 
+        final PacketLayout layout = packetLayoutFromConfig();
         final List<RenderedLine> renderedLines = new ArrayList<>();
+        double cumulativeOffset = 0.0D;
         for (final DisplayLine line : sorted) {
+            final RenderedLine.Type slotType = resolveSlotType(line);
             final RenderedLine rendered = resolveLine(line, state, progressBar, respawnTime);
             if (rendered != null) {
-                renderedLines.add(rendered);
+                final double offsetY = cumulativeOffset + layout.offset(rendered.type());
+                renderedLines.add(rendered.withOffsetY(offsetY));
             }
+            // Keep vertical slot spacing even when the line is hidden.
+            cumulativeOffset += layout.spacing(slotType);
         }
 
         if (renderedLines.isEmpty()) {
@@ -123,8 +188,69 @@ public final class HologramRuntimeService {
         }
 
         final Location location = resolveBaseLocation(block, definition, state, world);
+        // If ECS integration available, create/update a HologramComponent entity
+        if (this.entityManager != null) {
+            final java.util.List<NmsAdapter.HologramLine> packetLines = toPacketLines(renderedLines);
+            final java.util.UUID hologramUniqueId = block.uniqueId();
+            final java.util.UUID ecsId = this.hologramEntities.get(hologramUniqueId);
+            if (ecsId == null) {
+                try {
+                    final java.util.UUID created = me.chyxelmc.mmoblock.nmsloader.utils.NmsEcsUtils.createHologramEntity(
+                            this.entityManager,
+                            hologramUniqueId,
+                            location,
+                            packetLines
+                    );
+                    this.hologramEntities.put(hologramUniqueId, created);
+                } catch (final Throwable t) {
+                    // Fallback to backend if ECS creation fails
+                    this.plugin.getLogger().warning("Failed to create hologram ECS entity: " + t.getMessage());
+                    this.backend.upsert(block, location, renderedLines);
+                }
+            } else {
+                // Replace existing ECS component by removing and recreating
+                try {
+                    this.entityManager.removeEntity(ecsId);
+                    final java.util.UUID created = me.chyxelmc.mmoblock.nmsloader.utils.NmsEcsUtils.createHologramEntity(
+                            this.entityManager,
+                            hologramUniqueId,
+                            location,
+                            packetLines
+                    );
+                    this.hologramEntities.put(hologramUniqueId, created);
+                } catch (final Throwable t) {
+                    this.plugin.getLogger().warning("Failed to update hologram ECS entity: " + t.getMessage());
+                    this.backend.upsert(block, location, renderedLines);
+                }
+            }
+            return;
+        }
+
         this.backend.upsert(block, location, renderedLines);
-     }
+    }
+
+    private java.util.List<NmsAdapter.HologramLine> toPacketLines(final java.util.List<RenderedLine> lines) {
+        final java.util.List<NmsAdapter.HologramLine> packetLines = new java.util.ArrayList<>(lines.size());
+        for (final RenderedLine line : lines) {
+            switch (line.type()) {
+                case TEXT -> packetLines.add(NmsAdapter.HologramLine.text(TextColorUtil.toLegacySection(line.text()), line.offsetY()));
+                case ITEM -> packetLines.add(NmsAdapter.HologramLine.item(line.material(), line.offsetY()));
+                case BLOCK -> packetLines.add(NmsAdapter.HologramLine.block(line.material(), line.offsetY()));
+            }
+        }
+        return packetLines;
+    }
+
+    private PacketLayout packetLayoutFromConfig() {
+        return new PacketLayout(
+                this.plugin.getConfig().getDouble("hologram.packet.spacing.text", 0.25D),
+                this.plugin.getConfig().getDouble("hologram.packet.spacing.item", 0.25D),
+                this.plugin.getConfig().getDouble("hologram.packet.spacing.block", 0.25D),
+                this.plugin.getConfig().getDouble("hologram.packet.offset.text", 0.0D),
+                this.plugin.getConfig().getDouble("hologram.packet.offset.item", 0.0D),
+                this.plugin.getConfig().getDouble("hologram.packet.offset.block", 0.0D)
+        );
+    }
 
     private Location resolveBaseLocation(final PlacedBlock block, final BlockDefinition definition, final RenderState state, final World world) {
         final boolean dead = state == RenderState.DEAD;
@@ -135,6 +261,36 @@ public final class HologramRuntimeService {
     }
 
     private RenderedLine resolveLine(final DisplayLine line, final RenderState state, final String progressBar, final String respawnTime) {
+        String effectiveValue = null;
+
+        switch (state) {
+            case ACTIVE:
+                effectiveValue = line.text();
+                break;
+            case PROGRESS:
+                // Prioritize click field for PROGRESS state
+                effectiveValue = line.click();
+                if (effectiveValue == null || effectiveValue.isBlank()) {
+                    // Fallback to text if click is not defined
+                    effectiveValue = line.text();
+                }
+                break;
+            case DEAD:
+                effectiveValue = line.dead();
+                if (effectiveValue == null || effectiveValue.isBlank()) {
+                    // Fallback to text if dead is not defined
+                    effectiveValue = line.text();
+                }
+                break;
+        }
+
+        // If the effective value for this state is a "hide" indicator, treat the line as absent.
+        if (isHideValue(effectiveValue)) {
+            return null;
+        }
+
+        // If it's not a hide value, then check for item/block displays.
+        // These should only be rendered if the effectiveValue didn't indicate hiding.
         if (line.item() != null && !line.item().isBlank()) {
             final Material material = parseDisplayMaterial(line.item(), false);
             return material == null ? null : RenderedLine.item(material);
@@ -144,20 +300,23 @@ public final class HologramRuntimeService {
             return material == null ? null : RenderedLine.block(material);
         }
 
-        final String value = switch (state) {
-            case ACTIVE -> line.text();
-            case PROGRESS -> line.click() != null ? line.click() : line.text();
-            case DEAD -> line.dead() != null ? line.dead() : line.text();
-        };
-        if (value == null || value.isBlank()) {
+        // Otherwise, treat as a text line.
+        if (effectiveValue == null || effectiveValue.isBlank()) {
             return null;
         }
 
         return switch (state) {
-            case PROGRESS -> RenderedLine.text(value.replace("{progress_bar}", progressBar));
-            case DEAD -> RenderedLine.text(value.replace("{respawn_time}", respawnTime));
-            default -> RenderedLine.text(value);
+            case PROGRESS -> RenderedLine.text(effectiveValue.replace("{progress_bar}", progressBar));
+            case DEAD -> RenderedLine.text(effectiveValue.replace("{respawn_time}", respawnTime));
+            default -> RenderedLine.text(effectiveValue);
         };
+    }
+
+    private static boolean isHideValue(final String value) {
+        if (value == null) return false;
+        final String normalized = value.trim().toLowerCase(java.util.Locale.ROOT);
+        // Menggunakan startsWith agar "hide #comment" tetap terdeteksi sebagai hide
+        return normalized.startsWith("hide") || normalized.equals("true") || normalized.equals("none");
     }
 
     private Material parseDisplayMaterial(final String raw, final boolean requireBlock) {
@@ -170,6 +329,16 @@ public final class HologramRuntimeService {
             return null;
         }
         return material;
+    }
+
+    private RenderedLine.Type resolveSlotType(final DisplayLine line) {
+        if (line.item() != null && !line.item().isBlank()) {
+            return RenderedLine.Type.ITEM;
+        }
+        if (line.block() != null && !line.block().isBlank()) {
+            return RenderedLine.Type.BLOCK;
+        }
+        return RenderedLine.Type.TEXT;
     }
 
     private enum RenderState {
@@ -238,28 +407,27 @@ public final class HologramRuntimeService {
 
             final long revision = this.sessionRevision.incrementAndGet();
             final PacketSession session = new PacketSession(
-                block.world(),
-                baseLocation.clone(),
-                new ArrayList<>(lines),
-                new HashSet<>(),
-                List.of(),
-                revision
+                    block.world(),
+                    baseLocation.clone(),
+                    new ArrayList<>(lines),
+                    new HashSet<>(),
+                    List.of(),
+                    revision
             );
             this.sessions.put(block.uniqueId(), session);
 
-            final PacketLayout layout = currentLayout();
             CompletableFuture
-                .supplyAsync(() -> toPacketLines(session.lines(), layout))
-                .thenAccept(packetLines -> this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
-                    final PacketSession current = this.sessions.get(block.uniqueId());
-                    if (current == null || current.revision() != revision) {
-                        return;
-                    }
-                    current.setPacketLines(packetLines);
-                    for (final Player viewer : world.getPlayers()) {
-                        enqueueSync(viewer.getUniqueId(), block.uniqueId(), SyncAction.UPSERT);
-                    }
-                }));
+                    .supplyAsync(() -> toPacketLines(session.lines()))
+                    .thenAccept(packetLines -> this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
+                        final PacketSession current = this.sessions.get(block.uniqueId());
+                        if (current == null || current.revision() != revision) {
+                            return;
+                        }
+                        current.setPacketLines(packetLines);
+                        for (final Player viewer : world.getPlayers()) {
+                            enqueueSync(viewer.getUniqueId(), block.uniqueId(), SyncAction.UPSERT);
+                        }
+                    }));
         }
 
         @Override
@@ -336,7 +504,7 @@ public final class HologramRuntimeService {
             }
 
             final boolean shouldShow = viewer.getWorld().equals(world)
-                && viewer.getLocation().distanceSquared(session.baseLocation()) <= PACKET_SYNC_RADIUS_SQUARED;
+                    && viewer.getLocation().distanceSquared(session.baseLocation()) <= PACKET_SYNC_RADIUS_SQUARED;
 
             if (!shouldShow) {
                 this.nmsAdapter.removePacketHologram(viewer, hologramUniqueId);
@@ -384,28 +552,14 @@ public final class HologramRuntimeService {
             }
         }
 
-        private PacketLayout currentLayout() {
-            return new PacketLayout(
-                this.plugin.getConfig().getDouble("hologram.packet.spacing.text", 0.25D),
-                this.plugin.getConfig().getDouble("hologram.packet.spacing.item", 0.25D),
-                this.plugin.getConfig().getDouble("hologram.packet.spacing.block", 0.25D),
-                this.plugin.getConfig().getDouble("hologram.packet.offset.text", 0.0D),
-                this.plugin.getConfig().getDouble("hologram.packet.offset.item", 0.0D),
-                this.plugin.getConfig().getDouble("hologram.packet.offset.block", 0.0D)
-            );
-        }
-
-        private List<NmsAdapter.HologramLine> toPacketLines(final List<RenderedLine> lines, final PacketLayout layout) {
+        private List<NmsAdapter.HologramLine> toPacketLines(final List<RenderedLine> lines) {
             final List<NmsAdapter.HologramLine> packetLines = new ArrayList<>(lines.size());
-            double cumulativeOffset = 0.0D;
             for (final RenderedLine line : lines) {
-                final double offsetY = cumulativeOffset + layout.offset(line.type());
                 switch (line.type()) {
-                    case TEXT -> packetLines.add(NmsAdapter.HologramLine.text(TextColorUtil.toLegacySection(line.text()), offsetY));
-                    case ITEM -> packetLines.add(NmsAdapter.HologramLine.item(line.material(), offsetY));
-                    case BLOCK -> packetLines.add(NmsAdapter.HologramLine.block(line.material(), offsetY));
+                    case TEXT -> packetLines.add(NmsAdapter.HologramLine.text(TextColorUtil.toLegacySection(line.text()), line.offsetY()));
+                    case ITEM -> packetLines.add(NmsAdapter.HologramLine.item(line.material(), line.offsetY()));
+                    case BLOCK -> packetLines.add(NmsAdapter.HologramLine.block(line.material(), line.offsetY()));
                 }
-                cumulativeOffset += layout.spacing(line.type());
             }
             return packetLines;
         }
@@ -421,12 +575,12 @@ public final class HologramRuntimeService {
         private volatile List<NmsAdapter.HologramLine> packetLines;
 
         private PacketSession(
-            final String worldName,
-            final Location baseLocation,
-            final List<RenderedLine> lines,
-            final Set<UUID> viewers,
-            final List<NmsAdapter.HologramLine> packetLines,
-            final long revision
+                final String worldName,
+                final Location baseLocation,
+                final List<RenderedLine> lines,
+                final Set<UUID> viewers,
+                final List<NmsAdapter.HologramLine> packetLines,
+                final long revision
         ) {
             this.worldName = worldName;
             this.baseLocation = baseLocation;
@@ -474,12 +628,12 @@ public final class HologramRuntimeService {
     }
 
     private record PacketLayout(
-        double textSpacing,
-        double itemSpacing,
-        double blockSpacing,
-        double textOffset,
-        double itemOffset,
-        double blockOffset
+            double textSpacing,
+            double itemSpacing,
+            double blockSpacing,
+            double textOffset,
+            double itemOffset,
+            double blockOffset
     ) {
 
         private double spacing(final RenderedLine.Type type) {
@@ -499,18 +653,22 @@ public final class HologramRuntimeService {
         }
     }
 
-    private record RenderedLine(Type type, String text, Material material) {
+    private record RenderedLine(Type type, String text, Material material, double offsetY) {
 
         static RenderedLine text(final String text) {
-            return new RenderedLine(Type.TEXT, text, null);
+            return new RenderedLine(Type.TEXT, text, null, 0.0D);
         }
 
         static RenderedLine item(final Material material) {
-            return new RenderedLine(Type.ITEM, null, material);
+            return new RenderedLine(Type.ITEM, null, material, 0.0D);
         }
 
         static RenderedLine block(final Material material) {
-            return new RenderedLine(Type.BLOCK, null, material);
+            return new RenderedLine(Type.BLOCK, null, material, 0.0D);
+        }
+
+        RenderedLine withOffsetY(final double offsetY) {
+            return new RenderedLine(this.type, this.text, this.material, offsetY);
         }
 
         enum Type {
@@ -520,4 +678,3 @@ public final class HologramRuntimeService {
         }
     }
 }
-

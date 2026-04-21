@@ -47,28 +47,28 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
     private static final EntityType<net.minecraft.world.entity.Interaction> CUSTOM_INTERACTION_TYPE = createCustomInteractionType();
 
     private static final Map<Character, String> LEGACY_TO_MINI_MESSAGE = Map.ofEntries(
-        Map.entry('0', "<black>"),
-        Map.entry('1', "<dark_blue>"),
-        Map.entry('2', "<dark_green>"),
-        Map.entry('3', "<dark_aqua>"),
-        Map.entry('4', "<dark_red>"),
-        Map.entry('5', "<dark_purple>"),
-        Map.entry('6', "<gold>"),
-        Map.entry('7', "<gray>"),
-        Map.entry('8', "<dark_gray>"),
-        Map.entry('9', "<blue>"),
-        Map.entry('a', "<green>"),
-        Map.entry('b', "<aqua>"),
-        Map.entry('c', "<red>"),
-        Map.entry('d', "<light_purple>"),
-        Map.entry('e', "<yellow>"),
-        Map.entry('f', "<white>"),
-        Map.entry('k', "<obfuscated>"),
-        Map.entry('l', "<bold>"),
-        Map.entry('m', "<strikethrough>"),
-        Map.entry('n', "<underlined>"),
-        Map.entry('o', "<italic>"),
-        Map.entry('r', "<reset>")
+            Map.entry('0', "<black>"),
+            Map.entry('1', "<dark_blue>"),
+            Map.entry('2', "<dark_green>"),
+            Map.entry('3', "<dark_aqua>"),
+            Map.entry('4', "<dark_red>"),
+            Map.entry('5', "<dark_purple>"),
+            Map.entry('6', "<gold>"),
+            Map.entry('7', "<gray>"),
+            Map.entry('8', "<dark_gray>"),
+            Map.entry('9', "<blue>"),
+            Map.entry('a', "<green>"),
+            Map.entry('b', "<aqua>"),
+            Map.entry('c', "<red>"),
+            Map.entry('d', "<light_purple>"),
+            Map.entry('e', "<yellow>"),
+            Map.entry('f', "<white>"),
+            Map.entry('k', "<obfuscated>"),
+            Map.entry('l', "<bold>"),
+            Map.entry('m', "<strikethrough>"),
+            Map.entry('n', "<underlined>"),
+            Map.entry('o', "<italic>"),
+            Map.entry('r', "<reset>")
     );
 
     private final Map<String, PacketHologramState> packetHologramEntityIds = new ConcurrentHashMap<>();
@@ -95,18 +95,18 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
 
     @Override
     public SpawnResult spawnInteraction(
-        final World world,
-        final Location location,
-        final float width,
-        final float height,
-        final NamespacedKey uniqueIdKey,
-        final UUID blockUniqueId
+            final World world,
+            final Location location,
+            final float width,
+            final float height,
+            final NamespacedKey uniqueIdKey,
+            final UUID blockUniqueId
     ) {
         try {
             final ServerLevel level = ((CraftWorld) world).getHandle();
             final OptimizedInteraction handle = new OptimizedInteraction(
-                CUSTOM_INTERACTION_TYPE,
-                level
+                    CUSTOM_INTERACTION_TYPE,
+                    level
             );
             handle.setPos(location.getX(), location.getY(), location.getZ());
             handle.setNoGravity(true);
@@ -227,17 +227,17 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
 
             newIds.add(display.getId());
             handle.connection.send(new ClientboundAddEntityPacket(
-                display.getId(),
-                display.getUUID(),
-                display.getX(),
-                display.getY(),
-                display.getZ(),
-                display.getXRot(),
-                display.getYRot(),
-                display.getType(),
-                0,
-                Vec3.ZERO,
-                display.getYHeadRot()
+                    display.getId(),
+                    display.getUUID(),
+                    display.getX(),
+                    display.getY(),
+                    display.getZ(),
+                    display.getXRot(),
+                    display.getYRot(),
+                    display.getType(),
+                    0,
+                    Vec3.ZERO,
+                    display.getYHeadRot()
             ));
             final List<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>> values = display.getEntityData().getNonDefaultValues();
             if (values != null && !values.isEmpty()) {
@@ -377,10 +377,10 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
     }
 
     private void applyCustomAabb(
-        final net.minecraft.world.entity.Interaction handle,
-        final Location location,
-        final float width,
-        final float height
+            final net.minecraft.world.entity.Interaction handle,
+            final Location location,
+            final float width,
+            final float height
     ) {
         final double half = width / 2.0D;
         final double minX = location.getX() - half;
@@ -393,17 +393,12 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
     }
 
     private static EntityType<net.minecraft.world.entity.Interaction> createCustomInteractionType() {
-        try {
-            @SuppressWarnings("unchecked")
-            final EntityType<net.minecraft.world.entity.Interaction> customType =
-                (EntityType<net.minecraft.world.entity.Interaction>) (EntityType<?>) EntityType.Builder
-                .of(net.minecraft.world.entity.Interaction::new, MobCategory.MISC)
-                .clientTrackingRange(2)
-                .build("custom_interaction");
-            return customType;
-        } catch (final RuntimeException ignored) {
-            return EntityType.INTERACTION;
-        }
+        // Avoid registering an unnamed custom entity type here because the
+        // server's data fixer system may not have a mapping for it which leads
+        // to the warning: "No data fixer registered for custom_interaction".
+        // Using the built-in INTERACTION type is functionally equivalent for
+        // our spawn use and avoids needing to register a custom data fixer.
+        return EntityType.INTERACTION;
     }
 
 
@@ -411,8 +406,8 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
 
         private boolean matches(final List<PacketLineSignature> otherSignatures, final int lineCount, final PacketBaseSignature otherBaseSignature) {
             return this.entityIds.size() == lineCount
-                && this.signatures.equals(otherSignatures)
-                && this.baseSignature.equals(otherBaseSignature);
+                    && this.signatures.equals(otherSignatures)
+                    && this.baseSignature.equals(otherBaseSignature);
         }
     }
 
@@ -425,8 +420,8 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
     private static final class OptimizedInteraction extends net.minecraft.world.entity.Interaction {
 
         private OptimizedInteraction(
-            final net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.Interaction> type,
-            final Level level
+                final net.minecraft.world.entity.EntityType<? extends net.minecraft.world.entity.Interaction> type,
+                final Level level
         ) {
             super(type, level);
         }

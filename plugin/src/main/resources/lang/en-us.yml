@@ -26,3 +26,5 @@ blocks:
   tool_not_allowed: "&c[MMOBlock] Tool is not allowed for this block."
   mining_progress: "&e[MMOBlock] Mining progress: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] Block broken. Respawning in {respawn}s"
+
+
