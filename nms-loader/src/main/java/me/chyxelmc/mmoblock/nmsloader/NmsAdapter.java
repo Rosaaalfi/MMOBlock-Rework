@@ -18,12 +18,12 @@ public interface NmsAdapter {
     void sendSystemMessage(Player player, String message);
 
     SpawnResult spawnInteraction(
-        final World world,
-        final Location location,
-        final float width,
-        final float height,
-        final NamespacedKey uniqueIdKey,
-        final UUID blockUniqueId
+            final World world,
+            final Location location,
+            final float width,
+            final float height,
+            final NamespacedKey uniqueIdKey,
+            final UUID blockUniqueId
     );
 
     RemoveResult removeInteraction(World world, UUID interactionUniqueId);
@@ -39,10 +39,10 @@ public interface NmsAdapter {
     }
 
     default void upsertPacketHologram(
-        final Player player,
-        final UUID hologramUniqueId,
-        final Location baseLocation,
-        final List<HologramLine> lines
+            final Player player,
+            final UUID hologramUniqueId,
+            final Location baseLocation,
+            final List<HologramLine> lines
     ) {
         // Optional adapter feature.
     }

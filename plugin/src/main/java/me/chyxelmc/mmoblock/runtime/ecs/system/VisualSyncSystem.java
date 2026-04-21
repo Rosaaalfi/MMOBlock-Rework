@@ -59,14 +59,45 @@ public final class VisualSyncSystem {
         if (!usesRealBlockModel(definition)) {
             return;
         }
-        this.nmsAdapter.showFakeBlock(world, new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z()), definition.realBlockMaterial());
+        final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
+        // Send immediately and schedule a follow-up send one tick later to avoid
+        // client-side packet ordering issues that can cause the fake block to
+        // not appear for nearby players at the exact moment of respawn.
+        this.nmsAdapter.showFakeBlock(world, loc, definition.realBlockMaterial());
+        // Register fake-block position for fast lookup by Netty handler to force-refresh visuals
+            try {
+                final int bx = (int) Math.floor(placedBlock.x());
+                final int by = (int) Math.floor(placedBlock.y());
+                final int bz = (int) Math.floor(placedBlock.z());
+                // store material name so NMS handler can reconstruct fake BlockState
+                me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.add(world.getName(), bx, by, bz, definition.realBlockMaterial().name());
+            } catch (final Throwable ignored) {
+            }
+        try {
+            this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
+                try {
+                    this.nmsAdapter.showFakeBlock(world, loc, definition.realBlockMaterial());
+                } catch (final Throwable ignored) {
+                }
+            }, 1L);
+        } catch (final Throwable ignored) {
+        }
     }
 
     public void clearRealBlockModel(final PlacedBlock placedBlock, final BlockDefinition definition, final World world) {
         if (!usesRealBlockModel(definition)) {
             return;
         }
-        this.nmsAdapter.clearFakeBlock(world, new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z()));
+        final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
+        try {
+            // remove registry entry first so outbound correction packet will be allowed through
+            final int bx = (int) Math.floor(placedBlock.x());
+            final int by = (int) Math.floor(placedBlock.y());
+            final int bz = (int) Math.floor(placedBlock.z());
+            me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.remove(world.getName(), bx, by, bz);
+        } catch (final Throwable ignored) {
+        }
+        this.nmsAdapter.clearFakeBlock(world, loc);
     }
 
     public boolean usesRealBlockModel(final BlockDefinition definition) {

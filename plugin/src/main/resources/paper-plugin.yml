@@ -4,10 +4,16 @@ version: '${version}'
 
 dependencies:
   server:
-    ModelEngine:
+    ViaVersion:
       load: BEFORE
       required: false
-    ItemsAdder:
+    ViaBackwards:
+      load: BEFORE
+      required: false
+    ViaRewind:
+      load: BEFORE
+      required: false
+    Geyser-Spigot:
       load: BEFORE
       required: false
 
@@ -16,7 +22,6 @@ bootstrapper: me.chyxelmc.mmoblock.MMOBlockBootstrap
 loader: me.chyxelmc.mmoblock.MMOBlockLoader
 api-version: '1.19'
 load: POSTWORLD
-
 
 permissions:
   mmoblock.admin:

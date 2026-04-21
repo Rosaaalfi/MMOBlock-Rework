@@ -1,23 +1,29 @@
 import org.gradle.api.file.DuplicatesStrategy
-import org.gradle.jvm.tasks.Jar
 import xyz.jpenilla.runtask.task.AbstractRun
 
 plugins {
     java
     alias(libs.plugins.run.paper)
+    alias(libs.plugins.run.shadow)
 }
 
 dependencies {
     compileOnly(libs.paperApiV12111)
-    compileOnly("net.kyori:adventure-text-minimessage:4.26.1")
-    compileOnly("com.h2database:h2:2.2.224")
+    compileOnly(libs.miniMessageLib)
+    compileOnly(libs.h2SqlLib)
 
+    implementation(libs.foliaLib)
+
+    implementation(project(":api"))
     implementation(project(":nms-loader"))
-    implementation(project(":nms-v1_19_4"))
-    implementation(project(":nms-v1_20_4"))
     implementation(project(":nms-v1_21_1"))
     implementation(project(":nms-v1_21_4"))
     implementation(project(":nms-v1_21_11"))
+    implementation(project(":nms-mojang-v1_19_4"))
+    implementation(project(":nms-mojang-v1_20_4"))
+
+    runtimeOnly(project(mapOf("path" to ":nms-spigot-v1_19_4", "configuration" to "reobf")))
+    runtimeOnly(project(mapOf("path" to ":nms-spigot-v1_20_4", "configuration" to "reobf")))
 }
 
 java {
@@ -34,7 +40,8 @@ tasks.runServer {
 
 tasks.processResources {
     val props = mapOf("version" to project.version)
-    filesMatching("paper-plugin.yml") {
+    inputs.properties(props)
+    filesMatching(listOf("paper-plugin.yml", "plugin.yml")) {
         expand(props)
     }
 }
@@ -43,22 +50,13 @@ tasks.jar {
     archiveClassifier.set("slim")
 }
 
-tasks.register<Jar>("pluginJar") {
-    group = "build"
-    description = "Builds the plugin jar with all NMS modules included."
-    archiveBaseName.set(rootProject.name)
+tasks.shadowJar {
     archiveClassifier.set("")
+    archiveBaseName.set(rootProject.name)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
-    from(sourceSets.main.get().output)
-    dependsOn(configurations.runtimeClasspath)
-    from({
-        configurations.runtimeClasspath.get()
-            .filter { it.name.endsWith(".jar") }
-            .map { zipTree(it) }
-    })
+    relocate("com.tcoded.folialib", "me.chyxelmc.mmoblock.lib.folialib")
+    mergeServiceFiles()
 }
-
 tasks.assemble {
-    dependsOn("pluginJar")
+    dependsOn(tasks.shadowJar)
 }
