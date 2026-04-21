@@ -27,3 +27,4 @@ blocks:
   mining_progress: "&e[MMOBlock] Progress mining: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] Block hancur. Respawn dalam {respawn} detik"
 
+

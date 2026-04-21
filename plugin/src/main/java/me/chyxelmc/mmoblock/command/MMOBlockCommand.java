@@ -30,10 +30,10 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
     private final RuntimeCoordinator runtimeCoordinator;
 
     public MMOBlockCommand(
-        final MMOBlock plugin,
-        final BlockConfigService configService,
-        final BlockRuntimeService runtimeService,
-        final RuntimeCoordinator runtimeCoordinator
+            final MMOBlock plugin,
+            final BlockConfigService configService,
+            final BlockRuntimeService runtimeService,
+            final RuntimeCoordinator runtimeCoordinator
     ) {
         this.plugin = plugin;
         this.configService = configService;
@@ -94,11 +94,11 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
         }
 
         send(sender, this.configService.messageComponent("commands.place.success", "Placed {id} at {world} {x} {y} {z}", java.util.Map.of(
-            "{id}", result.placedBlock().type(),
-            "{world}", world.getName(),
-            "{x}", String.valueOf(x),
-            "{y}", String.valueOf(y),
-            "{z}", String.valueOf(z)
+                "{id}", result.placedBlock().type(),
+                "{world}", world.getName(),
+                "{x}", String.valueOf(x),
+                "{y}", String.valueOf(y),
+                "{z}", String.valueOf(z)
         )));
         return true;
     }
@@ -130,11 +130,11 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
         }
 
         send(sender, this.configService.messageComponent("commands.remove.success", "Removed {id} at {world} {x} {y} {z}", java.util.Map.of(
-            "{id}", blockId,
-            "{world}", world.getName(),
-            "{x}", String.valueOf(x),
-            "{y}", String.valueOf(y),
-            "{z}", String.valueOf(z)
+                "{id}", blockId,
+                "{world}", world.getName(),
+                "{x}", String.valueOf(x),
+                "{y}", String.valueOf(y),
+                "{z}", String.valueOf(z)
         )));
         return true;
     }
@@ -184,9 +184,9 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
 
     private Component formatReconcileResult(final BlockRuntimeService.ReconcileResult result) {
         return Component.text("Runtime sync -> rebound=" + result.reboundInteractions()
-            + ", cleaned=" + result.cleanedMissingDefinitions()
-            + ", rescheduled=" + result.rescheduledRespawns()
-            + ", failed=" + result.failedRebinds());
+                + ", cleaned=" + result.cleanedMissingDefinitions()
+                + ", rescheduled=" + result.rescheduledRespawns()
+                + ", failed=" + result.failedRebinds());
     }
 
     @Override
@@ -231,9 +231,8 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
 
     private List<String> filter(final List<String> values, final String input) {
         return values.stream()
-            .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
-            .sorted()
-            .toList();
+                .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
+                .sorted()
+                .toList();
     }
 }
-

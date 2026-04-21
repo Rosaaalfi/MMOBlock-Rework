@@ -27,3 +27,4 @@ blocks:
   mining_progress: "&e[MMOBlock] 採掘進捗: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] ブロックを破壊しました。{respawn}秒後にリスポーンします"
 
+
