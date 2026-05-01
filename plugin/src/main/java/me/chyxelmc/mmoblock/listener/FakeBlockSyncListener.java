@@ -31,9 +31,8 @@ public final class FakeBlockSyncListener implements Listener {
 
     @EventHandler
     public void onJoin(final PlayerJoinEvent event) {
-        syncNowAndDelayed(event.getPlayer());
-        updateKnownChunk(event.getPlayer());
-        // Inject netty handler for this player (best-effort; uses reflection to remain optional)
+        // Inject netty handler before visual sync so join-time block correction packets
+        // and follow-up syncs see the same per-player packet state.
         try {
             if (this.plugin instanceof me.chyxelmc.mmoblock.MMOBlock mmob) {
                 final String clsName = mmob.fakePacketHandlerClassName();
@@ -42,17 +41,19 @@ public final class FakeBlockSyncListener implements Listener {
                     final java.lang.reflect.Method inject = cls.getMethod("inject", org.bukkit.entity.Player.class);
                     inject.invoke(null, event.getPlayer());
                     try {
-                        this.plugin.getLogger().fine("Requested FakeBlockPacketHandler.inject for player " + event.getPlayer().getName());
+                        // logging removed: requested FakeBlockPacketHandler.inject for player
                     } catch (final Throwable ignored) {
                     }
                 }
             }
         } catch (final Throwable t) {
             try {
-                this.plugin.getLogger().warning("Failed to invoke FakeBlockPacketHandler.inject: " + t.getMessage());
+                // logging removed: failed to invoke FakeBlockPacketHandler.inject
             } catch (final Throwable ignored) {
             }
         }
+        syncNowAndDelayed(event.getPlayer());
+        updateKnownChunk(event.getPlayer());
     }
 
     @EventHandler
@@ -109,4 +110,3 @@ public final class FakeBlockSyncListener implements Listener {
     private record ChunkPos(int x, int z) {
     }
 }
-

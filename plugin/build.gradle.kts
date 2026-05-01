@@ -11,6 +11,7 @@ dependencies {
     compileOnly(libs.paperApiV12111)
     compileOnly(libs.miniMessageLib)
     compileOnly(libs.h2SqlLib)
+    compileOnly(libs.papi)
 
     implementation(libs.foliaLib)
 

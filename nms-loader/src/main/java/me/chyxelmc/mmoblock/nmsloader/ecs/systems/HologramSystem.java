@@ -8,7 +8,9 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * System responsible for upserting packet holograms for players and removing
@@ -17,6 +19,7 @@ import java.util.UUID;
 public final class HologramSystem extends SystemBase {
 
     private final NmsAdapter adapter;
+    private final Map<SyncKey, Long> sentRevisions = new ConcurrentHashMap<>();
 
     public HologramSystem(final NmsAdapter adapter) {
         super("HologramSystem");
@@ -38,24 +41,34 @@ public final class HologramSystem extends SystemBase {
                 for (final Player player : world.getPlayers()) {
                     try {
                         adapter.removePacketHologram(player, holo.hologramUniqueId());
+                        sentRevisions.remove(new SyncKey(player.getUniqueId(), holo.hologramUniqueId()));
                     } catch (final RuntimeException ex) {
                         // swallow
                     }
                 }
+                sentRevisions.keySet().removeIf(key -> key.hologramUniqueId().equals(holo.hologramUniqueId()));
                 // remove component by removing entity
                 entityManager.removeEntity(id);
                 continue;
             }
 
-            // otherwise upsert for all players in the world
+            // Otherwise upsert only when this player has not seen the hologram yet
+            // or when the component content/location changed.
             for (final Player player : world.getPlayers()) {
+                final SyncKey key = new SyncKey(player.getUniqueId(), holo.hologramUniqueId());
+                if (sentRevisions.getOrDefault(key, Long.MIN_VALUE) == holo.revision()) {
+                    continue;
+                }
                 try {
                     adapter.upsertPacketHologram(player, holo.hologramUniqueId(), holo.baseLocation(), holo.lines());
+                    sentRevisions.put(key, holo.revision());
                 } catch (final RuntimeException ex) {
                     // swallow and continue
                 }
             }
         }
     }
-}
 
+    private record SyncKey(UUID playerUniqueId, UUID hologramUniqueId) {
+    }
+}

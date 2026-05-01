@@ -30,6 +30,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.craftbukkit.v1_19_R3.util.CraftMagicNumbers;
 import net.minecraft.world.phys.Vec3;
+import io.papermc.paper.adventure.PaperAdventure;
+import me.chyxelmc.mmoblock.nmsloader.utils.HologramColorUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +43,16 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
 
     private static final EntityType<net.minecraft.world.entity.Interaction> CUSTOM_INTERACTION_TYPE = createCustomInteractionType();
     private final Map<String, PacketHologramState> packetHologramEntityIds = new ConcurrentHashMap<>();
+    // Small marker ArmorStand nameplate renders ~0.23 above entity Y.
+    // 0.595 is for full-size ArmorStand — setSmall(true) reduces this significantly.
+    private static final double ARMOR_STAND_NAME_Y_OFFSET = 0.23D;
+
+    // ItemEntity visual center on modern clients (1.19.4+): ~0.1 above entity Y
+    private static final double ITEM_ENTITY_Y_OFFSET_MODERN = 0.1D;
+
+    // ItemEntity visual center on legacy clients (1.19.3 and below): ~0.25 above entity Y
+    // Legacy client renderer uses a larger bobbing base offset than modern.
+    private static final double ITEM_ENTITY_Y_OFFSET_LEGACY = 0.08D;
     @Override
     public String targetMinecraftVersion() {
         return "1.19.4";
@@ -187,11 +199,14 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
 
         final List<Integer> newIds = new ArrayList<>();
         for (final HologramLine line : lines) {
-            // compute the intended spawn coordinates for this line instead of
-            // reading them from the unspawned entity (which may be 0.0)
             final double lineX = baseLocation.getX();
-            final double lineY = baseLocation.getY() - line.offsetY();
             final double lineZ = baseLocation.getZ();
+            final double baseLineY = baseLocation.getY() - line.offsetY();
+            final double itemOffset = legacyClient ? ITEM_ENTITY_Y_OFFSET_LEGACY : ITEM_ENTITY_Y_OFFSET_MODERN;
+            final double lineY = switch (line.type()) {
+                case TEXT -> legacyClient ? baseLineY - ARMOR_STAND_NAME_Y_OFFSET : baseLineY;
+                case ITEM, BLOCK -> baseLineY - itemOffset;
+            };
             final net.minecraft.world.entity.Entity display = createDisplay(level, baseLocation, line, legacyClient);
             if (display == null) {
                 continue;
@@ -252,14 +267,15 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
             final boolean legacyClient
     ) {
         final double x = base.getX();
-        final double y = base.getY() - line.offsetY();
         final double z = base.getZ();
+        final double baseLineY = base.getY() - line.offsetY();
+        final double itemOffset = legacyClient ? ITEM_ENTITY_Y_OFFSET_LEGACY : ITEM_ENTITY_Y_OFFSET_MODERN;
         return switch (line.type()) {
             case TEXT -> legacyClient
-                    ? createLegacyArmorStandText(level, x, y, z, line.text())
-                    : createTextDisplay(level, x, y, z, line.text());
-            case ITEM -> createItemDisplay(level, x, y, z, line.material());
-            case BLOCK -> createBlockDisplay(level, x, y, z, line.material());
+                    ? createLegacyArmorStandText(level, x, baseLineY - ARMOR_STAND_NAME_Y_OFFSET, z, line.text())
+                    : createTextDisplay(level, x, baseLineY, z, line.text());
+            case ITEM -> createItemDisplay(level, x, baseLineY - itemOffset, z, line.material());
+            case BLOCK -> createBlockDisplay(level, x, baseLineY - itemOffset, z, line.material());
         };
     }
 
@@ -279,9 +295,15 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
         stand.setSmall(true);
         stand.setNoBasePlate(true);
         stand.setMarker(true);
-        stand.setCustomName(Component.literal(text == null ? "" : text));
+        final String safeText = text == null ? "" : text;
+        final net.kyori.adventure.text.Component advComp = HologramColorUtil.toComponent(safeText);
+        stand.setCustomName(PaperAdventure.asVanilla(advComp));
         stand.setCustomNameVisible(true);
         return stand;
+    }
+
+    private Component parseVanillaText(final String text) {
+        return PaperAdventure.asVanilla(HologramColorUtil.toComponent(text == null ? "" : text));
     }
 
     private net.minecraft.world.entity.Entity createTextDisplay(final ServerLevel level, final double x, final double y, final double z, final String text) {
@@ -294,7 +316,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
         display.setShadowRadius(0.0F);
         display.setShadowStrength(0.0F);
         display.setBackgroundColor(0);
-        display.setText(Component.literal(text == null ? "" : text));
+        display.setText(parseVanillaText(text));
         return display;
     }
 
@@ -321,7 +343,11 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
     private List<PacketLineSignature> packetLineSignatures(final List<HologramLine> lines) {
         final List<PacketLineSignature> signatures = new ArrayList<>(lines.size());
         for (final HologramLine line : lines) {
-            signatures.add(new PacketLineSignature(line.type(), line.offsetY()));
+            final String content = switch (line.type()) {
+                case TEXT -> line.text();
+                case ITEM, BLOCK -> line.material() == null ? "" : line.material().name();
+            };
+            signatures.add(new PacketLineSignature(line.type(), line.offsetY(), content));
         }
         return signatures;
     }
@@ -369,16 +395,35 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
                 final boolean otherLegacyClient
         ) {
             return this.entityIds.size() == lineCount
-                    && this.signatures.equals(otherSignatures)
+                    && structurallyMatches(otherSignatures)
                     && this.baseSignature.equals(otherBaseSignature)
                     && this.legacyClient == otherLegacyClient;
+        }
+
+        private boolean structurallyMatches(final List<PacketLineSignature> otherSignatures) {
+            if (this.signatures.size() != otherSignatures.size()) {
+                return false;
+            }
+            for (int i = 0; i < this.signatures.size(); i++) {
+                if (!this.signatures.get(i).matchesEntityStructure(otherSignatures.get(i))) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 
     private record PacketBaseSignature(String worldName, double x, double y, double z) {
     }
 
-    private record PacketLineSignature(NmsAdapter.HologramLineType type, double offsetY) {
+    private record PacketLineSignature(NmsAdapter.HologramLineType type, double offsetY, String content) {
+
+        private boolean matchesEntityStructure(final PacketLineSignature other) {
+            if (other == null || this.type != other.type || Double.compare(this.offsetY, other.offsetY) != 0) {
+                return false;
+            }
+            return this.type == NmsAdapter.HologramLineType.TEXT || java.util.Objects.equals(this.content, other.content);
+        }
     }
 
     private static final class OptimizedInteraction extends net.minecraft.world.entity.Interaction {

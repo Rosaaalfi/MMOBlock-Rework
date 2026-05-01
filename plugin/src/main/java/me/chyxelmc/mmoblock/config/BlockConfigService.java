@@ -2,6 +2,7 @@ package me.chyxelmc.mmoblock.config;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.model.BlockDefinition;
+import me.chyxelmc.mmoblock.model.ConditionDefinition;
 import me.chyxelmc.mmoblock.model.DisplayLine;
 import me.chyxelmc.mmoblock.model.DropEntry;
 import me.chyxelmc.mmoblock.model.ToolAction;
@@ -108,6 +109,7 @@ public final class BlockConfigService {
                     report.warn("Block '" + key + "' has no allowedTools configured.");
                 }
                 final List<DisplayLine> displayLines = parseDisplayLines(section, key, report);
+                final List<ConditionDefinition> conditions = parseConditions(section, key, report);
                 this.blockDefinitions.put(
                         key.toLowerCase(Locale.ROOT),
                         new BlockDefinition(
@@ -126,7 +128,8 @@ public final class BlockConfigService {
                                 breakAnimation,
                                 displayHeight,
                                 allowedTools,
-                                displayLines
+                                displayLines,
+                                conditions
                         )
                 );
                 loaded++;
@@ -297,7 +300,7 @@ public final class BlockConfigService {
                     return repaired;
                 }
             }
-            this.plugin.getLogger().warning("Failed to load YAML file " + file.getName() + ": " + exception.getMessage());
+            // logging removed: failed to load YAML file
             return yaml;
         }
     }
@@ -314,11 +317,10 @@ public final class BlockConfigService {
 
             final YamlConfiguration yaml = new YamlConfiguration();
             yaml.load(file);
-            this.plugin.getLogger().warning("Fixed tab indentation in " + file.getName() + " and reloaded successfully.");
+            // logging removed: fixed tab indentation in file and reloaded successfully
             return yaml;
         } catch (final IOException | InvalidConfigurationException repairException) {
-            this.plugin.getLogger().warning("Failed to auto-repair YAML file " + file.getName() + ": " + repairException.getMessage()
-                    + " (original: " + originalException.getMessage() + ")");
+            // logging removed: failed to auto-repair YAML file
             return null;
         }
     }
@@ -442,6 +444,60 @@ public final class BlockConfigService {
             final String item = valueAsString(contents, line, "item");
             final String block = valueAsString(contents, line, "block");
             parsed.add(new DisplayLine(number, text, click, dead, item, block));
+        }
+        return parsed;
+    }
+
+    private List<ConditionDefinition> parseConditions(
+            final ConfigurationSection section,
+            final String blockId,
+            final ValidationReport report
+    ) {
+        final List<Map<?, ?>> rawList = section.getMapList("conditions");
+        if (rawList.isEmpty()) {
+            return List.of();
+        }
+        final List<ConditionDefinition> parsed = new ArrayList<>();
+        for (final Map<?, ?> raw : rawList) {
+            final int id = parseInteger(raw.get("condition"), -1);
+            if (id <= 0) {
+                report.warn("Block '" + blockId + "' has condition with invalid id.");
+                continue;
+            }
+            final Object typeRaw = raw.get("type");
+            final String type = String.valueOf(typeRaw == null ? "placeholder" : typeRaw)
+                    .trim()
+                    .toLowerCase(Locale.ROOT);
+            final String value = raw.get("value") != null ? String.valueOf(raw.get("value")) : null;
+            final String operator = raw.get("operator") != null ? String.valueOf(raw.get("operator")) : "==";
+            final String compareTo = raw.get("compareTo") != null ? String.valueOf(raw.get("compareTo")) : "";
+
+            String requireText = null;
+            String notMetText = null;
+            final Object placeholderTextRaw = raw.get("placeholderText");
+            if (placeholderTextRaw instanceof Map<?, ?> placeholderMap) {
+                final Object requireRaw = placeholderMap.get("require");
+                final Object notMetRaw = placeholderMap.get("notMet");
+                requireText = requireRaw != null ? String.valueOf(requireRaw) : null;
+                notMetText = notMetRaw != null ? String.valueOf(notMetRaw) : null;
+            } else if (placeholderTextRaw instanceof ConfigurationSection placeholderSection) {
+                requireText = placeholderSection.getString("require");
+                notMetText = placeholderSection.getString("notMet");
+            }
+            final String sendTitle = raw.get("sendTitle") != null ? String.valueOf(raw.get("sendTitle")) : null;
+            final String sendSubtitle = raw.get("sendSubtitle") != null ? String.valueOf(raw.get("sendSubtitle")) : null;
+
+            parsed.add(new ConditionDefinition(
+                    id,
+                    type,
+                    value,
+                    operator,
+                    compareTo,
+                    requireText,
+                    notMetText,
+                    sendTitle,
+                    sendSubtitle
+            ));
         }
         return parsed;
     }

@@ -503,20 +503,16 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                 || msg instanceof ServerboundUseItemPacket) {
                 final Player player = this.playerRef.get();
                 if (player != null) {
-                    LOG.info("Intercepted packet " + msg.getClass().getSimpleName() + " from " + player.getName());
                     final BlockPos pos = extractBlockPos(msg);
                     if (pos != null) {
-                        LOG.info("Packet references block position " + pos.getX() + "," + pos.getY() + "," + pos.getZ() + " for " + player.getName());
                         try {
                             boolean shouldRefresh = false;
-                            // Prefer configured checker when available
                             if (CHECKER != null) {
                                 try {
                                     shouldRefresh = CHECKER.isFake(player, pos);
                                 } catch (final Throwable ignored) {
                                 }
                             }
-                            // Fallback: consult plugin registry reflectively to avoid compile-time dependency
                             if (!shouldRefresh) {
                                 try {
                                     final String worldName = player.getWorld().getName();
@@ -524,34 +520,23 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                                     final int y = pos.getY();
                                     final int z = pos.getZ();
                                     if (registryContains(worldName, x, y, z)) shouldRefresh = true;
-                                } catch (final Throwable t) {
-                                    LOG.log(Level.FINE, "FakeBlockRegistry reflective check failed", t);
+                                } catch (final Throwable ignored) {
                                 }
                             }
 
                             if (shouldRefresh) {
-                                LOG.info("Fake block detected; sending refresh to " + player.getName() + " at " + pos.getX() + "," + pos.getY() + "," + pos.getZ());
                                 final ServerLevel level = ((CraftWorld) player.getWorld()).getHandle();
-                                // Mark this specific player+position as handled so subsequent
-                                // related packets (e.g. ServerboundUseItemPacket ray-trace
-                                // fallback) will be debounced for the same block position.
                                 try {
                                     isDebouncedAndMark(player.getUniqueId(), player.getWorld().getName(), pos.getX(), pos.getY(), pos.getZ());
                                 } catch (final Throwable ignored) {
                                 }
                                 sendFakeRefreshToPlayer(player, level, pos);
                             } else {
-                                LOG.fine("Packet did not match a fake block for " + player.getName() + " at " + pos.getX() + "," + pos.getY() + "," + pos.getZ());
                                 try {
                                     if (msg instanceof net.minecraft.network.protocol.game.ServerboundUseItemPacket) {
                                         final org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin("MMOBlock");
                                         if (plugin != null) {
-                                            // Debounce per-player to avoid scheduling duplicate ray-trace
-                                            // handling for a single logical right-click (clients may
-                                            // send several related packets).
-                                            if (isUseItemDebouncedAndMark(player.getUniqueId())) {
-                                                LOG.fine("Skipping duplicate use-item processing for " + player.getName());
-                                            } else {
+                                            if (!isUseItemDebouncedAndMark(player.getUniqueId())) {
                                                 Bukkit.getScheduler().runTask(plugin, () -> {
                                                 try {
                                                     final Player p = this.playerRef.get();
@@ -563,11 +548,6 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                                                         final int bx = b.getX();
                                                         final int by = b.getY();
                                                         final int bz = b.getZ();
-                                                            try {
-                                                                final org.bukkit.plugin.Plugin pl = Bukkit.getPluginManager().getPlugin("MMOBlock");
-                                                                if (pl != null) pl.getLogger().fine("Ray-trace for " + p.getName() + " hit " + bx + "," + by + "," + bz);
-                                                            } catch (final Throwable ignored) {
-                                                            }
                                                         final boolean regContains = registryContains(p.getWorld().getName(), bx, by, bz);
                                                         if (regContains) {
                                                             try {
@@ -602,15 +582,12 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
     @Override
     public void write(final ChannelHandlerContext ctx, final Object msg, final ChannelPromise promise) throws Exception {
         try {
-            // Intercept outbound block-update packets and ensure server corrections
-            // do not overwrite registered fake-block visuals.
             final Player player = this.playerRef.get();
             if (player == null) {
                 super.write(ctx, msg, promise);
                 return;
             }
 
-            // Handle single-block update packets first (common server correction)
             if (msg instanceof ClientboundBlockUpdatePacket) {
                 final BlockPos pos = extractBlockPos(msg);
                 if (pos != null) {
@@ -621,9 +598,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                                 final int z = pos.getZ();
                                 final boolean regContains = registryContains(worldName, x, y, z);
                                 if (regContains) {
-                            // We have a registered fake block here. Try to obtain material name.
                                     final String materialName = registryGetMaterial(worldName, x, y, z);
-
                             if (materialName != null) {
                                 try {
                                     final Material mat = Material.valueOf(materialName);
@@ -631,32 +606,19 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                                     if (nmsBlock != null) {
                                         final net.minecraft.world.level.block.state.BlockState fakeState = nmsBlock.defaultBlockState();
                                         final ClientboundBlockUpdatePacket replaced = new ClientboundBlockUpdatePacket(pos, fakeState);
-                                        // send replaced fake-state packet instead of the server correction
                                         super.write(ctx, replaced, promise);
                                         return;
                                     }
-                                } catch (final IllegalArgumentException iae) {
-                                    // Material name not recognized; fallthrough to dropping original packet
+                                } catch (final IllegalArgumentException ignored) {
                                 }
                             }
-
-                            // If we couldn't reconstruct the fake state, drop the server correction
-                            // to avoid it overriding the fake visual that the plugin previously sent.
-                            LOG.fine("Dropping server block-correction for fake-block at " + pos.getX() + "," + pos.getY() + "," + pos.getZ() + " for " + player.getName());
-                            // do NOT call super.write -> packet is dropped
                             return;
                         }
-                    } catch (final Throwable t) {
-                        LOG.log(Level.FINE, "FakeBlockRegistry reflective check failed during write()", t);
+                    } catch (final Throwable ignored) {
                     }
                 }
             }
             try {
-                // Best-effort: detect multi-block / chunk packets and re-send fake-block
-                // visuals after such packets so that chunk-level updates do not permanently
-                // overwrite plugin visuals. We use simple name checks to avoid hard
-                // compile-time dependencies on packet internals and then attempt to
-                // extract chunk coordinates to limit which fake positions are re-sent.
                 final String cls = msg.getClass().getSimpleName();
                 if (cls.contains("SectionBlocksUpdate") || cls.contains("MultiBlockChange") || cls.contains("Chunk") || cls.contains("LevelChunk")) {
                     final Player p = this.playerRef.get();
@@ -666,14 +628,11 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                         if (chunk != null) {
                             scheduleResendForChunk(p, worldName, chunk[0], chunk[1]);
                         } else {
-                            // no chunk coords, fall back to resending for all registered
-                            // positions in the world (snapshot) — should be rare but safe.
                             scheduleResendForWorld(p, worldName);
                         }
                     }
                 }
             } catch (final Throwable ignored) {
-                LOG.log(Level.FINE, "Failed multi-block/chunk handling", ignored);
             }
         } catch (final Throwable t) {
             LOG.log(Level.WARNING, "Unexpected exception in write()", t);

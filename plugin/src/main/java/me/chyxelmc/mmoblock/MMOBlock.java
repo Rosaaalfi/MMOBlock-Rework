@@ -11,6 +11,8 @@ import me.chyxelmc.mmoblock.nmsloader.NmsAdapterRegistry;
 import me.chyxelmc.mmoblock.nmsloader.ecs.EcsIntegrationExample;
 import me.chyxelmc.mmoblock.nmsloader.ecs.EntityManager;
 import me.chyxelmc.mmoblock.nmsloader.ecs.SystemManager;
+import me.chyxelmc.mmoblock.placeholder.HologramPlaceholderContextStore;
+import me.chyxelmc.mmoblock.placeholder.MMOBlockPlaceholderExpansion;
 import org.bukkit.scheduler.BukkitTask;
 import me.chyxelmc.mmoblock.persistence.BlockRepository;
 import me.chyxelmc.mmoblock.persistence.DatabaseManager;
@@ -42,6 +44,9 @@ public final class MMOBlock extends JavaPlugin{
     private RespawnRepository respawnRepository;
     private BlockRuntimeService blockRuntimeService;
     private RuntimeCoordinator runtimeCoordinator;
+    private HologramPlaceholderContextStore placeholderContextStore;
+    private MMOBlockPlaceholderExpansion placeholderExpansion;
+    private Method placeholderApiSetMethod;
 
     @Override
     public void onEnable() {
@@ -66,6 +71,8 @@ public final class MMOBlock extends JavaPlugin{
             persistenceReadSystem,
             persistenceSystem
         );
+        this.placeholderContextStore = new HologramPlaceholderContextStore();
+        initializePlaceholderApiBridge();
         // Register FakeBlockPacketHandler checker if available (best-effort via reflection).
         try {
             final String handlerPkg = this.nmsAdapter.getClass().getPackage().getName();
@@ -101,15 +108,15 @@ public final class MMOBlock extends JavaPlugin{
         final MMOBlockCommand commandExecutor = new MMOBlockCommand(this, this.blockConfigService, this.blockRuntimeService, this.runtimeCoordinator);
         if (!tryRegisterPaperCommand(commandExecutor)) {
             final PluginCommand mmoblockCommand = resolveOrRegisterMmoBlockCommand();
-            if (mmoblockCommand != null) {
+                if (mmoblockCommand != null) {
                 mmoblockCommand.setExecutor(commandExecutor);
                 mmoblockCommand.setTabCompleter(commandExecutor);
                 mmoblockCommand.setPermission("mmoblock.admin");
             } else {
-                getLogger().warning("mmoblock command still not found by Bukkit!");
+                // logging removed
             }
         } else {
-            getLogger().info("Registered /mmoblock using Paper command registration.");
+            // logging removed
         }
 
         getServer().getPluginManager().registerEvents(new InteractionListener(this.blockRuntimeService), this);
@@ -147,11 +154,11 @@ public final class MMOBlock extends JavaPlugin{
                 try {
                     this.systemManager.tick(this.entityManager, System.currentTimeMillis());
                 } catch (final Throwable t) {
-                    getLogger().warning("ECS tick failed: " + t.getMessage());
+                    // logging removed
                 }
             }, 1L, 1L);
         } catch (final RuntimeException ex) {
-            getLogger().warning("Failed to initialize ECS systems: " + ex.getMessage());
+            // logging removed
             this.entityManager = null;
             this.systemManager = null;
         }
@@ -170,6 +177,7 @@ public final class MMOBlock extends JavaPlugin{
                 }
             } catch (final Throwable ignored) {
             }
+            syncPlayerVisualsNowAndDelayed(player);
         }
     }
 
@@ -185,6 +193,18 @@ public final class MMOBlock extends JavaPlugin{
 
     @Override
     public void onDisable() {
+        if (this.placeholderExpansion != null) {
+            try {
+                this.placeholderExpansion.unregister();
+            } catch (final Throwable ignored) {
+            }
+        }
+        this.placeholderExpansion = null;
+        this.placeholderApiSetMethod = null;
+        if (this.placeholderContextStore != null) {
+            this.placeholderContextStore.clear();
+            this.placeholderContextStore = null;
+        }
         if (this.blockRuntimeService != null) {
             this.runtimeCoordinator.shutdown();
             this.blockRuntimeService = null;
@@ -209,9 +229,6 @@ public final class MMOBlock extends JavaPlugin{
         } catch (final Throwable ignored) {
         }
 
-        this.entityManager = null;
-        this.systemManager = null;
-        this.nmsAdapter = null;
         // Best-effort cleanup: uninject per-player handlers to avoid lingering pipeline state.
         try {
             final String clsName = fakePacketHandlerClassName();
@@ -227,6 +244,26 @@ public final class MMOBlock extends JavaPlugin{
             }
         } catch (final Throwable ignored) {
         }
+        this.entityManager = null;
+        this.systemManager = null;
+        this.nmsAdapter = null;
+    }
+
+    private void syncPlayerVisualsNowAndDelayed(final Player player) {
+        if (this.blockRuntimeService == null || player == null || !player.isOnline()) {
+            return;
+        }
+        this.blockRuntimeService.syncFakeBlocksForPlayer(player);
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (this.blockRuntimeService != null && player.isOnline()) {
+                this.blockRuntimeService.syncFakeBlocksForPlayer(player);
+            }
+        }, 2L);
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            if (this.blockRuntimeService != null && player.isOnline()) {
+                this.blockRuntimeService.syncFakeBlocksForPlayer(player);
+            }
+        }, 20L);
     }
 
     private boolean tryRegisterPaperCommand(final MMOBlockCommand commandExecutor) {
@@ -330,7 +367,7 @@ public final class MMOBlock extends JavaPlugin{
             final Method getCommandMap = getServer().getClass().getMethod("getCommandMap");
             final Object commandMap = getCommandMap.invoke(getServer());
             if (commandMap == null) {
-                getLogger().severe("Cannot register /mmoblock dynamically: command map is null");
+                // logging removed
                 return null;
             }
 
@@ -338,17 +375,67 @@ public final class MMOBlock extends JavaPlugin{
             final String fallbackPrefix = getDescription().getName().toLowerCase(Locale.ROOT);
             final boolean registered = (boolean) register.invoke(commandMap, fallbackPrefix, dynamic);
             if (!registered) {
-                getLogger().warning("Dynamic /mmoblock registration returned false; continuing with command map lookup");
+                // logging removed
             }
 
             final PluginCommand resolved = Bukkit.getPluginCommand("mmoblock");
             if (resolved == null) {
-                getLogger().severe("Dynamic /mmoblock registration completed but command is still unresolved");
+                // logging removed
             }
             return resolved;
         } catch (final ReflectiveOperationException exception) {
-            getLogger().severe("Failed to dynamically register /mmoblock: " + exception.getMessage());
+            // logging removed
             return null;
+        }
+    }
+
+    public HologramPlaceholderContextStore placeholderContextStore() {
+        return this.placeholderContextStore;
+    }
+
+    public String applyHologramPlaceholderApi(
+            final Player player,
+            final String text,
+            final int progress,
+            final int maxProgress,
+            final long respawnTimeSeconds
+    ) {
+        if (player == null || text == null || text.isEmpty()) {
+            return text;
+        }
+        final Method method = this.placeholderApiSetMethod;
+        final HologramPlaceholderContextStore contextStore = this.placeholderContextStore;
+        if (method == null || contextStore == null) {
+            return text;
+        }
+        contextStore.set(
+                player.getUniqueId(),
+                new HologramPlaceholderContextStore.ContextValues(progress, maxProgress, respawnTimeSeconds)
+        );
+        try {
+            final Object result = method.invoke(null, player, text);
+            return result instanceof String resolved ? resolved : text;
+        } catch (final Throwable ignored) {
+            return text;
+        } finally {
+            contextStore.clear(player.getUniqueId());
+        }
+    }
+
+    private void initializePlaceholderApiBridge() {
+        if (!getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            this.placeholderApiSetMethod = null;
+            this.placeholderExpansion = null;
+            return;
+        }
+        try {
+            final Class<?> placeholderApiClass = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
+            this.placeholderApiSetMethod = placeholderApiClass.getMethod("setPlaceholders", Player.class, String.class);
+            this.placeholderExpansion = new MMOBlockPlaceholderExpansion(this);
+            this.placeholderExpansion.register();
+        } catch (final Throwable throwable) {
+            this.placeholderApiSetMethod = null;
+            this.placeholderExpansion = null;
         }
     }
 }

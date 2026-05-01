@@ -12,5 +12,6 @@ allprojects {
         maven("https://repo.codemc.io/repository/maven-releases/")
         maven("https://jitpack.io")
         maven("https://repo.tcoded.com/releases")
+        maven("https://repo.extendedclip.com/releases/")
     }
 }

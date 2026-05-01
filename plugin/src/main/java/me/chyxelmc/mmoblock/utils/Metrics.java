@@ -37,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 import javax.net.ssl.HttpsURLConnection;
@@ -117,8 +116,12 @@ public class Metrics {
                                 ? null
                                 : submitDataTask -> Bukkit.getScheduler().runTask(plugin, submitDataTask),
                         plugin::isEnabled,
-                        (message, error) -> this.plugin.getLogger().log(Level.WARNING, message, error),
-                        (message) -> this.plugin.getLogger().log(Level.INFO, message),
+                        (message, error) -> {
+                            // logging removed
+                        },
+                        (message) -> {
+                            // logging removed
+                        },
                         logErrors,
                         logSentData,
                         logResponseStatusText,

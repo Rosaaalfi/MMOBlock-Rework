@@ -3,6 +3,7 @@ package me.chyxelmc.mmoblock.runtime;
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigService;
 import me.chyxelmc.mmoblock.model.BlockDefinition;
+import me.chyxelmc.mmoblock.model.ConditionDefinition;
 import me.chyxelmc.mmoblock.model.PlacedBlock;
 import me.chyxelmc.mmoblock.model.ToolAction;
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
@@ -16,8 +17,10 @@ import me.chyxelmc.mmoblock.runtime.ecs.system.PersistenceSystem;
 import me.chyxelmc.mmoblock.runtime.ecs.system.ReconcileSystem;
 import me.chyxelmc.mmoblock.runtime.ecs.system.RespawnSystem;
 import me.chyxelmc.mmoblock.runtime.ecs.system.VisualSyncSystem;
+import me.chyxelmc.mmoblock.utils.ConditionEvaluator;
 import me.chyxelmc.mmoblock.utils.TextColorUtil;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -27,6 +30,11 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -110,6 +118,13 @@ public final class BlockRuntimeService {
     private final LifecycleSystem lifecycleSystem;
     private final ReconcileSystem reconcileSystem;
     private BukkitTask miningProgressResetTask;
+    private BukkitTask lookRaytraceTask;
+    // Track players we've applied the invisible mining-fatigue effect to so we don't remove
+    // someone else's effect accidentally.
+    private final java.util.Set<UUID> lookDebuffed = new java.util.HashSet<>();
+    // We track players currently prevented from breaking placed blocks via `lookDebuffed`.
+    // Instead of applying a visible/intrusive potion effect to the player, we cancel
+    // their digging/break events server-side so their POV remains unaffected.
 
     public BlockRuntimeService(
             final MMOBlock plugin,
@@ -132,6 +147,11 @@ public final class BlockRuntimeService {
         this.lifecycleSystem = new LifecycleSystem();
         this.reconcileSystem = new ReconcileSystem();
         startMiningProgressResetTask();
+        startLookRaytraceTask();
+        // Register server-side protection listener to cancel digging/break events for
+        // players currently looking at placed blocks. This keeps their POV unaffected
+        // while still preventing block breaking server-side.
+        this.plugin.getServer().getPluginManager().registerEvents(new LookProtectionListener(), this.plugin);
     }
 
     /**
@@ -249,13 +269,13 @@ public final class BlockRuntimeService {
         for (final PlacedBlock block : persistedBlocks) {
             final World world = this.plugin.getServer().getWorld(block.world());
             if (world == null) {
-                this.plugin.getLogger().warning("Skipping persisted block " + block.uniqueId() + " because world is missing: " + block.world());
+                // logging removed: skipping persisted block because world is missing
                 continue;
             }
 
             final BlockDefinition definition = this.blockConfigService.findBlock(block.type());
             if (definition == null) {
-                this.plugin.getLogger().warning("Skipping persisted block " + block.uniqueId() + " because type is missing: " + block.type());
+                // logging removed: skipping persisted block because type is missing
                 continue;
             }
 
@@ -265,7 +285,7 @@ public final class BlockRuntimeService {
                     continue;
                 }
                 if (!spawnInteraction(block, definition, world)) {
-                    this.plugin.getLogger().warning("Failed to restore interaction for block " + block.uniqueId());
+                    // logging removed: failed to restore interaction for block
                 } else {
                     this.hologramRuntimeService.showActive(block, definition);
                 }
@@ -333,10 +353,16 @@ public final class BlockRuntimeService {
     public void handlePlayerQuit(final UUID playerUniqueId) {
         this.hologramRuntimeService.handleViewerQuit(playerUniqueId);
         this.nmsAdapter.clearPacketHologramCacheForPlayer(playerUniqueId);
+        // If we applied a debuff to this player, remove it and clear tracking.
+        try {
+            this.lookDebuffed.remove(playerUniqueId);
+        } catch (final Throwable ignored) {
+        }
     }
 
     void shutdown() {
         stopMiningProgressResetTask();
+        stopLookRaytraceTask();
         for (final PlacedBlock block : this.ecsState.blocks()) {
             cancelRespawnTask(block.uniqueId());
             final BlockDefinition definition = this.blockConfigService.findBlock(block.type());
@@ -348,6 +374,55 @@ public final class BlockRuntimeService {
         }
         this.hologramRuntimeService.shutdown();
         this.ecsState.clear();
+    }
+
+    private void startLookRaytraceTask() {
+        stopLookRaytraceTask();
+        final int interval = Math.max(1, this.plugin.getConfig().getInt("interaction.look-check-interval-ticks", 2));
+        this.lookRaytraceTask = this.plugin.getServer().getScheduler().runTaskTimer(
+                this.plugin,
+                this::checkLookRaytrace,
+                1L,
+                interval
+        );
+    }
+
+    private void stopLookRaytraceTask() {
+        if (this.lookRaytraceTask != null) {
+            this.lookRaytraceTask.cancel();
+            this.lookRaytraceTask = null;
+        }
+        // Clear tracking set; we do not apply persistent potion effects so nothing to remove
+        try {
+            this.lookDebuffed.clear();
+        } catch (final Throwable ignored) {
+        }
+    }
+
+    /**
+     * Periodic check: for each online player, perform a raytrace against PlacedBlocks
+     * (using existing legacy AABB raytrace logic). If the player is currently looking at
+     * a PlacedBlock, apply an invisible Mining Fatigue (SLOW_DIGGING) effect at a very
+     * high amplifier to prevent block breaking. Remove the effect when they stop looking.
+     */
+    private void checkLookRaytrace() {
+        final double defaultReach = Math.max(1.5D, this.plugin.getConfig().getDouble("interaction.reach", 6.0D));
+
+        for (final Player player : this.plugin.getServer().getOnlinePlayers()) {
+            try {
+                final LegacyInteractionHit hit = findLegacyAabbHit(player, defaultReach);
+                if (hit != null) {
+                    // Mark player as protected (server-side) so we can cancel digging/break events
+                    if (!this.lookDebuffed.contains(player.getUniqueId())) {
+                        this.lookDebuffed.add(player.getUniqueId());
+                    }
+                } else {
+                    // Remove protection when not looking anymore
+                    this.lookDebuffed.remove(player.getUniqueId());
+                }
+            } catch (final Throwable ignored) {
+            }
+        }
     }
 
     ReconcileResult reconcileAfterConfigReload(final boolean rebindActiveInteractions) {
@@ -417,6 +492,10 @@ public final class BlockRuntimeService {
             return this.blockConfigService.messageComponent("blocks.config_missing", "&c[MMOBlock] Block config missing.");
         }
 
+        if (!checkConditions(definition, player)) {
+            return Component.empty();
+        }
+
         final ItemStack item = player.getInventory().getItemInMainHand();
         final ToolAction action = this.blockConfigService.resolveToolAction(definition, item.getType(), clickType);
         if (action == null) {
@@ -444,7 +523,7 @@ public final class BlockRuntimeService {
         }
         if (progress < action.clickNeeded()) {
             final String progressBar = renderProgressBar(progress, action.clickNeeded());
-            this.hologramRuntimeService.showProgress(block, definition, progressBar);
+            this.hologramRuntimeService.showProgress(block, definition, progressBar, progress, action.clickNeeded());
             final Map<String, String> placeholders = new HashMap<>();
             placeholders.put("{progress}", String.valueOf(progress));
             placeholders.put("{needed}", String.valueOf(action.clickNeeded()));
@@ -463,6 +542,42 @@ public final class BlockRuntimeService {
                 "&a[MMOBlock] Block broken. Respawning in {respawn}s",
                 Map.of("{respawn}", String.valueOf(definition.respawnTimeSeconds()))
         );
+    }
+
+    private boolean checkConditions(final BlockDefinition definition, final Player player) {
+        final List<ConditionDefinition> conditions = definition.conditions();
+        if (conditions == null || conditions.isEmpty()) {
+            return true;
+        }
+        for (final ConditionDefinition condition : conditions) {
+            if (condition == null) {
+                continue;
+            }
+            final String type = condition.type() == null ? "" : condition.type().toLowerCase(java.util.Locale.ROOT);
+            if (!"placeholder".equals(type) && !"placholder".equals(type)) {
+                continue;
+            }
+            if (ConditionEvaluator.isMet(this.plugin, player, condition)) {
+                continue;
+            }
+            sendConditionTitle(player, condition);
+            return false;
+        }
+        return true;
+    }
+
+    private void sendConditionTitle(final Player player, final ConditionDefinition condition) {
+        if (player == null || condition == null) {
+            return;
+        }
+        final String titleRaw = ConditionEvaluator.resolvePlaceholder(this.plugin, player, condition.sendTitle());
+        final String subtitleRaw = ConditionEvaluator.resolvePlaceholder(this.plugin, player, condition.sendSubtitle());
+        final Component title = (titleRaw == null || titleRaw.isBlank()) ? Component.empty() : TextColorUtil.toComponent(titleRaw);
+        final Component subtitle = (subtitleRaw == null || subtitleRaw.isBlank()) ? Component.empty() : TextColorUtil.toComponent(subtitleRaw);
+        if (title.equals(Component.empty()) && subtitle.equals(Component.empty())) {
+            return;
+        }
+        player.showTitle(Title.title(title, subtitle));
     }
 
     private void handleBlockBreak(final PlacedBlock block, final BlockDefinition definition, final ToolAction action, final Player player) {
@@ -625,8 +740,8 @@ public final class BlockRuntimeService {
                     this.uniqueIdKey,
                     placedBlock.uniqueId()
             );
-            if (!spawnResult.success() || spawnResult.interactionUniqueId() == null) {
-                this.plugin.getLogger().warning("Cannot spawn interaction at " + location + ": " + spawnResult.reason());
+                if (!spawnResult.success() || spawnResult.interactionUniqueId() == null) {
+                // logging removed: cannot spawn interaction
                 // If ECS entity was created but spawn failed, remove ECS entity to avoid orphan
                 if (ecsEntityId != null) {
                     try {
@@ -651,15 +766,10 @@ public final class BlockRuntimeService {
             }
 
             this.visualSyncSystem.applyRealBlockModel(placedBlock, definition, world);
-            this.plugin.getLogger().info(
-                    "Spawned interaction=" + spawnResult.interactionUniqueId()
-                            + " width=" + definition.hitboxWidth()
-                            + " height=" + definition.hitboxHeight()
-                            + " blockModel=" + (this.visualSyncSystem.usesRealBlockModel(definition) ? definition.realBlockMaterial() : "none")
-            );
+            // logging removed: spawned interaction info
             return true;
         } catch (final RuntimeException exception) {
-            this.plugin.getLogger().warning("Cannot spawn interaction at " + location + ": " + exception.getMessage());
+            // logging removed: exception during spawnInteraction
             return false;
         }
     }
@@ -674,7 +784,7 @@ public final class BlockRuntimeService {
         }
         final NmsAdapter.RemoveResult removeResult = this.nmsAdapter.removeInteraction(world, block.interactionEntityId());
         if (!removeResult.success()) {
-            this.plugin.getLogger().warning("Failed to remove interaction entity " + block.interactionEntityId() + ": " + removeResult.reason());
+            // logging removed: failed to remove interaction entity
             final Entity entity = world.getEntity(block.interactionEntityId());
             if (entity != null && entity.isValid()) {
                 entity.remove();
@@ -718,7 +828,7 @@ public final class BlockRuntimeService {
         this.hologramRuntimeService.remove(block);
         this.persistenceSystem.deleteBlockAsync(block.uniqueId());
         this.persistenceSystem.deleteRespawnAsync(block.uniqueId());
-        this.plugin.getLogger().warning("Removed block " + block.uniqueId() + " because definition is missing after reload: " + block.type());
+        // logging removed: removed block because definition is missing after reload
     }
 
     private void cancelRespawnTask(final UUID uniqueId) {
@@ -1080,6 +1190,45 @@ public final class BlockRuntimeService {
     }
 
     private record LegacyInteractionHit(PlacedBlock block, double distance) {
+    }
+
+    public boolean isPlayerLookProtected(final Player player) {
+        if (player == null) return false;
+        return this.lookDebuffed.contains(player.getUniqueId());
+    }
+
+    /**
+     * Listener that cancels digging/break events for players present in the lookDebuffed set.
+     * This prevents block destruction server-side while avoiding client-side mining fatigue visuals.
+     */
+    private final class LookProtectionListener implements Listener {
+
+        @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+        public void onBlockDamage(final BlockDamageEvent event) {
+            try {
+                final org.bukkit.block.Block block = event.getBlock();
+                // If this block position corresponds to a PlacedBlock (fake block), prevent digging
+                if (BlockRuntimeService.this.ecsState.containsAt(block.getWorld().getName(), block.getX(), block.getY(), block.getZ())) {
+                    event.setCancelled(true);
+                }
+            } catch (final Throwable ignored) {
+            }
+        }
+
+        @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+        public void onBlockBreak(final BlockBreakEvent event) {
+            try {
+                final org.bukkit.block.Block block = event.getBlock();
+                // Prevent breaking of fake blocks (treat them like bedrock)
+                if (BlockRuntimeService.this.ecsState.containsAt(block.getWorld().getName(), block.getX(), block.getY(), block.getZ())) {
+                    event.setCancelled(true);
+                }
+            } catch (final Throwable ignored) {
+            }
+        }
+
+        // Only cancel block-damage/break events; interactions should still be handled
+        // by the interaction listeners so players can interact with fake blocks normally.
     }
 
 

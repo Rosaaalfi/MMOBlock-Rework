@@ -4,6 +4,9 @@ version: '${version}'
 
 dependencies:
   server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
     ViaVersion:
       load: BEFORE
       required: false

@@ -21,7 +21,7 @@ public record BlockDefinition(
     boolean breakAnimation,
     double displayHeight,
     List<String> allowedTools,
-    List<DisplayLine> displayLines
+    List<DisplayLine> displayLines,
+    List<ConditionDefinition> conditions
 ) {
 }
-

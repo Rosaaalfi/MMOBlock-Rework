@@ -33,6 +33,11 @@ public final class InteractionListener implements Listener {
         return false;
     }
 
+
+    private boolean isEmptyMessage(final Component message) {
+        return Component.empty().equals(message);
+    }
+
     @EventHandler
     public void onPlayerInteractAtEntity(final PlayerInteractAtEntityEvent event) {
         final Component message = this.runtimeService.handleInteraction(event.getRightClicked(), event.getPlayer(), CLICK_RIGHT);
@@ -41,7 +46,9 @@ public final class InteractionListener implements Listener {
         }
 
         event.setCancelled(true);
-        event.getPlayer().sendMessage(message);
+        if (!isEmptyMessage(message)) {
+            event.getPlayer().sendMessage(message);
+        }
         // Ensure fake-block visuals remain for the clicking player (do not vanish on interaction)
         this.runtimeService.syncFakeBlocksForPlayer(event.getPlayer());
     }
@@ -58,7 +65,9 @@ public final class InteractionListener implements Listener {
         }
 
         event.setCancelled(true);
-        player.sendMessage(message);
+        if (!isEmptyMessage(message)) {
+            player.sendMessage(message);
+        }
         // Re-send fake-blocks to the player so the visual does not disappear on click
         this.runtimeService.syncFakeBlocksForPlayer(player);
     }
@@ -75,7 +84,9 @@ public final class InteractionListener implements Listener {
         }
 
         event.setCancelled(true);
-        event.getPlayer().sendMessage(message);
+        if (!isEmptyMessage(message)) {
+            event.getPlayer().sendMessage(message);
+        }
         // Legacy click also should keep fake blocks visible
         this.runtimeService.syncFakeBlocksForPlayer(event.getPlayer());
     }
@@ -92,7 +103,9 @@ public final class InteractionListener implements Listener {
         }
 
         event.setCancelled(true);
-        event.getPlayer().sendMessage(message);
+        if (!isEmptyMessage(message)) {
+            event.getPlayer().sendMessage(message);
+        }
         // Legacy click also should keep fake blocks visible
         this.runtimeService.syncFakeBlocksForPlayer(event.getPlayer());
     }

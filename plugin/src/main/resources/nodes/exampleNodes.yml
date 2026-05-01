@@ -1,0 +1,27 @@
+exampleNodes:
+  listBlocks:
+    - exampleEntity
+    #- exampleEntity1
+  maxBlocks: 4 # The maximum number of entities that can be spawned at the same time. If the number of entities exceeds this limit, the oldest entity will be removed to make room for the new one.
+  randomLocation:
+    enabled: true
+    radius: 3
+  blockList: # customize block list placeholder {block_lists} for the hologram display. This will display the list of blocks that can be spawned in this node. You can also use {block_lists} to display the list of blocks, and it will automatically update when the block is spawned or removed.
+    dead: "&7- &f{block_name} {respawn_times}s" # This will display the block name and the respawn time of the block that is currently dead. You can also use {block_name} and {respawn_times} placeholders to display the block name and respawn time.
+    active: "&7- &f{block_name} &aActive" # This will display the block name and "Active" if the block is currently active. You can also use {block_name} placeholder to display the block name.
+  display: # Use holograms to display information about the entity. You can have up to 99 lines of text.
+    displayHeight: 2.1 # height of the all hologram lines above the entity's location. This will be the height of the first line of the hologram. The second line will be 0.25 blocks below the first line, the third line will be 0.25 blocks below the second line, and the fourth line will be 0.25 blocks below the third line.
+    lines:
+      - line: 1 #top line of the hologram
+        contents:
+          item: minecraft:diamond # display an item in the hologram. The item will be displayed as a drop item like in the hologram.
+      - line: 2 #second line of the hologram, below the first line
+        contents:
+          #text: "&6Example Entity"
+          text: "<anim:wave:&1;&b>Plains Nodes 1</anim>" #animasi seperti bergelombang pada pergantian warnanya
+      - line: 3 #third line of the hologram, below the second line
+        contents:
+          text: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>List Blocks:</anim>" #display the placeholder text from the condition if the condition is not met, and animate the text with a color changing animation. You can also use {condition_<id>} to display the placeholder text from the condition, and it will automatically update when the condition is met or not met.
+      - line: 4
+        contents:
+          text: "{block_lists}" # This will display the list of blocks that can be spawned in this node. You can also use {block_lists} to display the list of blocks, and it will automatically update when the block is spawned or removed.

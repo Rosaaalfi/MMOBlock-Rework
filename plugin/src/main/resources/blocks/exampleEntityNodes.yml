@@ -1,10 +1,6 @@
-exampleEntity:
-  name: Example
+exampleEntityNodes:
+  name: "&7Example Entity Nodes"
   respawnTime: 1 # Time in seconds for the entity to respawn after being killed
-  deadDelay: 5 # Time in seconds for the entity to disappear after being killed
-  randomLocation: # Whether the entity should respawn at a random location around the original spawn location. If false, the entity will respawn at the original spawn location.
-    enabled: true
-    radius: 5 # The radius in blocks around the original spawn location where the entity can respawn. The entity will respawn at a random location within this radius.
   particleBreak:
     enabled: true
     source:
@@ -21,33 +17,10 @@ exampleEntity:
   hitbox: # AABB hitbox for the entity. The hitbox will be centered on the entity's location.
     width: 1.2 # The width of the entity's hitbox.
     height: 1.2 # The height of the entity's hitbox.
-  raycastOutline: # use for outlining model mmoblock and modelengine entities, as well as block entities when looking at them. This will make it easier for players to see the entity and interact with it.
-    enabled: false # use glow effect to outline the entity when looking at it. This will make it easier for players to see the entity and interact with it.
-    color: "&0" # The color of the raycast outline. You can use any color code from https://minecraftcolorcodes.com/.
   modelType:
     block:
       enabled: true
       block: minecraft:diamond_block # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
-    mmoblock:
-      enabled: false # Enable MMOBLOCK for this entity. If false.
-      model: example_ore.bbmodel # Custom models from MMOBLOCK can be defined in the model section.
-      size: 1.0 # The size of the MMOBLOCK model.
-      onDead: death # Custom animations from MMOBLOCK can be defined in the animations section. Example of a death animation from MMOBLOCK.
-      onCLick: click # Example of a click animation from MMOBLOCK.
-    modelEngine:
-      enabled: false # Enable ModelEngine for this entity. If false, the plugin will use the default Minecraft model.
-      model: iron_crystal:1.0 # Custom models from ModelEngine can be defined in the model section.
-      onClick:
-        name: example_onClick_animation  # Custom animations from ModelEngine can be defined in the animations section.
-        lerpin: 0.1
-        lerpout: 0.1
-        speed: 1.0
-      onDead: # Example of a death animation from ModelEngine.
-        name: example_onDead_animation
-        lerpin: 0.1
-        lerpout: 0.1
-        speed: 1.0
-      #model: exampleEntity:<modelsize>
   allowedTools:
     - exampleTools
   conditions:
@@ -71,7 +44,7 @@ exampleEntity:
       - line: 2 #second line of the hologram, below the first line
         contents:
           #text: "&6Example Entity"
-          text: "<anim:wave:&1;&b>Example Entity</anim>" #animasi seperti bergelombang pada pergantian warnanya
+          text: "<anim:wave:&1;&b>Example Entity Nodes</anim>" #animasi seperti bergelombang pada pergantian warnanya
           click: hide #this key/field have to type store, hide as boolean true(true mean hide, false mean not hide and false trigger by fill with text string) and "Text" string text
       - line: 3 #third line of the hologram, below the second line
         contents:
@@ -81,5 +54,4 @@ exampleEntity:
         contents:
           text: "<anim:burn:#999bff;#ffe599>Click to Mine!</anim>" #<anim:name:args></anim>
           #text: "&7Click to Mine!"
-          dead: "&7Respawns in: &c{respawn_time}s" # You can also use %mmoblock_respawn_time%.
           click: "&7[&r{progress_bar}&7] &f(%mmoblock_progress%/%mmoblock_max_progress%)" # You can also use %mmoblock_progress% and %mmoblock_max_progress%.

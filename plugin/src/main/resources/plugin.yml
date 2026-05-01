@@ -9,6 +9,8 @@ softdepend:
   - ViaVersion
   - ViaBackwards
   - ViaRewind
+  - Geyser-Spigot
+  - PlaceholderAPI
 
 permissions:
   mmoblock.admin:
