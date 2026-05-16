@@ -1,7 +1,7 @@
 package me.chyxelmc.mmoblock.runtime.ecs;
 
 import me.chyxelmc.mmoblock.model.PlacedBlock;
-import org.bukkit.scheduler.BukkitTask;
+import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -267,18 +267,18 @@ public final class BlockEcsState {
     }
 
     public static final class RespawnComponent {
-        private BukkitTask respawnTask;
-        private BukkitTask countdownTask;
+        private SchedulerTask respawnTask;
+        private SchedulerTask countdownTask;
 
-        public BukkitTask respawnTask() {
+        public SchedulerTask respawnTask() {
             return this.respawnTask;
         }
 
-        public BukkitTask countdownTask() {
+        public SchedulerTask countdownTask() {
             return this.countdownTask;
         }
 
-        public void setTasks(final BukkitTask respawnTask, final BukkitTask countdownTask) {
+        public void setTasks(final SchedulerTask respawnTask, final SchedulerTask countdownTask) {
             this.respawnTask = respawnTask;
             this.countdownTask = countdownTask;
         }

@@ -10,6 +10,6 @@ public record ConditionDefinition(
         String placeholderTextNotMet,
         String sendTitle,
         String sendSubtitle
-) {
+) implements me.chyxelmc.mmoblock.api.model.ConditionDefinition {
 }
 

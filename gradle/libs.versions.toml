@@ -5,17 +5,17 @@ minimessage = "4.26.1"
 placeholder-api= "2.12.2"
 h2 = "2.2.224"
 minecraft-runtime = "1.19.4"
-folialib = "0.5.1"
 run-task = "3.0.2"
-shadow = "9.0.0-beta12"
+shadow = "9.4.1"
+folia-api = "26.1.2.build.746-stable"
 
 [libraries]
 paperApiV1194 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_19_4" }
 paperApiV12111 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_21_11" }
 miniMessageLib= { module = "net.kyori:adventure-text-minimessage", version.ref = "minimessage" }
 h2SqlLib = { module = "com.h2database:h2", version.ref = "h2" }
-foliaLib = { module = "com.tcoded:FoliaLib", version.ref = "folialib" }
 papi = { module= "me.clip:placeholderapi", version.ref = "placeholder-api" }
+foliaApi = { module= "io.canvasmc.canvas:canvas-api", version.ref = "folia-api" }
 
 [plugins]
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }

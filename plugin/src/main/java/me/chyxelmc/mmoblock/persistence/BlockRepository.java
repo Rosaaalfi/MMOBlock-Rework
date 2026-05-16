@@ -1,6 +1,8 @@
 package me.chyxelmc.mmoblock.persistence;
 
 import me.chyxelmc.mmoblock.model.PlacedBlock;
+import me.chyxelmc.mmoblock.persistence.cache.DataCache;
+import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,10 +14,14 @@ import java.util.UUID;
 
 public final class BlockRepository {
 
-    private final DatabaseManager databaseManager;
+    private static final long ALL_BLOCKS_TTL_MS = 30_000L;
 
-    public BlockRepository(final DatabaseManager databaseManager) {
+    private final DatabaseManager databaseManager;
+    private final DataCache dataCache;
+
+    public BlockRepository(final DatabaseManager databaseManager, final DataCache dataCache) {
         this.databaseManager = databaseManager;
+        this.dataCache = dataCache;
     }
 
     public void upsert(final PlacedBlock block) {
@@ -37,6 +43,7 @@ public final class BlockRepository {
             statement.setString(10, block.facing());
             statement.setString(11, block.status());
             statement.executeUpdate();
+            this.dataCache.invalidateAllBlocks();
         } catch (final SQLException exception) {
             throw new IllegalStateException("Failed to save placed block " + block.uniqueId(), exception);
         }
@@ -48,12 +55,19 @@ public final class BlockRepository {
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, uniqueId.toString());
             statement.executeUpdate();
+            this.dataCache.invalidateAllBlocks();
         } catch (final SQLException exception) {
             throw new IllegalStateException("Failed to delete placed block " + uniqueId, exception);
         }
     }
 
     public List<PlacedBlock> findAll() {
+        if (!this.dataCache.isAllBlocksStale(ALL_BLOCKS_TTL_MS)) {
+            final List<PlacedBlock> cached = this.dataCache.getAllBlocks();
+            if (cached != null) {
+                return cached;
+            }
+        }
         final List<PlacedBlock> blocks = new ArrayList<>();
         final String sql = "SELECT unique_id, type, world, origin_x, origin_y, origin_z, x, y, z, facing, status FROM mmoblock_block";
         try (Connection connection = this.databaseManager.getConnection();
@@ -80,6 +94,8 @@ public final class BlockRepository {
         } catch (final SQLException exception) {
             throw new IllegalStateException("Failed to load placed blocks", exception);
         }
+        this.dataCache.cacheAllBlocks(blocks);
+        this.dataCache.cacheBlocks(blocks);
         return blocks;
     }
 }

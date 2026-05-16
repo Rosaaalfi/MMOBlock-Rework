@@ -10,6 +10,6 @@ public record ToolAction(
     int decreaseDurability,
     List<String> allowedDrops,
     String clickType
-) {
+) implements me.chyxelmc.mmoblock.api.model.ToolAction {
 }
 

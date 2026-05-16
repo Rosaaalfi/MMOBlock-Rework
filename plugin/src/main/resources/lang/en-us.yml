@@ -2,23 +2,39 @@ debug:
   load: "&e[MMOBlock] &7Debug mode is enabled." #custom logger on console use bukkit
 commands:
   usage:
-    place: "&e/mmoblock place <blockid/entityid> x y z world facing"
-    remove: "&e/mmoblock remove <blockid/entityid> x y z world"
+    block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
     reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
   unknown_subcommand: "&cUnknown subcommand."
   world_not_found: "&cWorld not found: {world}"
   place:
-    usage: "&eUsage: /mmoblock place <blockid/entityid> x y z world facing(north, south, east, west)"
+    usage: "&eUsage: /mmoblock block place <blockId> x y z [world] [facing]"
     invalid_facing: "&cInvalid facing: {facing} (use north, south, east, west)"
     failed: "&cFailed to place block: {reason}"
     success: "&aPlaced {id} at {world} {x} {y} {z}"
   remove:
-    usage: "&eUsage: /mmoblock remove <blockid/entityid> x y z world"
+    usage: "&eUsage: /mmoblock block remove <blockId> x y z [world]"
     not_found: "&cBlock not found at that location."
     success: "&aRemoved {id} at {world} {x} {y} {z}"
   reload:
     all: "&aReloaded config, blocks, drops, lang, and tools."
     config: "&aReloaded config.yml"
+  node:
+    usage: "&eUsage: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    place:
+      usage: "&eUsage: /mmoblock node place <nodeId> x y z [world] [facing]"
+    remove:
+      usage: "&eUsage: /mmoblock node remove <nodeId> x y z [world]"
+    get:
+      usage: "&eUsage: /mmoblock node get <nodeId|remover>"
+  block:
+    usage: "&eUsage: /mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    place:
+      usage: "&eUsage: /mmoblock block place <blockId> x y z [world] [facing]"
+    remove:
+      usage: "&eUsage: /mmoblock block remove <blockId> x y z [world]"
+    get:
+      usage: "&eUsage: /mmoblock block get <blockId|remover>"
 blocks:
   not_active: "&c[MMOBlock] Block is not active."
   too_fast: "&c[MMOBlock] Slow down a bit."

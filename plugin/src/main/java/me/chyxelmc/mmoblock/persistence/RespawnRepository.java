@@ -1,5 +1,8 @@
 package me.chyxelmc.mmoblock.persistence;
 
+import me.chyxelmc.mmoblock.persistence.cache.DataCache;
+import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,9 +14,11 @@ import java.util.UUID;
 public final class RespawnRepository {
 
     private final DatabaseManager databaseManager;
+    private final DataCache dataCache;
 
-    public RespawnRepository(final DatabaseManager databaseManager) {
+    public RespawnRepository(final DatabaseManager databaseManager, final DataCache dataCache) {
         this.databaseManager = databaseManager;
+        this.dataCache = dataCache;
     }
 
     public void upsert(final UUID uniqueId, final long lastRespawn) {
@@ -32,6 +37,10 @@ public final class RespawnRepository {
     }
 
     public Long findById(final UUID uniqueId) {
+        final Long cached = this.dataCache.getRespawn(uniqueId);
+        if (cached != null) {
+            return cached;
+        }
         final String sql = "SELECT last_respawn FROM mmoblock_respawn WHERE unique_id = ?";
         try (Connection connection = this.databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -40,7 +49,9 @@ public final class RespawnRepository {
                 if (!resultSet.next()) {
                     return null;
                 }
-                return resultSet.getLong("last_respawn");
+                final long fromDb = resultSet.getLong("last_respawn");
+                this.dataCache.cacheRespawn(uniqueId, fromDb);
+                return fromDb;
             }
         } catch (final SQLException exception) {
             throw new IllegalStateException("Failed to find respawn row for " + uniqueId, exception);

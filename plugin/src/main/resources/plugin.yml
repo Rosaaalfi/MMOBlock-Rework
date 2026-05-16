@@ -5,6 +5,7 @@ author: Aniko
 website: chyxelmc.me
 api-version: '1.19'
 load: POSTWORLD
+folia-supported: true
 softdepend:
   - ViaVersion
   - ViaBackwards
@@ -20,4 +21,4 @@ permissions:
 commands:
   mmoblock:
     description: Manage MMOBlock interaction entities
-    usage: /<command> place <blockid> x y z world facing | /<command> remove <blockid> x y z world | /<command> reload [config|blocks|drops|lang|tools]
+    usage: /<command> place <blockid> x y z world facing | /<command> remove <blockid> x y z world | /<command> reload [config|blocks|nodes|drops|lang|tools] | /<command> block list | /<command> node [place|remove|list] <nodeId> x y z world facing

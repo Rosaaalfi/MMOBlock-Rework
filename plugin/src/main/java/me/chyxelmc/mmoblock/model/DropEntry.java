@@ -1,5 +1,6 @@
 package me.chyxelmc.mmoblock.model;
 
+import me.chyxelmc.mmoblock.api.model.DropType;
 import org.bukkit.Material;
 
 public record DropEntry(
@@ -10,11 +11,6 @@ public record DropEntry(
     String command,
     double chance,
     String dropType
-) {
-    public enum DropType {
-        MATERIAL,
-        EXPERIENCE,
-        COMMAND
-    }
+) implements me.chyxelmc.mmoblock.api.model.DropEntry {
 }
 

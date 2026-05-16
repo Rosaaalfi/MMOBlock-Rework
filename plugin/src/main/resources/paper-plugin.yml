@@ -3,28 +3,28 @@ prefix: "Chyxel"
 version: '${version}'
 
 dependencies:
-  server:
-    PlaceholderAPI:
-      load: BEFORE
-      required: false
-    ViaVersion:
-      load: BEFORE
-      required: false
-    ViaBackwards:
-      load: BEFORE
-      required: false
-    ViaRewind:
-      load: BEFORE
-      required: false
-    Geyser-Spigot:
-      load: BEFORE
-      required: false
+  - name: PlaceholderAPI
+    load: BEFORE
+    required: false
+  - name: ViaVersion
+    load: BEFORE
+    required: false
+  - name: ViaBackwards
+    load: BEFORE
+    required: false
+  - name: ViaRewind
+    load: BEFORE
+    required: false
+  - name: Geyser-Spigot
+    load: BEFORE
+    required: false
 
 main: me.chyxelmc.mmoblock.MMOBlock
-bootstrapper: me.chyxelmc.mmoblock.MMOBlockBootstrap
 loader: me.chyxelmc.mmoblock.MMOBlockLoader
 api-version: '1.19'
 load: POSTWORLD
+
+folia-supported: true
 
 permissions:
   mmoblock.admin:

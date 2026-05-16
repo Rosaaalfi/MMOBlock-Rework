@@ -1,4 +1,7 @@
 exampleNodes:
+  item:
+    name: "&7Example Nodes"
+    material: iron_ore
   listBlocks:
     - exampleEntity
     #- exampleEntity1
@@ -6,6 +9,8 @@ exampleNodes:
   randomLocation:
     enabled: true
     radius: 3
+    closest: true # If true, spawn only when there is at least one solid block beside the spawn location on N/S/E/W.
+    center: 1 # Minimum horizontal distance from the node hologram center.
   blockList: # customize block list placeholder {block_lists} for the hologram display. This will display the list of blocks that can be spawned in this node. You can also use {block_lists} to display the list of blocks, and it will automatically update when the block is spawned or removed.
     dead: "&7- &f{block_name} {respawn_times}s" # This will display the block name and the respawn time of the block that is currently dead. You can also use {block_name} and {respawn_times} placeholders to display the block name and respawn time.
     active: "&7- &f{block_name} &aActive" # This will display the block name and "Active" if the block is currently active. You can also use {block_name} placeholder to display the block name.

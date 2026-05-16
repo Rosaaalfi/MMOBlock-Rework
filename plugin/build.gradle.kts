@@ -8,27 +8,32 @@ plugins {
 }
 
 dependencies {
-    compileOnly(libs.paperApiV12111)
+    compileOnly(libs.paperApiV1194)
     compileOnly(libs.miniMessageLib)
     compileOnly(libs.h2SqlLib)
     compileOnly(libs.papi)
+    compileOnly("com.github.ben-manes.caffeine:caffeine:3.2.4")
+    compileOnly("com.zaxxer:HikariCP:7.0.2")
 
-    implementation(libs.foliaLib)
-
-    implementation(project(":api"))
+    //implementation("me.chyxelmc:mmoblock-api:3.0.0-SNAPSHOT")
+    implementation(project(":mmoblock-api"))
     implementation(project(":nms-loader"))
     implementation(project(":nms-v1_21_1"))
     implementation(project(":nms-v1_21_4"))
     implementation(project(":nms-v1_21_11"))
+    implementation(project(":nms-v26_1"))
     implementation(project(":nms-mojang-v1_19_4"))
     implementation(project(":nms-mojang-v1_20_4"))
+    implementation(project(":platform-scheduler"))
+    implementation(project(":plugin-folia"))
+    implementation(project(":plugin-paper"))
 
     runtimeOnly(project(mapOf("path" to ":nms-spigot-v1_19_4", "configuration" to "reobf")))
     runtimeOnly(project(mapOf("path" to ":nms-spigot-v1_20_4", "configuration" to "reobf")))
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
 }
 
 tasks.withType<AbstractRun>().configureEach {
@@ -55,7 +60,6 @@ tasks.shadowJar {
     archiveClassifier.set("")
     archiveBaseName.set(rootProject.name)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    relocate("com.tcoded.folialib", "me.chyxelmc.mmoblock.lib.folialib")
     mergeServiceFiles()
 }
 tasks.assemble {

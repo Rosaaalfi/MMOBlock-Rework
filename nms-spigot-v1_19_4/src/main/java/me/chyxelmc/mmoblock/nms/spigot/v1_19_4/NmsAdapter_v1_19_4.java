@@ -33,6 +33,11 @@ import org.bukkit.craftbukkit.v1_19_R3.util.CraftMagicNumbers;
 import net.minecraft.world.phys.Vec3;
 import me.chyxelmc.mmoblock.nmsloader.utils.HologramColorUtil;
 
+import me.chyxelmc.mmoblock.nmsloader.SchematicData;
+import me.chyxelmc.mmoblock.nmsloader.SchematicData.SchematicBlock;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
+
 import java.util.*;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,6 +84,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
             final NamespacedKey uniqueIdKey,
             final UUID blockUniqueId
     ) {
+        String nmsFailure = "";
         try {
             final ServerLevel level = ((CraftWorld) world).getHandle();
             final OptimizedInteraction handle = new OptimizedInteraction(
@@ -93,7 +99,8 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
 
             if (!(handle.getBukkitEntity() instanceof Interaction interaction)) {
                 handle.discard();
-                return SpawnResult.failed("Spawned NMS entity is not Bukkit Interaction");
+                nmsFailure = "Spawned NMS entity is not Bukkit Interaction";
+                return spawnInteractionViaBukkit(world, location, width, height, uniqueIdKey, blockUniqueId, nmsFailure);
             }
 
             interaction.setInteractionWidth(Math.max(0.25F, width));
@@ -103,8 +110,9 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
             interaction.getPersistentDataContainer().set(uniqueIdKey, PersistentDataType.STRING, blockUniqueId.toString());
             return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
         } catch (final RuntimeException exception) {
-            return SpawnResult.failed("NMS spawn failed: " + exception.getMessage());
+            nmsFailure = "NMS spawn failed: " + exception.getMessage();
         }
+        return spawnInteractionViaBukkit(world, location, width, height, uniqueIdKey, blockUniqueId, nmsFailure);
     }
 
     @Override
@@ -146,14 +154,59 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
     }
 
     @Override
-    public void clearFakeBlock(final World world, final Location location) {
-        final ServerLevel level = ((CraftWorld) world).getHandle();
+    public void showFakeBlock(final Player player, final World world, final Location location, final Material material) {
         final BlockPos pos = BlockPos.containing(location.getX(), location.getY(), location.getZ());
-        final ClientboundBlockUpdatePacket packet = new ClientboundBlockUpdatePacket(pos, level.getBlockState(pos));
-        for (final Player viewer : world.getNearbyPlayers(location, 128.0D)) {
-            if (viewer instanceof CraftPlayer craftPlayer) {
-                craftPlayer.getHandle().connection.send(packet);
+        final ClientboundBlockUpdatePacket packet = new ClientboundBlockUpdatePacket(pos, CraftMagicNumbers.getBlock(material).defaultBlockState());
+        if (player instanceof CraftPlayer craftPlayer) {
+            craftPlayer.getHandle().connection.send(packet);
+        }
+    }
+
+    @Override
+    public void clearFakeBlock(final World world, final Location location) {
+        try {
+            final org.bukkit.block.data.BlockData realData = world.getBlockAt(location).getBlockData();
+            for (final Player viewer : world.getNearbyPlayers(location, 128.0D)) {
+                viewer.sendBlockChange(location, realData);
             }
+        } catch (final Throwable ignored) {
+            // World data may already be tearing down during server/plugin disable.
+        }
+    }
+
+    @Override
+    public void clearFakeBlock(final Player player, final World world, final Location location) {
+        try {
+            final org.bukkit.block.data.BlockData realData = world.getBlockAt(location).getBlockData();
+            player.sendBlockChange(location, realData);
+        } catch (final Throwable ignored) {
+            // World data may already be tearing down during server/plugin disable.
+        }
+    }
+
+    private SpawnResult spawnInteractionViaBukkit(
+            final World world,
+            final Location location,
+            final float width,
+            final float height,
+            final NamespacedKey uniqueIdKey,
+            final UUID blockUniqueId,
+            final String nmsFailure
+    ) {
+        try {
+            final org.bukkit.entity.Entity bukkitEntity = world.spawnEntity(location, org.bukkit.entity.EntityType.INTERACTION);
+            if (!(bukkitEntity instanceof Interaction interaction)) {
+                bukkitEntity.remove();
+                return SpawnResult.failed(nmsFailure + " | Bukkit fallback returned non-Interaction");
+            }
+            interaction.setInteractionWidth(Math.max(0.25F, width));
+            interaction.setInteractionHeight(Math.max(0.25F, height));
+            interaction.setResponsive(true);
+            interaction.setPersistent(false);
+            interaction.getPersistentDataContainer().set(uniqueIdKey, PersistentDataType.STRING, blockUniqueId.toString());
+            return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
+        } catch (final RuntimeException fallbackException) {
+            return SpawnResult.failed(nmsFailure + " | Bukkit fallback failed: " + fallbackException.getMessage());
         }
     }
 
@@ -212,6 +265,10 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
                 continue;
             }
 
+            // Apply yaw from location for per-player facing
+            final float locYaw = (float) baseLocation.getYaw();
+            display.setYRot(locYaw);
+
             newIds.add(display.getId());
             handle.connection.send(new ClientboundAddEntityPacket(
                     display.getId(),
@@ -258,6 +315,180 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
     public void clearPacketHologramCacheForPlayer(final UUID playerUniqueId) {
         final String prefix = playerUniqueId + ":";
         this.packetHologramEntityIds.keySet().removeIf(key -> key.startsWith(prefix));
+    }
+
+    @Override
+    public SchematicData loadSchematic(final String filePath) {
+        if (filePath == null || filePath.isBlank()) return null;
+        final java.io.File file = new java.io.File(filePath);
+        if (!file.exists() || !file.isFile()) return null;
+        try {
+            final CompoundTag tag = NbtIo.readCompressed(file);
+            return parseSchematicTag(tag);
+        } catch (final Throwable ignored) {
+            return null;
+        }
+    }
+
+    private SchematicData parseSchematicTag(final CompoundTag tag) {
+        try {
+            // Detect format: Sponge V2 has "Version" and "Palette", MCEdit has "Blocks" and "Data"
+            if (tag.contains("Version") && tag.contains("Palette") && tag.contains("BlockData")) {
+                return parseSpongeSchematic(tag);
+            }
+            if (tag.contains("Blocks") && tag.contains("Data")) {
+                return parseMceSchematic(tag);
+            }
+            return null;
+        } catch (final Throwable ignored) {
+            return null;
+        }
+    }
+
+    private SchematicData parseSpongeSchematic(final CompoundTag tag) {
+        final int width = tag.getShort("Width");
+        final int height = tag.getShort("Height");
+        final int length = tag.getShort("Length");
+        final CompoundTag palette = tag.getCompound("Palette");
+        final byte[] blockData = tag.getByteArray("BlockData");
+
+        if (width <= 0 || height <= 0 || length <= 0 || palette == null || blockData == null) {
+            return null;
+        }
+
+        // Build palette index -> material name mapping
+        final java.util.Map<Integer, String> paletteMap = new java.util.HashMap<>();
+        for (final String key : palette.getAllKeys()) {
+            final int index = palette.getInt(key);
+            final String materialName = extractMaterialName(key);
+            if (materialName != null) {
+                paletteMap.put(index, materialName);
+            }
+        }
+
+        // Data is stored in YZX order: index = y * (width * length) + z * width + x
+        final java.util.List<SchematicBlock> blocks = new java.util.ArrayList<>();
+        for (int y = 0; y < height; y++) {
+            for (int z = 0; z < length; z++) {
+                for (int x = 0; x < width; x++) {
+                    final int dataIndex = y * width * length + z * width + x;
+                    if (dataIndex >= blockData.length) continue;
+                    final int paletteIndex = blockData[dataIndex] & 0xFF;
+                    final String materialName = paletteMap.get(paletteIndex);
+                    if (materialName == null || "AIR".equals(materialName)) continue;
+                    blocks.add(new SchematicBlock(x, y, z, materialName));
+                }
+            }
+        }
+
+        return new SchematicData(width, height, length, blocks);
+    }
+
+    private SchematicData parseMceSchematic(final CompoundTag tag) {
+        final int width = tag.getShort("Width");
+        final int height = tag.getShort("Height");
+        final int length = tag.getShort("Length");
+        final byte[] blocks = tag.getByteArray("Blocks");
+        final byte[] data = tag.getByteArray("Data");
+
+        if (width <= 0 || height <= 0 || length <= 0 || blocks == null) return null;
+
+        final byte[] dataArr = (data != null && data.length == blocks.length) ? data : new byte[blocks.length];
+
+        final java.util.List<SchematicBlock> result = new java.util.ArrayList<>();
+        for (int y = 0; y < height; y++) {
+            for (int z = 0; z < length; z++) {
+                for (int x = 0; x < width; x++) {
+                    final int index = y * width * length + z * width + x;
+                    if (index >= blocks.length) continue;
+                    final int blockId = blocks[index] & 0xFF;
+                    final int blockData = dataArr[index] & 0xFF;
+                    if (blockId == 0) continue; // air
+                    final String materialName = legacyIdToMaterial(blockId, blockData);
+                    if (materialName == null) continue;
+                    result.add(new SchematicBlock(x, y, z, materialName));
+                }
+            }
+        }
+
+        return new SchematicData(width, height, length, result);
+    }
+
+    private static String extractMaterialName(final String blockStateKey) {
+        if (blockStateKey == null || blockStateKey.isBlank()) return null;
+        // Strip properties: "minecraft:stone" or "minecraft:oak_planks[variant=oak]" -> "minecraft:stone"
+        final String key = blockStateKey.contains("[") ? blockStateKey.substring(0, blockStateKey.indexOf('[')) : blockStateKey;
+        // Extract material name after ":"
+        final String name = key.contains(":") ? key.substring(key.indexOf(':') + 1) : key;
+        if (name == null || name.isBlank()) return null;
+        // Convert to Bukkit material format (uppercase with underscores)
+        return name.toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private static String legacyIdToMaterial(final int blockId, final int data) {
+        // Minimal mapping for common block IDs
+        return switch (blockId) {
+            case 1 -> "STONE";
+            case 2 -> "GRASS_BLOCK";
+            case 3 -> "DIRT";
+            case 4 -> "COBBLESTONE";
+            case 5 -> "OAK_PLANKS";
+            case 6 -> ("OAK_SAPLING");
+            case 7 -> "BEDROCK";
+            case 8 -> "WATER";
+            case 9 -> "WATER";
+            case 12 -> "SAND";
+            case 13 -> "GRAVEL";
+            case 14 -> "GOLD_ORE";
+            case 15 -> "IRON_ORE";
+            case 16 -> "COAL_ORE";
+            case 17 -> "OAK_LOG";
+            case 18 -> "OAK_LEAVES";
+            case 19 -> "SPONGE";
+            case 20 -> "GLASS";
+            case 21 -> "LAPIS_ORE";
+            case 24 -> "SANDSTONE";
+            case 25 -> "NOTE_BLOCK";
+            case 41 -> "GOLD_BLOCK";
+            case 42 -> "IRON_BLOCK";
+            case 45 -> "BRICK";
+            case 46 -> "TNT";
+            case 47 -> "BOOKSHELF";
+            case 48 -> "MOSSY_COBBLESTONE";
+            case 49 -> "OBSIDIAN";
+            case 53 -> "OAK_STAIRS";
+            case 56 -> "DIAMOND_ORE";
+            case 57 -> "DIAMOND_BLOCK";
+            case 58 -> "CRAFTING_TABLE";
+            case 61 -> "FURNACE";
+            case 73 -> "REDSTONE_ORE";
+            case 78 -> "SNOW";
+            case 79 -> "ICE";
+            case 80 -> "SNOW_BLOCK";
+            case 82 -> "CLAY";
+            case 84 -> "JUKEBOX";
+            case 86 -> "PUMPKIN";
+            case 87 -> "NETHERRACK";
+            case 88 -> "SOUL_SAND";
+            case 89 -> "GLOWSTONE";
+            case 95 -> "STAINED_GLASS";
+            case 98 -> "STONE_BRICKS";
+            case 103 -> "MELON";
+            case 133 -> "EMERALD_BLOCK";
+            case 152 -> "REDSTONE_BLOCK";
+            case 153 -> "QUARTZ_BLOCK";
+            case 155 -> "QUARTZ_PILLAR";
+            case 159 -> "STAINED_HARDENED_CLAY";
+            case 161 -> "ACACIA_LEAVES";
+            case 162 -> "ACACIA_LOG";
+            case 168 -> "PRISMARINE";
+            case 169 -> "SEA_LANTERN";
+            case 173 -> "COAL_BLOCK";
+            case 179 -> "RED_SANDSTONE";
+            case 198 -> "END_ROD";
+            case 199 -> "CHORUS_PLANT";
+            default -> blockId < 256 ? ("minecraft:" + blockId) : null;
+        };
     }
 
     private net.minecraft.world.entity.Entity createDisplay(

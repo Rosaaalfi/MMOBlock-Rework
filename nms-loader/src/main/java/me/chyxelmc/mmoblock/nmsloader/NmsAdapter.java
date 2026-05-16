@@ -15,6 +15,10 @@ public interface NmsAdapter {
 
     void validateNms();
 
+    default SchematicData loadSchematic(final String filePath) {
+        return null;
+    }
+
     void sendSystemMessage(Player player, String message);
 
     SpawnResult spawnInteraction(
@@ -33,6 +37,14 @@ public interface NmsAdapter {
     void showFakeBlock(World world, Location location, Material material);
 
     void clearFakeBlock(World world, Location location);
+
+    default void showFakeBlock(final Player player, final World world, final Location location, final Material material) {
+        showFakeBlock(world, location, material);
+    }
+
+    default void clearFakeBlock(final Player player, final World world, final Location location) {
+        clearFakeBlock(world, location);
+    }
 
     default boolean supportsPacketHolograms() {
         return false;

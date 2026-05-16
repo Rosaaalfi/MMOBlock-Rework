@@ -30,6 +30,8 @@ import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_19_R3.util.CraftMagicNumbers;
 import net.minecraft.world.level.block.Block;
 
+import me.chyxelmc.mmoblock.nmsloader.util.FoliaSafeScheduler;
+
 /**
  * Static manager usage:
  * - Register a checker via {@link #setFakeChecker(FakeBlockChecker)} which returns true when a given
@@ -365,7 +367,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             try {
                 final org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin("MMOBlock");
                 if (plugin != null) {
-                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    FoliaSafeScheduler.runTaskLater(plugin, () -> {
                         try {
                             final ServerPlayer h2 = ((CraftPlayer) player).getHandle();
                             final ClientboundBlockUpdatePacket r2 = new ClientboundBlockUpdatePacket(pos, state);
@@ -537,7 +539,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                                         final org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin("MMOBlock");
                                         if (plugin != null) {
                                             if (!isUseItemDebouncedAndMark(player.getUniqueId())) {
-                                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                                FoliaSafeScheduler.runTask(plugin, () -> {
                                                 try {
                                                     final Player p = this.playerRef.get();
                                                     if (p == null) return;

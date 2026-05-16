@@ -1,7 +1,7 @@
 package me.chyxelmc.mmoblock.listener;
 
+import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -20,13 +20,17 @@ public final class FakeBlockSyncListener implements Listener {
     private static final double MOVE_SYNC_DISTANCE_SQUARED = 0.16D;
 
     private final BlockRuntimeService runtimeService;
+    private final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService;
     private final org.bukkit.plugin.Plugin plugin;
+    private final Scheduler scheduler;
     private final Map<UUID, Long> lastChunkSyncAt = new ConcurrentHashMap<>();
     private final Map<UUID, ChunkPos> lastKnownChunk = new ConcurrentHashMap<>();
 
-    public FakeBlockSyncListener(final org.bukkit.plugin.Plugin plugin, final BlockRuntimeService runtimeService) {
+    public FakeBlockSyncListener(final org.bukkit.plugin.Plugin plugin, final Scheduler scheduler, final BlockRuntimeService runtimeService, final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService) {
         this.plugin = plugin;
+        this.scheduler = scheduler;
         this.runtimeService = runtimeService;
+        this.nodeRuntimeService = nodeRuntimeService;
     }
 
     @EventHandler
@@ -98,9 +102,23 @@ public final class FakeBlockSyncListener implements Listener {
     }
 
     private void syncNowAndDelayed(final Player player) {
+        final var loc = player.getLocation();
         this.runtimeService.syncFakeBlocksForPlayer(player);
-        Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.runtimeService.syncFakeBlocksForPlayer(player), 2L);
-        Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.runtimeService.syncFakeBlocksForPlayer(player), 20L);
+        if (this.nodeRuntimeService != null) {
+            this.nodeRuntimeService.syncForPlayer(player);
+        }
+        this.scheduler.runAtLocationLater(loc, () -> {
+            this.runtimeService.syncFakeBlocksForPlayer(player);
+            if (this.nodeRuntimeService != null) {
+                this.nodeRuntimeService.syncForPlayer(player);
+            }
+        }, 2L);
+        this.scheduler.runAtLocationLater(loc, () -> {
+            this.runtimeService.syncFakeBlocksForPlayer(player);
+            if (this.nodeRuntimeService != null) {
+                this.nodeRuntimeService.syncForPlayer(player);
+            }
+        }, 20L);
     }
 
     private void updateKnownChunk(final Player player) {

@@ -1,82 +1,155 @@
-# 🪨 MMOBlock
+<div align="center">
 
-**MMOBlock** is a high-performance plugin for [PaperMC](https://papermc.io/) that allows you to create fully customizable, interactive block entities. Players can mine these blocks with specific tools, earn rewards, and watch them respawn automatically—all managed through easy-to-use config files.
+![](https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png)
+# MMOBlock
+*- Unblock the Fun, One Click at a Time with MMOBlock -*
 
-> [!TIP]
-> Perfect for RPG, Survival, or Skyblock servers looking to add "Custom Ore" systems, renewable resource nodes, or interactive world events.
+[![Build Status](https://github.com/Rosaaalfi/MMOBlock-Rework/actions/workflows/gradle.yml/badge.svg)](https://github.com/Rosaaalfi/MMOBlock-Rework/actions)
+[![Open Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?label=open%20issues)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
+[![Maven Central](https://img.shields.io/maven-central/v/me.chyxelmc/mmoblock-api?label=maven%20central)](https://search.maven.org/search?q=g:me.chyxelmc%20AND%20a:mmoblock-api)
+[![Javadoc](https://img.shields.io/badge/javadoc-javadoc.io-blue)](https://www.javadoc.io/doc/me.chyxelmc/mmoblock-api)
 
----
+</div>
 
-## ✨ Features
-
-* 🧱 **Custom Block Entities:** Place interactive blocks anywhere in your world that aren't restricted by standard Minecraft physics.
-* ⛏️ **Mining System:** Set "Click Durability" (e.g., hit a block 10 times to break it) and apply durability costs to tools.
-* 🎁 **Smart Drops:** Reward players with items, experience, or console commands with customizable drop chances.
-* 🔁 **Auto Respawn:** Blocks automatically reappear after a cooldown, making resource zones renewable.
-* 💬 **Hologram Displays:** Show live progress bars, block names, and respawn countdowns floating above the block.
-* 🎨 **3D Model Support:** Compatible with **Blockbench (.bbmodel)**, **ModelEngine**, and **ItemsAdder**.
-* 💾 **Reliable Storage:** Saves all block locations and states via H2 (default), MySQL, or Redis.
+**MMOBlock** is a modular plugin built for Paper-based Minecraft servers and compatible server software. To ensure peak performance, stability, and seamless updates, the plugin's structure is divided into several independent modules that work together seamlessly.
 
 ---
 
-## 🔧 Requirements
+## 📚 Repository Module Overview
 
-| Requirement | Minimum Version |
-|---|---|
-| **Server Software** | [PaperMC](https://papermc.io/) or forks (Purpur, etc.) |
-| **Java Version** | Java 21 or higher |
-| **Minecraft** | 1.19.4 through 1.21.x |
+* **`mmoblock-api`**
+  The public bridge for third-party developers who want to integrate their own features with MMOBlock's core functionality.
+* **`nms-loader`**
+  The background engine responsible for automatic system integration, running visual elements like holograms, and managing internal components.
+* **`plugin`**
+  The main heart of `MMOBlock` that handles overall operations, including loading configurations, managing player interactions, and running core game features.
+* **`nms-mojang-v*` / `nms-spigot-v*` / `nms-v*` / `nms-v26_1**`
+  The version-compatibility modules. These ensure that MMOBlock runs smoothly and remains fully compatible across many different versions of Minecraft.
+* **`platform/`**
+  The performance optimization layer that ensures the plugin operates safely and efficiently on modern server software (such as Paper and Folia).
+
+> **Development Note:** If you are making adjustments for a specific Minecraft version, simply navigate to the module that matches your target server version (e.g., use the `nms-v1_21_4` folder for Minecraft 1.21.4).
+---
+
+## ✨ Key Features (at a glance)
+
+- Custom block entities configured via YAML.
+- Configurable mining system tied to tools and actions.
+- Custom drops with chances and command-based rewards.
+- Holograms for displaying block status and progress.
+- Flexible persistence (H2/MySQL/Redis) and 3D model support.
 
 ---
 
-## 📦 Installation
+## 🔧 Quick Usage
 
-1. **Download** the latest `MMOBlock.jar` from the [Releases](../../releases) page.
-2. **Drop** the file into your server's `plugins/` folder.
-3. **Restart** your server to generate the default configuration files.
-4. (Optional) Install **DecentHolograms** for better performance on text displays.
+1. Build the project with Gradle:
 
----
+```bash
+./gradlew build
+```
 
-## 🎮 Commands & Permissions
-
-All commands require the `mmoblock.admin` permission (Default: OP).
-
-| Command | Description |
-|---|---|
-| `/mmoblock place <id>` | Spawns a custom block at your location based on an ID. |
-| `/mmoblock remove` | Removes the custom block you are currently looking at. |
-| `/mmoblock reload` | Refreshes all config files (Blocks, Drops, Tools) instantly. |
+2. Install the plugin jar from the `plugin` module into your server's `plugins/` folder.
+3. Configure `plugins/MMOBlock/` (folders: `blocks/`, `drops/`, `tools/`).
 
 ---
 
-## 📁 Understanding the Folders
+## Icon: saving locally
 
-The plugin is organized into three simple parts within the `plugins/MMOBlock/` directory:
+If you want to save the repository icon into the plugin resources locally, run:
 
-### 1. `blocks/` (The "What")
-Define the block's appearance, its name, how long it takes to respawn, and the sounds it makes when hit.
+```bash
+mkdir -p plugin/src/main/resources
+curl -L -o plugin/src/main/resources/icon.png \
+	https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png
+```
 
-### 2. `tools/` (The "How")
-Define which tools are allowed to mine the block. For example, you can make a "Crystal" only breakable using a **Netherite Pickaxe**.
+This will place the `icon.png` file under `plugin/src/main/resources` so the plugin can access it at runtime.
 
-### 3. `drops/` (The "Reward")
-Define what the player gets. You can set a 50% chance for an Iron Ingot, a 5% chance for a rare crate key (via command), and 100% chance for XP.
+
+## 📦 Published Artifacts & Coordinates
+
+The `mmoblock-api` artifact is published to Maven Central. Known published release on Central:
+
+- GroupId: `me.chyxelmc`
+- ArtifactId: `mmoblock-api`
+- Example available version: `26.1.1-BETA` (available on Maven Central)
+
+Add the dependency to your project:
+
+- Gradle (Kotlin DSL):
+```kotlin
+implementation("me.chyxelmc:mmoblock-api:26.1.1-BETA")
+```
+
+- Maven:
+```xml
+<dependency>
+    <groupId>me.chyxelmc</groupId>
+    <artifactId>mmoblock-api</artifactId>
+    <version>26.1.1-BETA</version>
+</dependency>
+```
+
+Note: The repository's development version in `gradle.properties` is `3.0.0` (snapshots). Snapshots are published to Sonatype snapshots; releases must be published via the release flow.
 
 ---
 
-## 🛠️ Creating Your First Block
+## Example: Using the API
 
-1.  Open the `blocks/example.yml` file to see how a block is structured.
-2.  Stand where you want the block to appear in-game.
-3.  Type `/mmoblock place exampleEntity`.
-4.  Test it! Use the tool defined in the `tools/` folder to see the progress bar and rewards in action.
+Below are short examples showing how to add the `mmoblock-api` dependency and use common API features in your plugin.
+
+Dependency (Gradle Kotlin DSL):
+
+```kotlin
+implementation("me.chyxelmc:mmoblock-api:26.1.1-BETA")
+```
+
+Java example — place a block programmatically:
+
+```java
+import me.chyxelmc.mmoblock.api.MMOBlockApi;
+import org.bukkit.Bukkit;
+
+// inside your plugin code
+MMOBlockApi api = MMOBlockApi.get();
+if (api != null) {
+        api.getBlockService().placeBlock("exampleEntity", Bukkit.getWorlds().get(0), 100, 64, 100, "north");
+        }
+```
+
+Java example — listen to block events:
+
+```java
+import me.chyxelmc.mmoblock.api.event.BlockMineEvent;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+
+public class MyListener implements Listener {
+    @EventHandler
+    public void onBlockMine(BlockMineEvent e) {
+        if (e.isCompleted()) {
+            e.getPlayer().sendMessage("You finished mining: " + e.getDefinition().getId());
+        }
+    }
+}
+```
+
+These examples show the minimal integration points; consult the `mmoblock-api` module for more services and models.
+
+---
+
+## 🧩 For Contributors
+
+- Use the `mmoblock-api` module when depending on the API from other modules to avoid cyclic dependencies.
+- Register `NmsAdapter` implementations under `META-INF/services` for runtime discovery.
+- Run module-specific tests before opening a PR.
 
 ---
 
 ## 📜 License & Support
 
-- **Website:** [chyxelmc.me](https://chyxelmc.me)
-- **Issues:** Please report bugs via [GitHub Issues](../../issues).
+- Website: https://chyxelmc.me
+- Report issues via GitHub Issues.
 
-*Developed with ❤️ by Aniko for the Minecraft community.*
+Thanks for using and contributing to MMOBlock!

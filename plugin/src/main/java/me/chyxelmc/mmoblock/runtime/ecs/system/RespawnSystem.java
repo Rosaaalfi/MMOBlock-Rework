@@ -2,9 +2,9 @@ package me.chyxelmc.mmoblock.runtime.ecs.system;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.model.PlacedBlock;
+import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
+import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.ecs.BlockEcsState;
-import org.bukkit.Bukkit;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.UUID;
 
@@ -14,10 +14,12 @@ import java.util.UUID;
 public final class RespawnSystem {
 
     private final MMOBlock plugin;
+    private final Scheduler scheduler;
     private final BlockEcsState ecsState;
 
-    public RespawnSystem(final MMOBlock plugin, final BlockEcsState ecsState) {
+    public RespawnSystem(final MMOBlock plugin, final Scheduler scheduler, final BlockEcsState ecsState) {
         this.plugin = plugin;
+        this.scheduler = scheduler;
         this.ecsState = ecsState;
     }
 
@@ -25,14 +27,14 @@ public final class RespawnSystem {
         cancel(block.uniqueId());
         final long ticks = Math.max(1L, delayMillis / 50L);
 
-        final BukkitTask countdownTask = Bukkit.getScheduler().runTaskTimer(this.plugin, () -> {
+        final SchedulerTask countdownTask = this.scheduler.runTimer(() -> {
             if (!this.ecsState.containsBlock(block.uniqueId())) {
                 return;
             }
             onCountdownTick.run();
         }, 0L, 20L);
 
-        final BukkitTask respawnTask = Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
+        final SchedulerTask respawnTask = this.scheduler.runLater(() -> {
             this.ecsState.respawn(block.uniqueId()).clearTasks();
             countdownTask.cancel();
             if (!this.ecsState.containsBlock(block.uniqueId())) {
@@ -50,11 +52,11 @@ public final class RespawnSystem {
             return;
         }
 
-        final BukkitTask respawnTask = respawnComponent.respawnTask();
+        final SchedulerTask respawnTask = respawnComponent.respawnTask();
         if (respawnTask != null) {
             respawnTask.cancel();
         }
-        final BukkitTask countdownTask = respawnComponent.countdownTask();
+        final SchedulerTask countdownTask = respawnComponent.countdownTask();
         if (countdownTask != null) {
             countdownTask.cancel();
         }
