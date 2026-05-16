@@ -18,6 +18,7 @@ import java.util.List;
 public final class MMOBlockLoader implements PluginLoader {
 
     private static final String MAVEN_CENTRAL = "https://repo1.maven.org/maven2/";
+    private static final String CANONICAL_DATA_DIRECTORY = "MMOBlock";
     private static final List<ExternalLibrary> LIBRARIES = List.of(
             new ExternalLibrary(
                     "net.kyori:adventure-text-minimessage:4.26.1",
@@ -47,7 +48,8 @@ public final class MMOBlockLoader implements PluginLoader {
 
     @Override
     public void classloader(final PluginClasspathBuilder builder) {
-        final Path libDirectory = builder.getContext().getDataDirectory().resolve(".caches").resolve("libs");
+        final Path dataDirectory = resolveCanonicalDataDirectory(builder.getContext().getDataDirectory());
+        final Path libDirectory = dataDirectory.resolve(".caches").resolve("libs");
         final var logger = builder.getContext().getLogger();
         try {
             Files.createDirectories(libDirectory);
@@ -60,6 +62,14 @@ public final class MMOBlockLoader implements PluginLoader {
         } catch (final IOException exception) {
             throw new IllegalStateException("Failed to prepare runtime libraries in " + libDirectory, exception);
         }
+    }
+
+    private Path resolveCanonicalDataDirectory(final Path contextDataDirectory) {
+        final Path parent = contextDataDirectory.getParent();
+        if (parent == null) {
+            return contextDataDirectory;
+        }
+        return parent.resolve(CANONICAL_DATA_DIRECTORY);
     }
 
     private void ensureAvailable(final ExternalLibrary library, final Path targetPath, final Object logger) throws IOException {

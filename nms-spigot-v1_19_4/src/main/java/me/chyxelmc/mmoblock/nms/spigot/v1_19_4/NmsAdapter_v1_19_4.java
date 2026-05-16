@@ -84,6 +84,11 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
             final NamespacedKey uniqueIdKey,
             final UUID blockUniqueId
     ) {
+        final SpawnResult bukkitResult = spawnInteractionViaBukkit(world, location, width, height, uniqueIdKey, blockUniqueId, "");
+        if (bukkitResult.success()) {
+            return bukkitResult;
+        }
+
         String nmsFailure = "";
         try {
             final ServerLevel level = ((CraftWorld) world).getHandle();
@@ -103,16 +108,12 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
                 return spawnInteractionViaBukkit(world, location, width, height, uniqueIdKey, blockUniqueId, nmsFailure);
             }
 
-            interaction.setInteractionWidth(Math.max(0.25F, width));
-            interaction.setInteractionHeight(Math.max(0.25F, height));
-            interaction.setResponsive(true);
-            interaction.setPersistent(false);
-            interaction.getPersistentDataContainer().set(uniqueIdKey, PersistentDataType.STRING, blockUniqueId.toString());
+            configureInteraction(interaction, width, height, uniqueIdKey, blockUniqueId);
             return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
         } catch (final RuntimeException exception) {
             nmsFailure = "NMS spawn failed: " + exception.getMessage();
         }
-        return spawnInteractionViaBukkit(world, location, width, height, uniqueIdKey, blockUniqueId, nmsFailure);
+        return SpawnResult.failed(joinSpawnFailures(bukkitResult.reason(), nmsFailure));
     }
 
     @Override
@@ -164,6 +165,9 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
 
     @Override
     public void clearFakeBlock(final World world, final Location location) {
+        if (!isOwnedByCurrentRegion(location)) {
+            return;
+        }
         try {
             final org.bukkit.block.data.BlockData realData = world.getBlockAt(location).getBlockData();
             for (final Player viewer : world.getNearbyPlayers(location, 128.0D)) {
@@ -176,6 +180,9 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
 
     @Override
     public void clearFakeBlock(final Player player, final World world, final Location location) {
+        if (!isOwnedByCurrentRegion(location)) {
+            return;
+        }
         try {
             final org.bukkit.block.data.BlockData realData = world.getBlockAt(location).getBlockData();
             player.sendBlockChange(location, realData);
@@ -194,19 +201,52 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
             final String nmsFailure
     ) {
         try {
-            final org.bukkit.entity.Entity bukkitEntity = world.spawnEntity(location, org.bukkit.entity.EntityType.INTERACTION);
-            if (!(bukkitEntity instanceof Interaction interaction)) {
-                bukkitEntity.remove();
-                return SpawnResult.failed(nmsFailure + " | Bukkit fallback returned non-Interaction");
-            }
-            interaction.setInteractionWidth(Math.max(0.25F, width));
-            interaction.setInteractionHeight(Math.max(0.25F, height));
-            interaction.setResponsive(true);
-            interaction.setPersistent(false);
-            interaction.getPersistentDataContainer().set(uniqueIdKey, PersistentDataType.STRING, blockUniqueId.toString());
+            final Interaction interaction = world.spawn(
+                    location,
+                    Interaction.class,
+                    spawned -> configureInteraction(spawned, width, height, uniqueIdKey, blockUniqueId)
+            );
             return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
         } catch (final RuntimeException fallbackException) {
-            return SpawnResult.failed(nmsFailure + " | Bukkit fallback failed: " + fallbackException.getMessage());
+            return SpawnResult.failed(joinSpawnFailures(nmsFailure, "Bukkit spawn failed: " + fallbackException.getMessage()));
+        }
+    }
+
+    private static void configureInteraction(
+            final Interaction interaction,
+            final float width,
+            final float height,
+            final NamespacedKey uniqueIdKey,
+            final UUID blockUniqueId
+    ) {
+        interaction.setInteractionWidth(Math.max(0.25F, width));
+        interaction.setInteractionHeight(Math.max(0.25F, height));
+        interaction.setResponsive(true);
+        interaction.setPersistent(false);
+        interaction.getPersistentDataContainer().set(uniqueIdKey, PersistentDataType.STRING, blockUniqueId.toString());
+    }
+
+    private static String joinSpawnFailures(final String first, final String second) {
+        if (first == null || first.isBlank()) {
+            return second == null ? "" : second;
+        }
+        if (second == null || second.isBlank()) {
+            return first;
+        }
+        return first + " | " + second;
+    }
+
+    private static boolean isOwnedByCurrentRegion(final Location location) {
+        if (location == null || location.getWorld() == null) {
+            return false;
+        }
+        try {
+            final java.lang.reflect.Method method = org.bukkit.Bukkit.class.getMethod("isOwnedByCurrentRegion", Location.class);
+            return Boolean.TRUE.equals(method.invoke(null, location));
+        } catch (final NoSuchMethodException ignored) {
+            return true;
+        } catch (final Throwable ignored) {
+            return false;
         }
     }
 
