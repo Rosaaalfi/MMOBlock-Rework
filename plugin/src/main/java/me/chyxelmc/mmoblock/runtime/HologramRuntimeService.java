@@ -612,13 +612,7 @@ public final class HologramRuntimeService {
                             return;
                         }
                         current.setPacketLines(packetLines);
-
-                        // Only enqueue if there are current viewers - minimizes redundant packets
-                        if (!current.viewers().isEmpty()) {
-                            for (final UUID viewerId : new java.util.HashSet<>(current.viewers())) {
-                                enqueueSync(viewerId, block.uniqueId(), SyncAction.UPSERT);
-                            }
-                        }
+                        enqueueCurrentViewersAndNearby(block.uniqueId(), current);
                     }));
         }
 
@@ -716,14 +710,7 @@ public final class HologramRuntimeService {
                                     }
                                     if (throwable == null && packetLines != null && !packetLines.isEmpty()) {
                                         current.setPacketLines(packetLines);
-                                        // Re-enqueue UPSERT for all online players in the same world so
-                                        // they receive the freshly computed packet lines.
-                                        final World world = this.plugin.getServer().getWorld(current.worldName());
-                                        if (world != null) {
-                                            for (final Player p : world.getPlayers()) {
-                                                enqueueSync(p.getUniqueId(), hologramUniqueId, SyncAction.UPSERT);
-                                            }
-                                        }
+                                        enqueueCurrentViewersAndNearby(hologramUniqueId, current);
                                     }
                                 } finally {
                                     // allow subsequent resolves if needed
@@ -759,6 +746,7 @@ public final class HologramRuntimeService {
                     this.nmsAdapter.removePacketHologram(viewer, hologramUniqueId);
                     session.viewers().remove(viewer.getUniqueId());
                     session.lastSentState().remove(viewer.getUniqueId());
+                    session.lastSentResolvedLines().remove(viewer.getUniqueId());
                     return;
                 }
             } else {
@@ -769,6 +757,7 @@ public final class HologramRuntimeService {
                     this.nmsAdapter.removePacketHologram(viewer, hologramUniqueId);
                     session.viewers().remove(viewer.getUniqueId());
                     session.lastSentState().remove(viewer.getUniqueId());
+                    session.lastSentResolvedLines().remove(viewer.getUniqueId());
                     return;
                 }
             }
@@ -822,6 +811,35 @@ public final class HologramRuntimeService {
             if (def == null) return false;
             final String type = def.displayFacingType();
             return type != null && !type.isBlank() && def.displayFacingDistance() > 0.0D && def.displayFacingDetectRange() > 0.0D;
+        }
+
+        private void enqueueCurrentViewersAndNearby(final UUID hologramUniqueId, final PacketSession session) {
+            for (final UUID viewerId : new HashSet<>(session.viewers())) {
+                enqueueSync(viewerId, hologramUniqueId, SyncAction.UPSERT);
+            }
+
+            final World world = this.plugin.getServer().getWorld(session.worldName());
+            if (world == null) {
+                return;
+            }
+
+            final double rangeSq = displayRangeSquared(session.definition());
+            for (final Player player : world.getPlayers()) {
+                try {
+                    if (player.getLocation().distanceSquared(session.baseLocation()) <= rangeSq) {
+                        enqueueSync(player.getUniqueId(), hologramUniqueId, SyncAction.UPSERT);
+                    }
+                } catch (final Throwable ignored) {
+                }
+            }
+        }
+
+        private static double displayRangeSquared(final BlockDefinition def) {
+            if (hasDisplayFacingConfig(def)) {
+                final double range = Math.max(0.0D, def.displayFacingDetectRange());
+                return range * range;
+            }
+            return PACKET_SYNC_RADIUS_SQUARED;
         }
 
         private static Location resolveDisplayFacingLocation(final Location baseLocation, final Player player, final BlockDefinition def) {
@@ -1115,6 +1133,12 @@ public final class HologramRuntimeService {
                 final Player player = this.plugin.getServer().getPlayer(entry.getKey().playerUniqueId());
                 if (player != null) {
                     if (entry.getValue() == SyncAction.REMOVE) {
+                        final PacketSession session = this.sessions.get(entry.getKey().hologramUniqueId());
+                        if (session != null) {
+                            session.viewers().remove(entry.getKey().playerUniqueId());
+                            session.lastSentState().remove(entry.getKey().playerUniqueId());
+                            session.lastSentResolvedLines().remove(entry.getKey().playerUniqueId());
+                        }
                         this.nmsAdapter.removePacketHologram(player, entry.getKey().hologramUniqueId());
                     } else {
                         syncViewer(entry.getKey().hologramUniqueId(), player);
@@ -1162,11 +1186,20 @@ public final class HologramRuntimeService {
                 final World world = this.plugin.getServer().getWorld(session.worldName());
                 if (world == null) continue;
 
-                final BlockDefinition def = session.definition();
-                final boolean hasDFacing = hasDisplayFacingConfig(def);
-                final double rangeSq = hasDFacing
-                        ? (def.displayFacingDetectRange() * def.displayFacingDetectRange())
-                        : PACKET_SYNC_RADIUS_SQUARED;
+                final double rangeSq = displayRangeSquared(session.definition());
+
+                for (final UUID viewerId : new HashSet<>(session.viewers())) {
+                    final Player player = this.plugin.getServer().getPlayer(viewerId);
+                    try {
+                        if (player == null
+                                || !player.getWorld().equals(world)
+                                || player.getLocation().distanceSquared(session.baseLocation()) > rangeSq) {
+                            enqueueSync(viewerId, hologramId, SyncAction.REMOVE);
+                        }
+                    } catch (final Throwable ignored) {
+                        enqueueSync(viewerId, hologramId, SyncAction.REMOVE);
+                    }
+                }
 
                 for (final Player player : world.getPlayers()) {
                     try {

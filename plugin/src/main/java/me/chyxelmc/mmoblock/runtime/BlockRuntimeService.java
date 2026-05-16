@@ -433,11 +433,7 @@ public final class BlockRuntimeService {
                 if (!isChunkLoaded(world, block.x(), block.z())) {
                     continue;
                 }
-                if (!spawnInteraction(block, definition, world)) {
-                    // logging removed: failed to restore interaction for block
-                } else {
-                    this.hologramRuntimeService.showActive(block, definition);
-                }
+                scheduleRestoreActiveBlock(block, definition, world);
                 continue;
             }
 
@@ -445,8 +441,8 @@ public final class BlockRuntimeService {
             if (respawnAt == null) {
                 this.lifecycleSystem.markActive(block);
                 this.persistenceSystem.persistBlockAsync(block);
-                if (isChunkLoaded(world, block.x(), block.z()) && spawnInteraction(block, definition, world)) {
-                    this.hologramRuntimeService.showActive(block, definition);
+                if (isChunkLoaded(world, block.x(), block.z())) {
+                    scheduleRestoreActiveBlock(block, definition, world);
                 }
                 continue;
             }
@@ -455,10 +451,29 @@ public final class BlockRuntimeService {
             this.persistenceSystem.persistBlockAsync(block);
             final long delay = Math.max(1L, respawnAt - System.currentTimeMillis());
             if (isChunkLoaded(world, block.x(), block.z())) {
-                showDeadOrRemoveSuppressed(block, definition, TimeUnit.MILLISECONDS.toSeconds(delay));
+                final long seconds = TimeUnit.MILLISECONDS.toSeconds(delay);
+                this.scheduler.runAtLocationLater(blockLocation(world, block), () -> showDeadOrRemoveSuppressed(block, definition, seconds), 20L);
             }
             scheduleRespawn(block, world, delay);
         }
+    }
+
+    private void scheduleRestoreActiveBlock(final PlacedBlock block, final BlockDefinition definition, final World world) {
+        this.scheduler.runAtLocationLater(blockLocation(world, block), () -> {
+            if (!this.ecsState.containsBlock(block.uniqueId())) {
+                return;
+            }
+            if (!isChunkLoaded(world, block.x(), block.z())) {
+                return;
+            }
+            if (spawnInteraction(block, definition, world)) {
+                this.hologramRuntimeService.showActive(block, definition);
+            }
+        }, 20L);
+    }
+
+    private static Location blockLocation(final World world, final PlacedBlock block) {
+        return new Location(world, block.x(), block.y(), block.z());
     }
 
     public List<String> blockIds() {
@@ -865,9 +880,7 @@ public final class BlockRuntimeService {
                         if (latestDefinition.breakAnimation()) {
                             this.visualSyncSystem.clearBreakAnimation(world, block);
                         }
-                        this.scheduler.runAsync(() ->
-                                this.plugin.getServer().getPluginManager().callEvent(new BlockRespawnEvent(block, latestDefinition))
-                        );
+                        this.plugin.getServer().getPluginManager().callEvent(new BlockRespawnEvent(block, latestDefinition));
                     }
                 }
         );
@@ -1376,6 +1389,9 @@ public final class BlockRuntimeService {
             final UUID excludingBlockId,
             final boolean requireClosestHorizontalBlock
     ) {
+        if (!isOwnedByCurrentRegion(new Location(world, blockX, baseY, blockZ))) {
+            return null;
+        }
         final int minY = world.getMinHeight();
         final int maxY = world.getMaxHeight();
         final int startY = Math.max(minY, baseY);
@@ -1458,8 +1474,22 @@ public final class BlockRuntimeService {
     }
 
     private void clearSnowLayer(final Block block) {
-        if (block != null && block.getType() == Material.SNOW) {
+        if (block != null && isOwnedByCurrentRegion(block.getLocation()) && block.getType() == Material.SNOW) {
             block.setType(Material.AIR, false);
+        }
+    }
+
+    private static boolean isOwnedByCurrentRegion(final Location location) {
+        if (location == null || location.getWorld() == null) {
+            return false;
+        }
+        try {
+            final java.lang.reflect.Method method = Bukkit.class.getMethod("isOwnedByCurrentRegion", Location.class);
+            return Boolean.TRUE.equals(method.invoke(null, location));
+        } catch (final NoSuchMethodException ignored) {
+            return true;
+        } catch (final Throwable ignored) {
+            return false;
         }
     }
 

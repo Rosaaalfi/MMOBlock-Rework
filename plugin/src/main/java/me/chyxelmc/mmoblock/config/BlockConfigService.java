@@ -687,17 +687,32 @@ public final class BlockConfigService {
 
         if ("blocks".equals(folderName)) {
             saveResourceIfMissing("blocks/exampleEntity.yml");
+            saveResourceIfMissing("blocks/exampleEntityNodes.yml");
+            saveResourceIfMissing("blocks/exampleEntitySchematics.yml");
         }
         if ("drops".equals(folderName)) {
             saveResourceIfMissing("drops/exampleDrops.yml");
+            saveResourceIfMissing("drops/exampleDropsWood.yml");
         }
         if ("tools".equals(folderName)) {
             saveResourceIfMissing("tools/exampleTools.yml");
+            saveResourceIfMissing("tools/exampleToolsAxe.yml");
         }
         if ("lang".equals(folderName)) {
             saveResourceIfMissing("lang/en-us.yml");
             saveResourceIfMissing("lang/id-id.yml");
             saveResourceIfMissing("lang/ja-jp.yml");
+            saveResourceIfMissing("lang/zh-cn.yml");
+            saveResourceIfMissing("lang/zh-tw.yml");
+        }
+        if ("nodes".equals(folderName)) {
+            saveResourceIfMissing("nodes/exampleNodes.yml");
+        }
+        if ("models".equals(folderName)) {
+            saveResourceIfMissing("models/bdengine/iron_ore.bdengine");
+            saveResourceIfMissing("models/bdengine/tree.bdengine");
+            saveResourceIfMissing("models/schematics/tree.schem");
+            saveResourceIfMissing("models/schematics/dead/dead_tree.schem");
         }
     }
 

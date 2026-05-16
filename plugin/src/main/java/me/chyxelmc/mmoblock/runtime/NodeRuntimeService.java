@@ -14,6 +14,7 @@ import me.chyxelmc.mmoblock.persistence.cache.DataCache;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.ecs.system.LifecycleSystem;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -146,9 +147,18 @@ public final class NodeRuntimeService {
             if (definition == null) {
                 continue;
             }
+            scheduleRestoreNode(node, definition, world);
+        }
+    }
+
+    private void scheduleRestoreNode(final PlacedNode node, final NodeDefinition definition, final World world) {
+        this.scheduler.runAtLocationLater(new Location(world, node.x(), node.y(), node.z()), () -> {
+            if (!this.nodesById.containsKey(node.uniqueId())) {
+                return;
+            }
             spawnInitialBlocks(node, definition, world);
             updateNodeHologram(node, definition, world);
-        }
+        }, 20L);
     }
 
     public void handleChunkLoad(final World world, final int chunkX, final int chunkZ) {

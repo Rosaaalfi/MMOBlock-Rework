@@ -17,7 +17,6 @@ public class BlockRespawnEvent extends Event {
             @NotNull final PlacedBlock placedBlock,
             @NotNull final BlockDefinition definition
     ) {
-        super(true);
         this.placedBlock = placedBlock;
         this.definition = definition;
     }

@@ -78,6 +78,11 @@ public final class NmsAdapter_v1_20_4 implements NmsAdapter {
             final NamespacedKey uniqueIdKey,
             final UUID blockUniqueId
     ) {
+        final SpawnResult bukkitResult = spawnInteractionViaBukkit(world, location, width, height, uniqueIdKey, blockUniqueId, "");
+        if (bukkitResult.success()) {
+            return bukkitResult;
+        }
+
         try {
             final ServerLevel level = ((CraftWorld) world).getHandle();
             final OptimizedInteraction handle = new OptimizedInteraction(
@@ -95,14 +100,10 @@ public final class NmsAdapter_v1_20_4 implements NmsAdapter {
                 return SpawnResult.failed("Spawned NMS entity is not Bukkit Interaction");
             }
 
-            interaction.setInteractionWidth(Math.max(0.25F, width));
-            interaction.setInteractionHeight(Math.max(0.25F, height));
-            interaction.setResponsive(true);
-            interaction.setPersistent(false);
-            interaction.getPersistentDataContainer().set(uniqueIdKey, PersistentDataType.STRING, blockUniqueId.toString());
+            configureInteraction(interaction, width, height, uniqueIdKey, blockUniqueId);
             return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
         } catch (final RuntimeException exception) {
-            return SpawnResult.failed("NMS spawn failed: " + exception.getMessage());
+            return SpawnResult.failed(joinSpawnFailures(bukkitResult.reason(), "NMS spawn failed: " + exception.getMessage()));
         }
     }
 
@@ -155,26 +156,90 @@ public final class NmsAdapter_v1_20_4 implements NmsAdapter {
 
     @Override
     public void clearFakeBlock(final World world, final Location location) {
-        final ServerLevel level = ((CraftWorld) world).getHandle();
-        final BlockPos pos = BlockPos.containing(location.getX(), location.getY(), location.getZ());
-        final ClientboundBlockUpdatePacket packet = new ClientboundBlockUpdatePacket(pos, level.getBlockState(pos));
-        for (final Player viewer : world.getNearbyPlayers(location, 128.0D)) {
-            if (viewer instanceof CraftPlayer craftPlayer) {
-                craftPlayer.getHandle().connection.send(packet);
+        if (!isOwnedByCurrentRegion(location)) {
+            return;
+        }
+        try {
+            final org.bukkit.block.data.BlockData realData = world.getBlockAt(location).getBlockData();
+            for (final Player viewer : world.getNearbyPlayers(location, 128.0D)) {
+                viewer.sendBlockChange(location, realData);
             }
+        } catch (final Throwable ignored) {
+            // World data may already be tearing down or owned by another Folia region.
         }
     }
 
     @Override
     public void clearFakeBlock(final Player player, final World world, final Location location) {
-        final ServerLevel level = ((CraftWorld) world).getHandle();
-        final BlockPos pos = BlockPos.containing(location.getX(), location.getY(), location.getZ());
-        final ClientboundBlockUpdatePacket packet = new ClientboundBlockUpdatePacket(pos, level.getBlockState(pos));
-        if (player instanceof CraftPlayer craftPlayer) {
-            craftPlayer.getHandle().connection.send(packet);
+        if (!isOwnedByCurrentRegion(location)) {
+            return;
+        }
+        try {
+            final org.bukkit.block.data.BlockData realData = world.getBlockAt(location).getBlockData();
+            player.sendBlockChange(location, realData);
+        } catch (final Throwable ignored) {
+            // World data may already be tearing down or owned by another Folia region.
         }
     }
 
+    private SpawnResult spawnInteractionViaBukkit(
+            final World world,
+            final Location location,
+            final float width,
+            final float height,
+            final NamespacedKey uniqueIdKey,
+            final UUID blockUniqueId,
+            final String nmsFailure
+    ) {
+        try {
+            final Interaction interaction = world.spawn(
+                    location,
+                    Interaction.class,
+                    spawned -> configureInteraction(spawned, width, height, uniqueIdKey, blockUniqueId)
+            );
+            return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
+        } catch (final RuntimeException fallbackException) {
+            return SpawnResult.failed(joinSpawnFailures(nmsFailure, "Bukkit spawn failed: " + fallbackException.getMessage()));
+        }
+    }
+
+    private static void configureInteraction(
+            final Interaction interaction,
+            final float width,
+            final float height,
+            final NamespacedKey uniqueIdKey,
+            final UUID blockUniqueId
+    ) {
+        interaction.setInteractionWidth(Math.max(0.25F, width));
+        interaction.setInteractionHeight(Math.max(0.25F, height));
+        interaction.setResponsive(true);
+        interaction.setPersistent(false);
+        interaction.getPersistentDataContainer().set(uniqueIdKey, PersistentDataType.STRING, blockUniqueId.toString());
+    }
+
+    private static String joinSpawnFailures(final String first, final String second) {
+        if (first == null || first.isBlank()) {
+            return second == null ? "" : second;
+        }
+        if (second == null || second.isBlank()) {
+            return first;
+        }
+        return first + " | " + second;
+    }
+
+    private static boolean isOwnedByCurrentRegion(final Location location) {
+        if (location == null || location.getWorld() == null) {
+            return false;
+        }
+        try {
+            final java.lang.reflect.Method method = org.bukkit.Bukkit.class.getMethod("isOwnedByCurrentRegion", Location.class);
+            return Boolean.TRUE.equals(method.invoke(null, location));
+        } catch (final NoSuchMethodException ignored) {
+            return true;
+        } catch (final Throwable ignored) {
+            return false;
+        }
+    }
     @Override
     public boolean supportsPacketHolograms() {
         return true;
