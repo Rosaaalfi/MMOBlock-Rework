@@ -1,4 +1,8 @@
-# <img src="https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png" alt="MMOBlock Icon" width="48" height="48" style="vertical-align:middle; margin-right:10px;"/> MMOBlock
+<div align="center">
+
+![]([https://github.com/user-attachments/assets/89e191ba-ed4f-44ab-bb98-634cfe568dca](https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png))
+# MMOBlock
+*- Unblock the Fun, One Click at a Time with MMOBlock -*
 
 [![Build Status](https://github.com/Rosaaalfi/MMOBlock-Rework/actions/workflows/gradle.yml/badge.svg)](https://github.com/Rosaaalfi/MMOBlock-Rework/actions)
 [![Open Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?label=open%20issues)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
