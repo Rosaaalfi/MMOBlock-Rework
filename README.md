@@ -1,6 +1,6 @@
 <div align="center">
 
-![]([https://github.com/user-attachments/assets/89e191ba-ed4f-44ab-bb98-634cfe568dca](https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png))
+![](https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png)
 # MMOBlock
 *- Unblock the Fun, One Click at a Time with MMOBlock -*
 
@@ -8,6 +8,8 @@
 [![Open Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?label=open%20issues)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
 [![Maven Central](https://img.shields.io/maven-central/v/me.chyxelmc/mmoblock-api?label=maven%20central)](https://search.maven.org/search?q=g:me.chyxelmc%20AND%20a:mmoblock-api)
 [![Javadoc](https://img.shields.io/badge/javadoc-javadoc.io-blue)](https://www.javadoc.io/doc/me.chyxelmc/mmoblock-api)
+
+</div>
 
 **MMOBlock** is a modular plugin for Paper-based Minecraft servers (and compatible forks). This repository is organized into several independent modules to simplify development, testing, and compatibility across different NMS versions.
 ---
