@@ -1,0 +1,44 @@
+debug:
+  load: "&e[MMOBlock] &7调试模式已启用。"
+commands:
+  usage:
+    block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&c未知的子命令。"
+  world_not_found: "&c未找到世界: {world}"
+  place:
+    usage: "&e用法: /mmoblock block place <blockId> x y z [world] [facing]"
+    invalid_facing: "&c朝向无效: {facing} (请使用 north, south, east, west)"
+    failed: "&c放置方块失败: {reason}"
+    success: "&a已在 {world} {x} {y} {z} 放置 {id}"
+  remove:
+    usage: "&e用法: /mmoblock block remove <blockId> x y z [world]"
+    not_found: "&c该位置未发现方块。"
+    success: "&a已移除 {world} {x} {y} {z} 处的 {id}"
+  reload:
+    all: "&a已重新加载配置、方块、掉落物、语言和工具。"
+    config: "&a已重新加载 config.yml"
+  node:
+    usage: "&e用法: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    place:
+      usage: "&e用法: /mmoblock node place <nodeId> x y z [world] [facing]"
+    remove:
+      usage: "&e用法: /mmoblock node remove <nodeId> x y z [world]"
+    get:
+      usage: "&e用法: /mmoblock node get <nodeId|remover>"
+  block:
+    usage: "&e用法: /mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    place:
+      usage: "&e用法: /mmoblock block place <blockId> x y z [world] [facing]"
+    remove:
+      usage: "&e用法: /mmoblock block remove <blockId> x y z [world]"
+    get:
+      usage: "&e用法: /mmoblock block get <blockId|remover>"
+blocks:
+  not_active: "&c[MMOBlock] 方块尚未激活。"
+  too_fast: "&c[MMOBlock] 操作过快，请稍等。"
+  config_missing: "&c[MMOBlock] 缺失方块配置。"
+  tool_not_allowed: "&c[MMOBlock] 该工具不能用于此方块。"
+  mining_progress: "&e[MMOBlock] 挖掘进度: {progress}/{needed} &7[{progress_bar}&7]"
+  broken: "&a[MMOBlock] 方块已破坏。将在 {respawn} 秒后重生"
