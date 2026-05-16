@@ -4,9 +4,10 @@ import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.model.BlockDefinition;
 import me.chyxelmc.mmoblock.model.ConditionDefinition;
 import me.chyxelmc.mmoblock.model.DisplayLine;
+import me.chyxelmc.mmoblock.api.model.DropType;
 import me.chyxelmc.mmoblock.model.DropEntry;
 import me.chyxelmc.mmoblock.model.ToolAction;
-import me.chyxelmc.mmoblock.utils.TextColorUtil;
+import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -96,7 +97,21 @@ public final class BlockConfigService {
                 final Sound soundOnClick = parseSound(section.getString("sound.onClick"), "sound.onClick", key, report);
                 final Sound soundOnDead = parseSound(section.getString("sound.onDead"), "sound.onDead", key, report);
                 final Sound soundOnRespawn = parseSound(section.getString("sound.onRespawn"), "sound.onRespawn", key, report);
-                final boolean particleBreak = section.getBoolean("particleBreak", false);
+
+                final boolean particleBreak;
+                Material particleMaterial = null;
+                if (section.isConfigurationSection("particleBreak")) {
+                    particleBreak = section.getBoolean("particleBreak.enabled", false);
+                    final String sourceValue = section.getString("particleBreak.source.value");
+                    particleMaterial = parseMaterial(sourceValue);
+                    if (particleMaterial == null) {
+                        final String fallbackValue = section.getString("particleBreak.fallback.value");
+                        particleMaterial = parseMaterial(fallbackValue);
+                    }
+                } else {
+                    particleBreak = section.getBoolean("particleBreak", false);
+                }
+
                 final boolean breakAnimation = section.getBoolean("breakAnimation", false);
                 final ConfigurationSection displaySection = section.getConfigurationSection("display");
                 final double displayHeight = displaySection != null
@@ -110,10 +125,50 @@ public final class BlockConfigService {
                 }
                 final List<DisplayLine> displayLines = parseDisplayLines(section, key, report);
                 final List<ConditionDefinition> conditions = parseConditions(section, key, report);
+                final String displayName = section.getString("name", key);
+                // displayFacing config
+                final ConfigurationSection displayFacingSection = displaySection != null
+                        ? displaySection.getConfigurationSection("displayFacing")
+                        : null;
+                final String displayFacingType = displayFacingSection != null
+                        ? displayFacingSection.getString("facing", "")
+                        : "";
+                final double displayFacingDistance = displayFacingSection != null
+                        ? displayFacingSection.getDouble("distance", 0.0D)
+                        : 0.0D;
+                final double displayFacingDetectRange = displayFacingSection != null
+                        ? displayFacingSection.getDouble("detectRange", 0.0D)
+                        : 0.0D;
+                // modelType.schematics config
+                final ConfigurationSection schematicsSection = section.getConfigurationSection("modelType.schematics");
+                final boolean schematicsEnabled = schematicsSection != null && schematicsSection.getBoolean("enabled", false);
+                final String schematicsNormalFile = schematicsSection != null
+                        ? schematicsSection.getString("file.normal", "")
+                        : "";
+                final String schematicsDeadFile = schematicsSection != null
+                        ? schematicsSection.getString("file.dead", "")
+                        : "";
+                final String schematicsPlaceFacing = schematicsSection != null
+                        ? schematicsSection.getString("placeFacing", "north")
+                        : "north";
+                final List<String> schematicsAdjustPosNormal = schematicsSection != null
+                        ? schematicsSection.getStringList("adjustPos.normal")
+                        : List.of();
+                final List<String> schematicsAdjustPosDead = schematicsSection != null
+                        ? schematicsSection.getStringList("adjustPos.dead")
+                        : List.of();
+                final ConfigurationSection itemSection = section.getConfigurationSection("item");
+                final String itemName = itemSection != null ? itemSection.getString("name") : null;
+                final Material itemMaterial = itemSection != null ? parseMaterial(itemSection.getString("material")) : null;
+                if (itemSection != null && itemMaterial == null) {
+                    report.warn("Block '" + key + "' has invalid item.material.");
+                }
+
                 this.blockDefinitions.put(
                         key.toLowerCase(Locale.ROOT),
                         new BlockDefinition(
                                 key,
+                                displayName,
                                 width,
                                 height,
                                 respawn,
@@ -125,11 +180,23 @@ public final class BlockConfigService {
                                 soundOnDead,
                                 soundOnRespawn,
                                 particleBreak,
+                                particleMaterial,
                                 breakAnimation,
                                 displayHeight,
                                 allowedTools,
                                 displayLines,
-                                conditions
+                                conditions,
+                                displayFacingType,
+                                displayFacingDistance,
+                                displayFacingDetectRange,
+                                schematicsEnabled,
+                                schematicsNormalFile,
+                                schematicsDeadFile,
+                                schematicsPlaceFacing,
+                                schematicsAdjustPosNormal,
+                                schematicsAdjustPosDead,
+                                itemName,
+                                itemMaterial
                         )
                 );
                 loaded++;
@@ -246,7 +313,7 @@ public final class BlockConfigService {
     }
 
     public String message(final String path, final String fallback) {
-        return TextColorUtil.toLegacySection(messageComponent(path, fallback));
+        return TextColor.toLegacySection(messageComponent(path, fallback));
     }
 
     public Component messageComponent(final String path, final String fallback) {
@@ -259,7 +326,7 @@ public final class BlockConfigService {
     }
 
     public String message(final String path, final String fallback, final Map<String, String> placeholders) {
-        return TextColorUtil.toLegacySection(messageComponent(path, fallback, placeholders));
+        return TextColor.toLegacySection(messageComponent(path, fallback, placeholders));
     }
 
     public Component messageComponent(final String path, final String fallback, final Map<String, String> placeholders) {
@@ -381,14 +448,14 @@ public final class BlockConfigService {
                 return null;
             }
             final int[] range = parseRange(raw.get("total"), 1, 1);
-            return new DropEntry(DropEntry.DropType.MATERIAL, material, range[0], range[1], null, chance, dropType);
+            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType);
         }
         if (raw.containsKey("experience")) {
             final int[] range = parseRange(raw.get("experience"), 1, 1);
-            return new DropEntry(DropEntry.DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType);
+            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType);
         }
         if (raw.containsKey("command")) {
-            return new DropEntry(DropEntry.DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType);
+            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType);
         }
         report.warn("Drop group '" + dropId + "' contains unsupported drop entry: " + raw);
         return null;
@@ -609,7 +676,7 @@ public final class BlockConfigService {
     }
 
     private Component colorizeComponent(final String value) {
-        return TextColorUtil.toComponent(value);
+        return TextColor.toComponent(value);
     }
 
     private void ensureResourceFolder(final String folderName) {
@@ -679,3 +746,4 @@ public final class BlockConfigService {
         }
     }
 }
+

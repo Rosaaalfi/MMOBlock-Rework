@@ -20,13 +20,15 @@ public final class FakeBlockSyncListener implements Listener {
     private static final double MOVE_SYNC_DISTANCE_SQUARED = 0.16D;
 
     private final BlockRuntimeService runtimeService;
+    private final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService;
     private final org.bukkit.plugin.Plugin plugin;
     private final Map<UUID, Long> lastChunkSyncAt = new ConcurrentHashMap<>();
     private final Map<UUID, ChunkPos> lastKnownChunk = new ConcurrentHashMap<>();
 
-    public FakeBlockSyncListener(final org.bukkit.plugin.Plugin plugin, final BlockRuntimeService runtimeService) {
+    public FakeBlockSyncListener(final org.bukkit.plugin.Plugin plugin, final BlockRuntimeService runtimeService, final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService) {
         this.plugin = plugin;
         this.runtimeService = runtimeService;
+        this.nodeRuntimeService = nodeRuntimeService;
     }
 
     @EventHandler
@@ -99,8 +101,21 @@ public final class FakeBlockSyncListener implements Listener {
 
     private void syncNowAndDelayed(final Player player) {
         this.runtimeService.syncFakeBlocksForPlayer(player);
-        Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.runtimeService.syncFakeBlocksForPlayer(player), 2L);
-        Bukkit.getScheduler().runTaskLater(this.plugin, () -> this.runtimeService.syncFakeBlocksForPlayer(player), 20L);
+        if (this.nodeRuntimeService != null) {
+            this.nodeRuntimeService.syncForPlayer(player);
+        }
+        Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
+            this.runtimeService.syncFakeBlocksForPlayer(player);
+            if (this.nodeRuntimeService != null) {
+                this.nodeRuntimeService.syncForPlayer(player);
+            }
+        }, 2L);
+        Bukkit.getScheduler().runTaskLater(this.plugin, () -> {
+            this.runtimeService.syncFakeBlocksForPlayer(player);
+            if (this.nodeRuntimeService != null) {
+                this.nodeRuntimeService.syncForPlayer(player);
+            }
+        }, 20L);
     }
 
     private void updateKnownChunk(final Player player) {

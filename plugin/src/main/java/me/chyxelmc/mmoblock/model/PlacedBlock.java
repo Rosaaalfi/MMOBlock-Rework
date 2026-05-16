@@ -4,7 +4,7 @@ import org.bukkit.Location;
 
 import java.util.UUID;
 
-public final class PlacedBlock {
+public final class PlacedBlock implements me.chyxelmc.mmoblock.api.model.PlacedBlock {
 
     private final UUID uniqueId;
     private final String type;

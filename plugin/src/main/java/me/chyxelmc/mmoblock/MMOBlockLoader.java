@@ -19,28 +19,40 @@ public final class MMOBlockLoader implements PluginLoader {
 
     private static final String MAVEN_CENTRAL = "https://repo1.maven.org/maven2/";
     private static final List<ExternalLibrary> LIBRARIES = List.of(
-        new ExternalLibrary(
-            "net.kyori:adventure-text-minimessage:4.26.1",
-            "net/kyori/adventure-text-minimessage/4.26.1/adventure-text-minimessage-4.26.1.jar",
-            "adventure-text-minimessage-4.26.1.jar",
-            "1d43451e9af473252dc8af3e8084238d5ce68ad43af0e3b7383eb3d4b63fff9f"
-        ),
-        new ExternalLibrary(
-            "com.h2database:h2:2.2.224",
-            "com/h2database/h2/2.2.224/h2-2.2.224.jar",
-            "h2-2.2.224.jar",
-            "b9d8f19358ada82a4f6eb5b174c6cfe320a375b5a9cb5a4fe456d623e6e55497"
-        )
+            new ExternalLibrary(
+                    "net.kyori:adventure-text-minimessage:4.26.1",
+                    "net/kyori/adventure-text-minimessage/4.26.1/adventure-text-minimessage-4.26.1.jar",
+                    "adventure-text-minimessage-4.26.1.jar",
+                    "1d43451e9af473252dc8af3e8084238d5ce68ad43af0e3b7383eb3d4b63fff9f"
+            ),
+            new ExternalLibrary(
+                    "com.h2database:h2:2.2.224",
+                    "com/h2database/h2/2.2.224/h2-2.2.224.jar",
+                    "h2-2.2.224.jar",
+                    "b9d8f19358ada82a4f6eb5b174c6cfe320a375b5a9cb5a4fe456d623e6e55497"
+            ),
+            new ExternalLibrary(
+                    "com.github.ben-manes.caffeine:caffeine:3.2.4",
+                    "com/github/ben-manes/caffeine/caffeine/3.2.4/caffeine-3.2.4.jar",
+                    "caffeine-3.2.4.jar",
+                    "266ee6ba79048ddfece01906c89d56c3819d5e392a1b9ad2ff99da33dfff9f97"
+            ),
+            new ExternalLibrary(
+                    "com.zaxxer:HikariCP:7.0.2",
+                    "com/zaxxer/HikariCP/7.0.2/HikariCP-7.0.2.jar",
+                    "HikariCP-7.0.2.jar",
+                    "f1e612fa27345be3107a85431e8a8aeb205c15364ab2f2d411e40a9d7bb08095"
+            )
     );
 
     @Override
     public void classloader(final PluginClasspathBuilder builder) {
-        final Path libDirectory = builder.getContext().getDataDirectory().resolve("lib");
+        final Path libDirectory = builder.getContext().getDataDirectory().resolve(".caches").resolve("libs");
         final var logger = builder.getContext().getLogger();
         try {
             Files.createDirectories(libDirectory);
             for (final ExternalLibrary library : LIBRARIES) {
-                final Path jarPath = libDirectory.resolve(library.fileName());
+                final Path jarPath = libDirectory.resolve(library.mavenPath());
                 ensureAvailable(library, jarPath, logger);
                 builder.addLibrary(new JarLibrary(jarPath));
                 logger.info("MMOBlock library classpath registered: " + library.coordinate() + " -> " + jarPath.getFileName());
@@ -51,6 +63,7 @@ public final class MMOBlockLoader implements PluginLoader {
     }
 
     private void ensureAvailable(final ExternalLibrary library, final Path targetPath, final Object logger) throws IOException {
+        Files.createDirectories(targetPath.getParent());
         if (Files.exists(targetPath) && Files.size(targetPath) > 0L && verifyChecksum(targetPath, library.sha256())) {
             logInfo(logger, "MMOBlock library cache hit: " + library.coordinate());
             return;

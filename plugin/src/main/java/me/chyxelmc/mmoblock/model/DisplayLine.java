@@ -7,6 +7,6 @@ public record DisplayLine(
     String dead,
     String item,
     String block
-) {
+) implements me.chyxelmc.mmoblock.api.model.DisplayLine {
 }
 

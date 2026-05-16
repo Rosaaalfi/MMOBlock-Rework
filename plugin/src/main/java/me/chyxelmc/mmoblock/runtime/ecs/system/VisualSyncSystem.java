@@ -101,13 +101,17 @@ public final class VisualSyncSystem {
     }
 
     public boolean usesRealBlockModel(final BlockDefinition definition) {
-        return definition != null
-            && definition.useRealBlockModel()
+        if (definition == null) return false;
+        if (definition.schematicsEnabled()) return false;
+        return definition.useRealBlockModel()
             && definition.realBlockMaterial() != null
             && definition.realBlockMaterial().isBlock();
     }
 
     public Material resolveParticleMaterial(final BlockDefinition definition) {
+        if (definition.particleMaterial() != null) {
+            return definition.particleMaterial();
+        }
         return usesRealBlockModel(definition) ? definition.realBlockMaterial() : Material.STONE;
     }
 
@@ -140,4 +144,3 @@ public final class VisualSyncSystem {
         return Math.abs(block.uniqueId().hashCode());
     }
 }
-

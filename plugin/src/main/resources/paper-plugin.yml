@@ -26,6 +26,8 @@ loader: me.chyxelmc.mmoblock.MMOBlockLoader
 api-version: '1.19'
 load: POSTWORLD
 
+folia-supported: true
+
 permissions:
   mmoblock.admin:
     description: Allows using MMOBlock admin commands

@@ -1,11 +1,13 @@
 exampleEntityNodes:
-  name: "&7Example Entity Nodes"
+  item:
+    name: "&7Example Entity Nodes"
+    material: iron_ore
   respawnTime: 1 # Time in seconds for the entity to respawn after being killed
   particleBreak:
     enabled: true
     source:
       type: VANILLA
-      value: "minecraft:lava"
+      value: "minecraft:iron_ore"
     fallback:
       type: VANILLA
       value: "minecraft:stone"
@@ -20,7 +22,7 @@ exampleEntityNodes:
   modelType:
     block:
       enabled: true
-      block: minecraft:diamond_block # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
+      block: minecraft:iron_ore # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
   allowedTools:
     - exampleTools
   conditions:

@@ -59,48 +59,62 @@ public final class NmsAdapterRegistry {
             throw new IllegalStateException("No NMS adapter providers found on classpath for version: " + serverVersion + ", mapping: " + mappingType);
         }
 
+        // Sorting: Menggunakan versi pertama yang didefinisikan sebagai acuan bobot
         providers.sort(Comparator.comparing(provider -> {
             try {
-                return provider.targetMinecraftVersion();
+                String versionRaw = provider.targetMinecraftVersion();
+                return getPrimaryVersion(versionRaw);
             } catch (NoClassDefFoundError e) {
                 return "0.0.0";
             }
         }, NmsAdapterRegistry::compareVersions));
 
+        // 1. Loop Utama: Cari yang benar-benar COCOK (Mendukung Multi-Version dipisah koma)
         for (final NmsAdapterProvider provider : providers) {
-            String version;
+            String versionRaw;
             try {
-                version = provider.targetMinecraftVersion();
+                versionRaw = provider.targetMinecraftVersion();
             } catch (NoClassDefFoundError e) {
                 continue;
             }
-            if (version.equals(serverVersion)) {
+
+            if (matchesVersion(versionRaw, serverVersion)) {
                 try {
-                    logger.info("Loaded NMS adapter: " + version + " (" + mappingType + ")");
+                    logger.info("Loaded NMS adapter: " + serverVersion + " (Provider defined: [" + versionRaw + "]) (" + mappingType + ")");
                     return provider.create();
                 } catch (NoClassDefFoundError e) {
-                    logger.warning("Skipping NMS adapter for " + version + " due to missing classes: " + e.getMessage());
+                    logger.warning("Skipping NMS adapter for " + versionRaw + " due to missing classes: " + e.getMessage());
                     continue;
                 }
             }
         }
 
+        // 2. Loop Fallback: Cari versi terdekat di bawah versi server
         NmsAdapterProvider fallback = null;
+        String fallbackUsedVersion = null;
+
         for (final NmsAdapterProvider provider : providers) {
-            String version;
+            String versionRaw;
             try {
-                version = provider.targetMinecraftVersion();
+                versionRaw = provider.targetMinecraftVersion();
             } catch (NoClassDefFoundError e) {
                 continue;
             }
-            if (compareVersions(version, serverVersion) <= 0) {
-                fallback = provider;
+
+            // Pecah semua versi yang didukung oleh provider ini
+            String[] subVersions = versionRaw.split(",");
+            for (String subVer : subVersions) {
+                String cleanVer = subVer.trim();
+                if (compareVersions(cleanVer, serverVersion) <= 0) {
+                    fallback = provider;
+                    fallbackUsedVersion = cleanVer;
+                }
             }
         }
 
         if (fallback != null) {
             try {
-                logger.warning("No exact NMS adapter for " + serverVersion + ", using fallback " + fallback.targetMinecraftVersion());
+                logger.warning("No exact NMS adapter for " + serverVersion + ", using fallback via target " + fallbackUsedVersion);
                 return fallback.create();
             } catch (NoClassDefFoundError e) {
                 logger.warning("Fallback NMS adapter failed to load due to missing classes: " + e.getMessage());
@@ -108,6 +122,27 @@ public final class NmsAdapterRegistry {
         }
 
         throw new IllegalStateException("No compatible NMS adapter for " + serverVersion);
+    }
+
+    // Helper untuk mengecek apakah serverVersion ada di dalam list koma targetMinecraftVersion
+    private static boolean matchesVersion(String versionRaw, String serverVersion) {
+        if (versionRaw == null || serverVersion == null) return false;
+        String[] parts = versionRaw.split(",");
+        for (String part : parts) {
+            if (part.trim().equals(serverVersion)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Ambil versi paling pertama yang ditulis sebagai perwakilan sorting arsitektur
+    private static String getPrimaryVersion(String versionRaw) {
+        if (versionRaw == null) return "0.0.0";
+        if (versionRaw.contains(",")) {
+            return versionRaw.split(",")[0].trim();
+        }
+        return versionRaw.trim();
     }
 
     private static List<NmsAdapterProvider> loadProviders(final MappingType mappingType) {

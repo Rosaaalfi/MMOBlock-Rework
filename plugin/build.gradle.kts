@@ -12,10 +12,12 @@ dependencies {
     compileOnly(libs.miniMessageLib)
     compileOnly(libs.h2SqlLib)
     compileOnly(libs.papi)
+    compileOnly(libs.foliaLib)
+    compileOnly("com.github.ben-manes.caffeine:caffeine:3.2.4")
+    compileOnly("com.zaxxer:HikariCP:7.0.2")
 
-    implementation(libs.foliaLib)
-
-    implementation(project(":api"))
+    //implementation("me.chyxelmc:mmoblock-api:3.0.0-SNAPSHOT")
+    implementation(project(":mmoblock-api"))
     implementation(project(":nms-loader"))
     implementation(project(":nms-v1_21_1"))
     implementation(project(":nms-v1_21_4"))
@@ -56,6 +58,8 @@ tasks.shadowJar {
     archiveBaseName.set(rootProject.name)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     relocate("com.tcoded.folialib", "me.chyxelmc.mmoblock.lib.folialib")
+    relocate("com.zaxxer.hikari", "me.chyxelmc.mmoblock.lib.hikari")
+    relocate("com.github.benmanes.caffeine", "me.chyxelmc.mmoblock.lib.caffeine")
     mergeServiceFiles()
 }
 tasks.assemble {

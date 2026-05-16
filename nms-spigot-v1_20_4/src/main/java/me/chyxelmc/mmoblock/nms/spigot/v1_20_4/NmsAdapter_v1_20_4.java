@@ -145,6 +145,15 @@ public final class NmsAdapter_v1_20_4 implements NmsAdapter {
     }
 
     @Override
+    public void showFakeBlock(final Player player, final World world, final Location location, final Material material) {
+        final BlockPos pos = BlockPos.containing(location.getX(), location.getY(), location.getZ());
+        final ClientboundBlockUpdatePacket packet = new ClientboundBlockUpdatePacket(pos, CraftMagicNumbers.getBlock(material).defaultBlockState());
+        if (player instanceof CraftPlayer craftPlayer) {
+            craftPlayer.getHandle().connection.send(packet);
+        }
+    }
+
+    @Override
     public void clearFakeBlock(final World world, final Location location) {
         final ServerLevel level = ((CraftWorld) world).getHandle();
         final BlockPos pos = BlockPos.containing(location.getX(), location.getY(), location.getZ());
@@ -153,6 +162,16 @@ public final class NmsAdapter_v1_20_4 implements NmsAdapter {
             if (viewer instanceof CraftPlayer craftPlayer) {
                 craftPlayer.getHandle().connection.send(packet);
             }
+        }
+    }
+
+    @Override
+    public void clearFakeBlock(final Player player, final World world, final Location location) {
+        final ServerLevel level = ((CraftWorld) world).getHandle();
+        final BlockPos pos = BlockPos.containing(location.getX(), location.getY(), location.getZ());
+        final ClientboundBlockUpdatePacket packet = new ClientboundBlockUpdatePacket(pos, level.getBlockState(pos));
+        if (player instanceof CraftPlayer craftPlayer) {
+            craftPlayer.getHandle().connection.send(packet);
         }
     }
 

@@ -8,6 +8,7 @@ minecraft-runtime = "1.19.4"
 folialib = "0.5.1"
 run-task = "3.0.2"
 shadow = "9.0.0-beta12"
+folia = "26.1.2.build.746-stable"
 
 [libraries]
 paperApiV1194 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_19_4" }
@@ -16,6 +17,7 @@ miniMessageLib= { module = "net.kyori:adventure-text-minimessage", version.ref =
 h2SqlLib = { module = "com.h2database:h2", version.ref = "h2" }
 foliaLib = { module = "com.tcoded:FoliaLib", version.ref = "folialib" }
 papi = { module= "me.clip:placeholderapi", version.ref = "placeholder-api" }
+folia = { module= "io.canvasmc.canvas:canvas-api", version.ref = "folia" }
 
 [plugins]
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }

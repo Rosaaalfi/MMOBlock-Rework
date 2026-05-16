@@ -19,7 +19,7 @@ databases:
     database: 0
   h2:
     enabled: true
-    file: data.db
+    file: .caches/data
 
 progressbar:
   progressing: "&a|"

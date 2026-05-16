@@ -8,7 +8,7 @@ import me.chyxelmc.mmoblock.model.PlacedBlock;
 import me.chyxelmc.mmoblock.utils.ConditionEvaluator;
 import me.chyxelmc.mmoblock.utils.HologramAnimationUtil;
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
-import me.chyxelmc.mmoblock.utils.TextColorUtil;
+import me.chyxelmc.mmoblock.utils.TextColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -153,6 +153,7 @@ public final class HologramRuntimeService {
                 final me.chyxelmc.mmoblock.nmsloader.ecs.components.HologramComponent comp =
                         this.entityManager.getComponent(ecsId, me.chyxelmc.mmoblock.nmsloader.ecs.components.HologramComponent.class);
                 if (comp == null) continue;
+                if (comp.lines() == null || comp.lines().isEmpty()) continue;
                 try {
                     // immediate upsert for this player
                     this.nmsAdapter.upsertPacketHologram(player, comp.hologramUniqueId(), comp.baseLocation(), comp.lines());
@@ -277,6 +278,21 @@ public final class HologramRuntimeService {
                     }
                 }
             }
+
+            // Immediately send packet hologram to all online players so they see it
+            // without waiting for the ECS system to flush asynchronously
+            if (this.hologramEntities.containsKey(hologramUniqueId)) {
+                final World w = this.plugin.getServer().getWorld(block.world());
+                if (w != null) {
+                    for (final Player p : w.getPlayers()) {
+                        try {
+                            this.nmsAdapter.upsertPacketHologram(p, hologramUniqueId, location, packetLines);
+                        } catch (final Throwable ignored) {
+                        }
+                    }
+                }
+            }
+
             return;
         }
 
@@ -296,7 +312,7 @@ public final class HologramRuntimeService {
                     // Keep legacy §-serialized text here for maximum client compatibility (legacy armor stand nameplates
                     // expect legacy § codes). The NMS adapter will handle MiniMessage for modern text-displays, but
                     // armor-stand fallbacks require legacy format — so serialize to legacy section here.
-                    packetLines.add(NmsAdapter.HologramLine.text(TextColorUtil.toLegacySection(resolved), line.offsetY()));
+                    packetLines.add(NmsAdapter.HologramLine.text(TextColor.toLegacySection(resolved), line.offsetY()));
                 }
                 case ITEM -> packetLines.add(NmsAdapter.HologramLine.item(line.material(), line.offsetY()));
                 case BLOCK -> packetLines.add(NmsAdapter.HologramLine.block(line.material(), line.offsetY()));
@@ -724,14 +740,32 @@ public final class HologramRuntimeService {
                 return;
             }
 
-            final boolean shouldShow = viewer.getWorld().equals(world)
-                    && viewer.getLocation().distanceSquared(session.baseLocation()) <= PACKET_SYNC_RADIUS_SQUARED;
+            // Compute per-player displayFacing location if configured
+            final Location hologramLocation;
+            final BlockDefinition def = session.definition();
+            final boolean hasDisplayFacing = hasDisplayFacingConfig(def);
 
-            if (!shouldShow) {
-                this.nmsAdapter.removePacketHologram(viewer, hologramUniqueId);
-                session.viewers().remove(viewer.getUniqueId());
-                session.lastSentState().remove(viewer.getUniqueId());
-                return;
+            if (hasDisplayFacing) {
+                hologramLocation = resolveDisplayFacingLocation(session.baseLocation(), viewer, def);
+                final double detectRange = def.displayFacingDetectRange();
+                final boolean inRange = viewer.getWorld().equals(world)
+                        && viewer.getLocation().distanceSquared(session.baseLocation()) <= (detectRange * detectRange);
+                if (!inRange) {
+                    this.nmsAdapter.removePacketHologram(viewer, hologramUniqueId);
+                    session.viewers().remove(viewer.getUniqueId());
+                    session.lastSentState().remove(viewer.getUniqueId());
+                    return;
+                }
+            } else {
+                hologramLocation = session.baseLocation();
+                final boolean shouldShow = viewer.getWorld().equals(world)
+                        && viewer.getLocation().distanceSquared(session.baseLocation()) <= PACKET_SYNC_RADIUS_SQUARED;
+                if (!shouldShow) {
+                    this.nmsAdapter.removePacketHologram(viewer, hologramUniqueId);
+                    session.viewers().remove(viewer.getUniqueId());
+                    session.lastSentState().remove(viewer.getUniqueId());
+                    return;
+                }
             }
 
             // Only resolve placeholders for animated OR holograms with placeholder API tokens
@@ -744,7 +778,7 @@ public final class HologramRuntimeService {
                         viewer,
                         linesToSend,
                         session.placeholderValues(),
-                        session.baseLocation(),
+                        hologramLocation,
                         hologramUniqueId,
                         session.definition(),
                         currentAnimationStep
@@ -755,7 +789,8 @@ public final class HologramRuntimeService {
             }
 
             // Check if we already sent this state - skip redundant sends to prevent flicker
-            final CachedViewerState lastState = session.lastSentState().get(viewer.getUniqueId());
+            final boolean cacheActive = !hasDisplayFacing;
+            final CachedViewerState lastState = cacheActive ? session.lastSentState().get(viewer.getUniqueId()) : null;
             final CachedViewerState currentState = new CachedViewerState(currentAnimationStep, session.placeholderValues(), linesToSend);
 
             if (lastState != null && lastState.equals(currentState) && linesAreEqual(session.lastSentResolvedLines().get(viewer.getUniqueId()), resolvedLines)) {
@@ -768,12 +803,57 @@ public final class HologramRuntimeService {
             this.nmsAdapter.upsertPacketHologram(
                     viewer,
                     hologramUniqueId,
-                    session.baseLocation(),
+                    hologramLocation,
                     resolvedLines
             );
-            session.lastSentState().put(viewer.getUniqueId(), currentState);
-            session.cacheResolvedLines(viewer.getUniqueId(), resolvedLines);
+            if (cacheActive) {
+                session.lastSentState().put(viewer.getUniqueId(), currentState);
+                session.cacheResolvedLines(viewer.getUniqueId(), resolvedLines);
+            }
             session.viewers().add(viewer.getUniqueId());
+        }
+
+        private static boolean hasDisplayFacingConfig(final BlockDefinition def) {
+            if (def == null) return false;
+            final String type = def.displayFacingType();
+            return type != null && !type.isBlank() && def.displayFacingDistance() > 0.0D && def.displayFacingDetectRange() > 0.0D;
+        }
+
+        private static Location resolveDisplayFacingLocation(final Location baseLocation, final Player player, final BlockDefinition def) {
+            final World world = baseLocation.getWorld();
+            if (world == null) return baseLocation.clone();
+
+            final double baseX = baseLocation.getX();
+            final double baseZ = baseLocation.getZ();
+
+            final org.bukkit.Location playerLoc = player.getLocation();
+            final double dx = playerLoc.getX() - baseX;
+            final double dz = playerLoc.getZ() - baseZ;
+
+            // Calculate angle from center to player (Minecraft convention: 0=South, 90=West)
+            double angle = Math.toDegrees(Math.atan2(dx, dz));
+            if (angle < 0) angle += 360.0D;
+
+            // Snap to nearest sector (cardinal=90°, intercardinal=45°)
+            final boolean intercardinal = "intercardinal".equalsIgnoreCase(def.displayFacingType());
+            final double sector = intercardinal ? 45.0D : 90.0D;
+            final double snappedAngle = Math.round(angle / sector) * sector;
+
+            // Place hologram at fixed distance in the snapped direction from center
+            final double dist = def.displayFacingDistance();
+            final double angleRad = Math.toRadians(snappedAngle);
+            final double locX = baseX + dist * Math.sin(angleRad);
+            final double locZ = baseZ + dist * Math.cos(angleRad);
+
+            // Hologram faces toward center so its front is visible from the block side
+            final float yaw = (float) ((snappedAngle + 180.0D) % 360.0D);
+
+            final Location result = baseLocation.clone();
+            result.setX(locX);
+            result.setZ(locZ);
+            result.setYaw(yaw);
+            result.setPitch(0.0F);
+            return result;
         }
 
         private static boolean linesAreEqual(final List<NmsAdapter.HologramLine> a, final List<NmsAdapter.HologramLine> b) {
@@ -914,7 +994,7 @@ public final class HologramRuntimeService {
                     replacement = "";
                 }
                 final String animated = HologramAnimationUtil.resolveAnimations(replacement, animationStep);
-                final String replacementLegacy = TextColorUtil.toLegacySection(animated);
+                final String replacementLegacy = TextColor.toLegacySection(animated);
                 matcher.appendReplacement(sb, Matcher.quoteReplacement(replacementLegacy));
             }
             if (!any) {
@@ -1077,11 +1157,17 @@ public final class HologramRuntimeService {
                 final World world = this.plugin.getServer().getWorld(session.worldName());
                 if (world == null) continue;
 
+                final BlockDefinition def = session.definition();
+                final boolean hasDFacing = hasDisplayFacingConfig(def);
+                final double rangeSq = hasDFacing
+                        ? (def.displayFacingDetectRange() * def.displayFacingDetectRange())
+                        : PACKET_SYNC_RADIUS_SQUARED;
+
                 for (final Player player : world.getPlayers()) {
                     try {
                         // If player is in range and not in viewers set, enqueue an UPSERT to (re)send hologram
                         if (!session.viewers().contains(player.getUniqueId())
-                                && player.getLocation().distanceSquared(session.baseLocation()) <= PACKET_SYNC_RADIUS_SQUARED) {
+                                && player.getLocation().distanceSquared(session.baseLocation()) <= rangeSq) {
                             enqueueSync(player.getUniqueId(), hologramId, SyncAction.UPSERT);
                         }
                     } catch (final Throwable ignored) {
@@ -1096,7 +1182,7 @@ public final class HologramRuntimeService {
                 switch (line.type()) {
                     case TEXT -> {
                         final String resolved = HologramAnimationUtil.resolveAnimations(line.text(), animationStep);
-                        packetLines.add(NmsAdapter.HologramLine.text(TextColorUtil.toLegacySection(resolved), line.offsetY()));
+                        packetLines.add(NmsAdapter.HologramLine.text(TextColor.toLegacySection(resolved), line.offsetY()));
                     }
                     case ITEM -> packetLines.add(NmsAdapter.HologramLine.item(line.material(), line.offsetY()));
                     case BLOCK -> packetLines.add(NmsAdapter.HologramLine.block(line.material(), line.offsetY()));

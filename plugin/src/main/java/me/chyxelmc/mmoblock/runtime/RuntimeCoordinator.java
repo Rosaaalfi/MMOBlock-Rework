@@ -12,18 +12,24 @@ public final class RuntimeCoordinator {
 
     private final PersistenceReadSystem persistenceReadSystem;
     private final BlockRuntimeService blockRuntimeService;
+    private final NodeRuntimeService nodeRuntimeService;
 
     public RuntimeCoordinator(
         final PersistenceReadSystem persistenceReadSystem,
-        final BlockRuntimeService blockRuntimeService
+        final BlockRuntimeService blockRuntimeService,
+        final NodeRuntimeService nodeRuntimeService
     ) {
         this.persistenceReadSystem = persistenceReadSystem;
         this.blockRuntimeService = blockRuntimeService;
+        this.nodeRuntimeService = nodeRuntimeService;
     }
 
     public void restoreFromPersistence() {
         final List<PlacedBlock> persistedBlocks = this.persistenceReadSystem.findAllPlacedBlocks();
         this.blockRuntimeService.restoreFromPersistence(persistedBlocks);
+        if (this.nodeRuntimeService != null) {
+            this.nodeRuntimeService.restoreFromPersistence();
+        }
     }
 
     public BlockRuntimeService.ReconcileResult reconcileAfterConfigReload(final boolean rebindActiveInteractions) {
@@ -31,7 +37,9 @@ public final class RuntimeCoordinator {
     }
 
     public void shutdown() {
+        if (this.nodeRuntimeService != null) {
+            this.nodeRuntimeService.shutdown();
+        }
         this.blockRuntimeService.shutdown();
     }
 }
-

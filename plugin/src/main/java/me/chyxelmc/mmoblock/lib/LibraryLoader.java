@@ -9,11 +9,11 @@ import java.util.logging.Logger;
 
 /**
  * Runtime library cache for external dependencies.
- * Downloads libraries to lib/ folder so Paper's classpath loader can consume them at startup.
+ * Downloads libraries to .caches/libs so Paper's classpath loader can consume them at startup.
  */
 public final class LibraryLoader {
 
-    private static final String LIB_DIRECTORY = "lib";
+    private static final String LIB_DIRECTORY = ".caches/libs";
     private final Path libDir;
     private final Logger logger;
 
@@ -37,7 +37,15 @@ public final class LibraryLoader {
      */
     public boolean loadLibrary(final String groupId, final String artifactId, final String version) {
         final String fileName = artifactId + "-" + version + ".jar";
-        final Path libPath = this.libDir.resolve(fileName);
+        final String mavenPath = toMavenPath(groupId, artifactId, version, fileName);
+        final Path libPath = this.libDir.resolve(mavenPath);
+
+        try {
+            Files.createDirectories(libPath.getParent());
+        } catch (final IOException ex) {
+            this.logger.log(Level.SEVERE, "Could not create library cache directories", ex);
+            return false;
+        }
 
         if (!Files.exists(libPath)) {
             final String downloadUrl = toMavenCentralUrl(groupId, artifactId, version);
@@ -79,6 +87,11 @@ public final class LibraryLoader {
         );
     }
 
+    private String toMavenPath(final String groupId, final String artifactId, final String version, final String fileName) {
+        final String path = groupId.replace(".", "/");
+        return String.format("%s/%s/%s/%s", path, artifactId, version, fileName);
+    }
+
     private boolean downloadFile(final String urlStr, final Path destination) {
         try (final InputStream input = URI.create(urlStr).toURL().openStream()) {
             Files.copy(input, destination);
@@ -89,4 +102,3 @@ public final class LibraryLoader {
         }
     }
 }
-

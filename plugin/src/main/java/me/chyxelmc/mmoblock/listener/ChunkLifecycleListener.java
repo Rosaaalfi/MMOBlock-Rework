@@ -9,19 +9,26 @@ import org.bukkit.event.world.ChunkUnloadEvent;
 public final class ChunkLifecycleListener implements Listener {
 
     private final BlockRuntimeService runtimeService;
+    private final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService;
 
-    public ChunkLifecycleListener(final BlockRuntimeService runtimeService) {
+    public ChunkLifecycleListener(final BlockRuntimeService runtimeService, final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService) {
         this.runtimeService = runtimeService;
+        this.nodeRuntimeService = nodeRuntimeService;
     }
 
     @EventHandler
     public void onChunkLoad(final ChunkLoadEvent event) {
         this.runtimeService.handleChunkLoad(event.getWorld(), event.getChunk().getX(), event.getChunk().getZ());
+        if (this.nodeRuntimeService != null) {
+            this.nodeRuntimeService.handleChunkLoad(event.getWorld(), event.getChunk().getX(), event.getChunk().getZ());
+        }
     }
 
     @EventHandler
     public void onChunkUnload(final ChunkUnloadEvent event) {
         this.runtimeService.handleChunkUnload(event.getWorld(), event.getChunk().getX(), event.getChunk().getZ());
+        if (this.nodeRuntimeService != null) {
+            this.nodeRuntimeService.handleChunkUnload(event.getWorld(), event.getChunk().getX(), event.getChunk().getZ());
+        }
     }
 }
-

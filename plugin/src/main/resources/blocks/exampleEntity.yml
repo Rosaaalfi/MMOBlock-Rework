@@ -1,5 +1,7 @@
 exampleEntity:
-  name: Example
+  item:
+    name: "Example Entity"
+    material: diamond_ore
   respawnTime: 1 # Time in seconds for the entity to respawn after being killed
   deadDelay: 5 # Time in seconds for the entity to disappear after being killed
   randomLocation: # Whether the entity should respawn at a random location around the original spawn location. If false, the entity will respawn at the original spawn location.
@@ -21,19 +23,27 @@ exampleEntity:
   hitbox: # AABB hitbox for the entity. The hitbox will be centered on the entity's location.
     width: 1.2 # The width of the entity's hitbox.
     height: 1.2 # The height of the entity's hitbox.
-  raycastOutline: # use for outlining model mmoblock and modelengine entities, as well as block entities when looking at them. This will make it easier for players to see the entity and interact with it.
-    enabled: false # use glow effect to outline the entity when looking at it. This will make it easier for players to see the entity and interact with it.
-    color: "&0" # The color of the raycast outline. You can use any color code from https://minecraftcolorcodes.com/.
   modelType:
     block:
       enabled: true
-      block: minecraft:diamond_block # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
-    mmoblock:
-      enabled: false # Enable MMOBLOCK for this entity. If false.
-      model: example_ore.bbmodel # Custom models from MMOBLOCK can be defined in the model section.
-      size: 1.0 # The size of the MMOBLOCK model.
-      onDead: death # Custom animations from MMOBLOCK can be defined in the animations section. Example of a death animation from MMOBLOCK.
-      onCLick: click # Example of a click animation from MMOBLOCK.
+      block: minecraft:diamond_ore # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
+    bdengine:
+      enabled: false # Enable BDEngine for this entity. If false.
+      model: example_ore # get model from models dir
+      size: 1.0 # The size of the BDEngine model.
+      onDead: death # Custom animations from BDEngine can be defined in the animations section. Example of a death animation from BDEngine.
+      onCLick: click # Example of a click animation from BDEngine.
+    schematics:
+      enabled: false
+      file:
+        normal: "tree" # The exact schematic to use as the display for the entity. using fake block send packet, get file from folder /models/schematics/filename.type
+        dead: "dead/dead_tree" # accept all this type file .schem, .schematic and .schematics
+      placeFacing: north # north, south, east, west, up, down, randomUp(only randomize n w s e), randomDown(only randomize n w s e) and random(completely random)
+      adjustPos: #adjusting position from center
+        normal:
+          - "-14, 0, -15" # only x y z
+        dead:
+          - "-14, 0, -15" # only x y z
     modelEngine:
       enabled: false # Enable ModelEngine for this entity. If false, the plugin will use the default Minecraft model.
       model: iron_crystal:1.0 # Custom models from ModelEngine can be defined in the model section.
@@ -63,6 +73,10 @@ exampleEntity:
       sendSubtitle: "&7You need at least 10 health to mine this block."
   display: # Use holograms to display information about the entity. You can have up to 4 lines of text.
     displayHeight: 2.1 # height of the all hologram lines above the entity's location. This will be the height of the first line of the hologram. The second line will be 0.25 blocks below the first line, the third line will be 0.25 blocks below the second line, and the fourth line will be 0.25 blocks below the third line.
+    displayFacing: # hologram can teleport to the near player, display Per Player Facing, if player the player out of range unload/remove hologram
+      facing: cardinal # cardinal only nwse and intercardinal include NW, NE, SE, SW
+      distance: 1 # distance hologram can teleport to the near player from center
+      detectRange: 16 # 16x16 1 chunk range to detect player
     lines:
       - line: 1 #top line of the hologram
         contents:

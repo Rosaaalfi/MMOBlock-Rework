@@ -1,12 +1,17 @@
 package me.chyxelmc.mmoblock.runtime;
 
 import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.api.event.BlockMineEvent;
+import me.chyxelmc.mmoblock.api.event.BlockPlaceEvent;
+import me.chyxelmc.mmoblock.api.event.BlockRemoveEvent;
+import me.chyxelmc.mmoblock.api.event.BlockRespawnEvent;
 import me.chyxelmc.mmoblock.config.BlockConfigService;
 import me.chyxelmc.mmoblock.model.BlockDefinition;
 import me.chyxelmc.mmoblock.model.ConditionDefinition;
 import me.chyxelmc.mmoblock.model.PlacedBlock;
 import me.chyxelmc.mmoblock.model.ToolAction;
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
+import me.chyxelmc.mmoblock.persistence.cache.DataCache;
 import me.chyxelmc.mmoblock.nmsloader.utils.ClientProtocolUtils;
 import me.chyxelmc.mmoblock.runtime.ecs.BlockEcsState;
 import me.chyxelmc.mmoblock.runtime.ecs.system.DropSystem;
@@ -18,7 +23,7 @@ import me.chyxelmc.mmoblock.runtime.ecs.system.ReconcileSystem;
 import me.chyxelmc.mmoblock.runtime.ecs.system.RespawnSystem;
 import me.chyxelmc.mmoblock.runtime.ecs.system.VisualSyncSystem;
 import me.chyxelmc.mmoblock.utils.ConditionEvaluator;
-import me.chyxelmc.mmoblock.utils.TextColorUtil;
+import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
@@ -61,6 +66,8 @@ public final class BlockRuntimeService {
     private static final long MINING_PROGRESS_RESET_CHECK_TICKS = 20L;
     private static final int MOVE_SYNC_CHUNK_RADIUS = 1;
     private static final double DEAD_UPDATE_NEARBY_RADIUS = 16.0D;
+    private static final double NODE_RANDOM_MIN_BLOCK_DISTANCE = 1.5D;
+    private static final int RANDOM_LOCATION_MAX_ATTEMPTS = 48;
 
     private static final java.util.Set<Material> VEGETATION_MATERIALS;
 
@@ -106,7 +113,9 @@ public final class BlockRuntimeService {
     private final BlockConfigService blockConfigService;
     private final PersistenceReadSystem persistenceReadSystem;
     private final PersistenceSystem persistenceSystem;
+    private final DataCache dataCache;
     private final HologramRuntimeService hologramRuntimeService;
+    private final SchematicService schematicService;
     private final NamespacedKey uniqueIdKey;
     private final BlockEcsState ecsState = new BlockEcsState();
     // Optional ECS integration
@@ -122,6 +131,9 @@ public final class BlockRuntimeService {
     // Track players we've applied the invisible mining-fatigue effect to so we don't remove
     // someone else's effect accidentally.
     private final java.util.Set<UUID> lookDebuffed = new java.util.HashSet<>();
+    private final java.util.Set<UUID> transientBlocks = new java.util.HashSet<>();
+    private final java.util.Set<UUID> suppressDeadHologram = new java.util.HashSet<>();
+    private final Map<UUID, RandomLocationContext> nodeRandomLocationContexts = new HashMap<>();
     // We track players currently prevented from breaking placed blocks via `lookDebuffed`.
     // Instead of applying a visible/intrusive potion effect to the player, we cancel
     // their digging/break events server-side so their POV remains unaffected.
@@ -131,14 +143,17 @@ public final class BlockRuntimeService {
             final NmsAdapter nmsAdapter,
             final BlockConfigService blockConfigService,
             final PersistenceReadSystem persistenceReadSystem,
-            final PersistenceSystem persistenceSystem
+            final PersistenceSystem persistenceSystem,
+            final DataCache dataCache
     ) {
         this.plugin = plugin;
         this.nmsAdapter = nmsAdapter;
         this.blockConfigService = blockConfigService;
         this.persistenceReadSystem = persistenceReadSystem;
         this.persistenceSystem = persistenceSystem;
+        this.dataCache = dataCache;
         this.hologramRuntimeService = new HologramRuntimeService(plugin, nmsAdapter);
+        this.schematicService = new SchematicService(plugin, nmsAdapter);
         this.uniqueIdKey = new NamespacedKey(plugin, "unique_id");
         this.miningSystem = new MiningSystem(this.ecsState);
         this.respawnSystem = new RespawnSystem(plugin, this.ecsState);
@@ -167,9 +182,10 @@ public final class BlockRuntimeService {
                 try {
                     final BlockDefinition def = this.blockConfigService.findBlock(block.type());
                     final World world = this.plugin.getServer().getWorld(block.world());
-                    if (def != null && world != null) {
-                        this.visualSyncSystem.applyRealBlockModel(block, def, world);
-                    }
+                if (def != null && world != null) {
+                    this.visualSyncSystem.applyRealBlockModel(block, def, world);
+                    applySchematicModel(block, def, world, false);
+                }
                 } catch (final Throwable ignored) {
                 }
             }
@@ -183,6 +199,55 @@ public final class BlockRuntimeService {
     }
 
     public PlaceResult place(final String type, final World world, final double x, final double y, final double z, final String facing) {
+        return placeInternal(type, world, x, y, z, facing, true, false);
+    }
+
+    public PlaceResult placeNodeBlock(final String type, final World world, final double x, final double y, final double z, final String facing) {
+        return placeNodeBlock(type, world, x, y, z, facing, null);
+    }
+
+    public PlaceResult placeNodeBlock(
+            final String type,
+            final World world,
+            final double x,
+            final double y,
+            final double z,
+            final String facing,
+            final RandomLocationContext randomLocationContext
+    ) {
+        final PlaceResult result = placeInternal(type, world, x, y, z, facing, false, true);
+        if (result.success()) {
+            registerNodeBlock(result.placedBlock().uniqueId());
+            if (randomLocationContext != null) {
+                this.nodeRandomLocationContexts.put(result.placedBlock().uniqueId(), randomLocationContext);
+            }
+        }
+        return result;
+    }
+
+    public PlaceResult placeRandomNodeBlock(
+            final String type,
+            final World world,
+            final String facing,
+            final RandomLocationContext randomLocationContext
+    ) {
+        final Location location = resolveRandomContextLocation(world, randomLocationContext, null);
+        if (location == null) {
+            return PlaceResult.error("No safe node spawn location found");
+        }
+        return placeNodeBlock(type, world, location.getX(), location.getY(), location.getZ(), facing, randomLocationContext);
+    }
+
+    private PlaceResult placeInternal(
+            final String type,
+            final World world,
+            final double x,
+            final double y,
+            final double z,
+            final String facing,
+            final boolean persist,
+            final boolean suppressDead
+    ) {
         final BlockDefinition definition = this.blockConfigService.findBlock(type);
         if (definition == null) {
             return PlaceResult.error("Unknown block id: " + type);
@@ -199,12 +264,90 @@ public final class BlockRuntimeService {
             return PlaceResult.error("Failed to spawn interaction entity");
         }
 
+        this.plugin.getServer().getPluginManager().callEvent(new BlockPlaceEvent(null, placedBlock, definition));
+
         this.ecsState.putBlock(placedBlock);
-        this.persistenceSystem.persistBlockAsync(placedBlock);
+        if (persist) {
+            this.persistenceSystem.persistBlockAsync(placedBlock);
+        } else {
+            this.transientBlocks.add(uniqueId);
+        }
+        if (suppressDead) {
+            this.suppressDeadHologram.add(uniqueId);
+        }
         if (isChunkLoaded(world, x, z)) {
             this.hologramRuntimeService.showActive(placedBlock, definition);
         }
         return PlaceResult.success(placedBlock);
+    }
+
+    public void registerNodeBlock(final UUID blockUniqueId) {
+        if (blockUniqueId == null) {
+            return;
+        }
+        this.transientBlocks.add(blockUniqueId);
+        this.suppressDeadHologram.add(blockUniqueId);
+    }
+
+    public void unregisterNodeBlock(final UUID blockUniqueId) {
+        if (blockUniqueId == null) {
+            return;
+        }
+        this.transientBlocks.remove(blockUniqueId);
+        this.suppressDeadHologram.remove(blockUniqueId);
+        this.nodeRandomLocationContexts.remove(blockUniqueId);
+    }
+
+    public PlacedBlock findPlacedBlock(final UUID uniqueId) {
+        PlacedBlock block = this.ecsState.getBlock(uniqueId);
+        if (block != null) {
+            return block;
+        }
+        block = this.dataCache.getBlock(uniqueId);
+        return block;
+    }
+
+    public boolean removeById(final UUID uniqueId) {
+        final PlacedBlock block = this.ecsState.getBlock(uniqueId);
+        if (block == null) {
+            return false;
+        }
+        final World world = this.plugin.getServer().getWorld(block.world());
+        if (world == null) {
+            return false;
+        }
+        return remove(block.type(), world, block.x(), block.y(), block.z());
+    }
+
+    public boolean removeByInteractionEntity(final Entity entity) {
+        final UUID uniqueId = resolveBlockUniqueId(entity);
+        if (uniqueId == null) {
+            return false;
+        }
+        return removeById(uniqueId);
+    }
+
+    public UUID resolveBlockUniqueId(final Entity entity) {
+        if (entity == null) {
+            return null;
+        }
+        final String uniqueIdRaw = entity.getPersistentDataContainer().get(this.uniqueIdKey, PersistentDataType.STRING);
+        if (uniqueIdRaw == null) {
+            return null;
+        }
+        try {
+            return UUID.fromString(uniqueIdRaw);
+        } catch (final IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private boolean isTransient(final UUID uniqueId) {
+        return this.transientBlocks.contains(uniqueId);
+    }
+
+    private boolean shouldSuppressDeadHologram(final UUID uniqueId) {
+        return this.suppressDeadHologram.contains(uniqueId);
     }
 
     public boolean remove(final String type, final World world, final double x, final double y, final double z) {
@@ -221,14 +364,19 @@ public final class BlockRuntimeService {
             final World blockWorld = this.plugin.getServer().getWorld(placedBlock.world());
             if (blockWorld != null) {
                 this.visualSyncSystem.clearRealBlockModel(placedBlock, definition, blockWorld);
+                clearSchematicModel(placedBlock, blockWorld);
             }
         }
         despawnInteraction(placedBlock);
         cancelRespawnTask(placedBlock.uniqueId());
         this.ecsState.removeBlock(placedBlock.uniqueId());
+        this.plugin.getServer().getPluginManager().callEvent(new BlockRemoveEvent(null, placedBlock));
         this.hologramRuntimeService.remove(placedBlock);
-        this.persistenceSystem.deleteBlockAsync(placedBlock.uniqueId());
-        this.persistenceSystem.deleteRespawnAsync(placedBlock.uniqueId());
+        if (!isTransient(placedBlock.uniqueId())) {
+            this.persistenceSystem.deleteBlockAsync(placedBlock.uniqueId());
+            this.persistenceSystem.deleteRespawnAsync(placedBlock.uniqueId());
+        }
+        unregisterNodeBlock(placedBlock.uniqueId());
         return true;
     }
 
@@ -306,7 +454,7 @@ public final class BlockRuntimeService {
             this.persistenceSystem.persistBlockAsync(block);
             final long delay = Math.max(1L, respawnAt - System.currentTimeMillis());
             if (isChunkLoaded(world, block.x(), block.z())) {
-                this.hologramRuntimeService.showDead(block, definition, TimeUnit.MILLISECONDS.toSeconds(delay));
+                showDeadOrRemoveSuppressed(block, definition, TimeUnit.MILLISECONDS.toSeconds(delay));
             }
             scheduleRespawn(block, world, delay);
         }
@@ -353,6 +501,21 @@ public final class BlockRuntimeService {
     public void handlePlayerQuit(final UUID playerUniqueId) {
         this.hologramRuntimeService.handleViewerQuit(playerUniqueId);
         this.nmsAdapter.clearPacketHologramCacheForPlayer(playerUniqueId);
+        // Clear dead schematics for the quitting player so their client doesn't
+        // retain stale fake blocks during the disconnect edge case
+        final Player player = this.plugin.getServer().getPlayer(playerUniqueId);
+        if (player != null) {
+            for (final PlacedBlock block : this.ecsState.blocks()) {
+                if (!this.lifecycleSystem.isRespawning(block)) continue;
+                if (!block.world().equals(player.getWorld().getName())) continue;
+                final BlockDefinition def = this.blockConfigService.findBlock(block.type());
+                if (def == null || !def.schematicsEnabled() || def.schematicsDeadFile() == null || def.schematicsDeadFile().isBlank()) continue;
+                try {
+                    this.schematicService.clearSchematicForPlayer(block.uniqueId().toString(), player);
+                } catch (final Throwable ignored) {
+                }
+            }
+        }
         // If we applied a debuff to this player, remove it and clear tracking.
         try {
             this.lookDebuffed.remove(playerUniqueId);
@@ -369,10 +532,12 @@ public final class BlockRuntimeService {
             final World world = this.plugin.getServer().getWorld(block.world());
             if (definition != null && world != null) {
                 this.visualSyncSystem.clearRealBlockModel(block, definition, world);
+                clearSchematicModel(block, world);
             }
             despawnInteraction(block);
         }
         this.hologramRuntimeService.shutdown();
+        this.schematicService.clearAll();
         this.ecsState.clear();
     }
 
@@ -426,8 +591,11 @@ public final class BlockRuntimeService {
     }
 
     ReconcileResult reconcileAfterConfigReload(final boolean rebindActiveInteractions) {
+        final List<PlacedBlock> persistedBlocks = new ArrayList<>(this.ecsState.snapshot()).stream()
+                .filter(block -> !isTransient(block.uniqueId()))
+                .toList();
         return this.reconcileSystem.reconcile(
-                new ArrayList<>(this.ecsState.snapshot()),
+                persistedBlocks,
                 rebindActiveInteractions,
                 this.blockConfigService::findBlock,
                 worldName -> this.plugin.getServer().getWorld(worldName),
@@ -446,7 +614,7 @@ public final class BlockRuntimeService {
                 (block, definition, delayMillis) -> {
                     final World world = this.plugin.getServer().getWorld(block.world());
                     if (world != null && isChunkLoaded(world, block.x(), block.z())) {
-                        this.hologramRuntimeService.showDead(block, definition, TimeUnit.MILLISECONDS.toSeconds(delayMillis));
+                        showDeadOrRemoveSuppressed(block, definition, TimeUnit.MILLISECONDS.toSeconds(delayMillis));
                     }
                 },
                 this::scheduleRespawn,
@@ -469,7 +637,7 @@ public final class BlockRuntimeService {
 
             if (this.lifecycleSystem.isRespawning(block)) {
                 final long secondsLeft = Math.max(0L, (block.respawnAt() == null ? 0L : block.respawnAt() - System.currentTimeMillis()) / 1000L);
-                this.hologramRuntimeService.showDead(block, definition, secondsLeft);
+                showDeadOrRemoveSuppressed(block, definition, secondsLeft);
             }
         }
     }
@@ -479,6 +647,7 @@ public final class BlockRuntimeService {
             despawnInteraction(block);
             this.hologramRuntimeService.remove(block);
             this.visualSyncSystem.clearBreakAnimation(world, block);
+            clearSchematicModel(block, world);
         }
     }
 
@@ -521,6 +690,9 @@ public final class BlockRuntimeService {
         if (definition.particleBreak()) {
             spawnBreakParticles(block, definition);
         }
+        final BlockMineEvent mineEvent = new BlockMineEvent(player, block, definition, clickType, progress, action.clickNeeded(), false);
+        this.plugin.getServer().getPluginManager().callEvent(mineEvent);
+
         if (progress < action.clickNeeded()) {
             final String progressBar = renderProgressBar(progress, action.clickNeeded());
             this.hologramRuntimeService.showProgress(block, definition, progressBar, progress, action.clickNeeded());
@@ -572,8 +744,8 @@ public final class BlockRuntimeService {
         }
         final String titleRaw = ConditionEvaluator.resolvePlaceholder(this.plugin, player, condition.sendTitle());
         final String subtitleRaw = ConditionEvaluator.resolvePlaceholder(this.plugin, player, condition.sendSubtitle());
-        final Component title = (titleRaw == null || titleRaw.isBlank()) ? Component.empty() : TextColorUtil.toComponent(titleRaw);
-        final Component subtitle = (subtitleRaw == null || subtitleRaw.isBlank()) ? Component.empty() : TextColorUtil.toComponent(subtitleRaw);
+        final Component title = (titleRaw == null || titleRaw.isBlank()) ? Component.empty() : TextColor.toComponent(titleRaw);
+        final Component subtitle = (subtitleRaw == null || subtitleRaw.isBlank()) ? Component.empty() : TextColor.toComponent(subtitleRaw);
         if (title.equals(Component.empty()) && subtitle.equals(Component.empty())) {
             return;
         }
@@ -581,6 +753,8 @@ public final class BlockRuntimeService {
     }
 
     private void handleBlockBreak(final PlacedBlock block, final BlockDefinition definition, final ToolAction action, final Player player) {
+        final BlockMineEvent completeEvent = new BlockMineEvent(player, block, definition, action.clickType(), action.clickNeeded(), action.clickNeeded(), true);
+        this.plugin.getServer().getPluginManager().callEvent(completeEvent);
         this.miningSystem.clearAllProgress(block.uniqueId());
         this.dropSystem.executeDrops(block, action, player);
         if (definition.breakAnimation()) {
@@ -590,20 +764,40 @@ public final class BlockRuntimeService {
         spawnBreakParticles(block, definition);
 
         this.lifecycleSystem.markRespawning(block);
-        this.persistenceSystem.persistBlockAsync(block);
+        if (!isTransient(block.uniqueId())) {
+            this.persistenceSystem.persistBlockAsync(block);
+        }
 
         final World world = this.plugin.getServer().getWorld(block.world());
         if (world != null) {
             this.visualSyncSystem.clearRealBlockModel(block, definition, world);
+            clearSchematicModel(block, world);
         }
         despawnInteraction(block);
-        this.hologramRuntimeService.showDead(block, definition, definition.respawnTimeSeconds());
+        if (world != null && definition.schematicsEnabled() && definition.schematicsDeadFile() != null && !definition.schematicsDeadFile().isBlank()) {
+            applySchematicModel(block, definition, world, true);
+        }
+        if (shouldSuppressDeadHologram(block.uniqueId())) {
+            this.hologramRuntimeService.remove(block);
+        } else {
+            this.hologramRuntimeService.showDead(block, definition, definition.respawnTimeSeconds());
+        }
         final long respawnAt = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(definition.respawnTimeSeconds());
-        this.persistenceSystem.upsertRespawnAsync(block.uniqueId(), respawnAt);
+        if (!isTransient(block.uniqueId())) {
+            this.persistenceSystem.upsertRespawnAsync(block.uniqueId(), respawnAt);
+        }
 
         if (world != null) {
             scheduleRespawn(block, world, TimeUnit.SECONDS.toMillis(definition.respawnTimeSeconds()));
         }
+    }
+
+    private void showDeadOrRemoveSuppressed(final PlacedBlock block, final BlockDefinition definition, final long seconds) {
+        if (shouldSuppressDeadHologram(block.uniqueId())) {
+            this.hologramRuntimeService.remove(block);
+            return;
+        }
+        this.hologramRuntimeService.showDead(block, definition, seconds);
     }
 
     private void scheduleRespawn(final PlacedBlock block, final World world, final long delayMillis) {
@@ -618,7 +812,9 @@ public final class BlockRuntimeService {
                             && this.lifecycleSystem.isRespawning(block)
                             && isChunkLoaded(world, block.x(), block.z())
                             && this.hologramRuntimeService.hasNearbyPlayers(block, DEAD_UPDATE_NEARBY_RADIUS)) {
-                        this.hologramRuntimeService.updateDeadRespawnTime(block, definition);
+                        if (!shouldSuppressDeadHologram(block.uniqueId())) {
+                            this.hologramRuntimeService.updateDeadRespawnTime(block, definition);
+                        }
                     }
                 },
                 () -> {
@@ -649,21 +845,26 @@ public final class BlockRuntimeService {
                     if (!isChunkLoaded(world, block.x(), block.z())) {
                         this.lifecycleSystem.markActive(block);
                         block.setRespawnAt(null);
-                        this.persistenceSystem.persistBlockAsync(block);
-                        this.persistenceSystem.deleteRespawnAsync(block.uniqueId());
+                        if (!isTransient(block.uniqueId())) {
+                            this.persistenceSystem.persistBlockAsync(block);
+                            this.persistenceSystem.deleteRespawnAsync(block.uniqueId());
+                        }
                         return;
                     }
 
                     if (spawnInteraction(block, latestDefinition, world)) {
                         this.lifecycleSystem.markActive(block);
                         block.setRespawnAt(null);
-                        this.persistenceSystem.persistBlockAsync(block);
-                        this.persistenceSystem.deleteRespawnAsync(block.uniqueId());
+                        if (!isTransient(block.uniqueId())) {
+                            this.persistenceSystem.persistBlockAsync(block);
+                            this.persistenceSystem.deleteRespawnAsync(block.uniqueId());
+                        }
                         this.hologramRuntimeService.showActive(block, latestDefinition);
                         playConfiguredSound(world, block, latestDefinition.soundOnRespawn());
                         if (latestDefinition.breakAnimation()) {
                             this.visualSyncSystem.clearBreakAnimation(world, block);
                         }
+                        this.plugin.getServer().getPluginManager().callEvent(new BlockRespawnEvent(block, latestDefinition));
                     }
                 }
         );
@@ -728,6 +929,7 @@ public final class BlockRuntimeService {
                         this.visualSyncSystem.applyRealBlockModel(placedBlock, definition, world);
                     } catch (final Throwable ignored) {
                     }
+                    applySchematicModel(placedBlock, definition, world, false);
                     return true;
                 }
             }
@@ -766,11 +968,39 @@ public final class BlockRuntimeService {
             }
 
             this.visualSyncSystem.applyRealBlockModel(placedBlock, definition, world);
+            applySchematicModel(placedBlock, definition, world, false);
             // logging removed: spawned interaction info
             return true;
         } catch (final RuntimeException exception) {
             // logging removed: exception during spawnInteraction
             return false;
+        }
+    }
+
+    private void applySchematicModel(final PlacedBlock block, final BlockDefinition definition, final World world, final boolean dead) {
+        if (definition == null || !definition.schematicsEnabled()) return;
+        try {
+            // Clear any existing schematic (normal or dead) to prevent stale blocks
+            // from the previous state lingering visually
+            clearSchematicModel(block, world);
+            this.schematicService.showSchematic(
+                    block.uniqueId().toString(),
+                    definition,
+                    world,
+                    block.x(),
+                    block.y(),
+                    block.z(),
+                    dead
+            );
+        } catch (final Throwable ignored) {
+        }
+    }
+
+    private void clearSchematicModel(final PlacedBlock block, final World world) {
+        if (world == null) return;
+        try {
+            this.schematicService.clearSchematic(block.uniqueId().toString(), world);
+        } catch (final Throwable ignored) {
         }
     }
 
@@ -822,6 +1052,7 @@ public final class BlockRuntimeService {
             if (existing != null) {
                 this.visualSyncSystem.clearRealBlockModel(block, existing, world);
             }
+            clearSchematicModel(block, world);
         }
         despawnInteraction(block);
         this.ecsState.removeBlock(block.uniqueId());
@@ -853,7 +1084,7 @@ public final class BlockRuntimeService {
         for (int i = completed; i < length; i++) {
             out.append(left);
         }
-        return TextColorUtil.ampersandToMiniMessage(out.toString());
+        return TextColor.ampersandToMiniMessage(out.toString());
     }
 
     private void removeDuplicateTaggedInteractions(final World world, final Location location, final UUID blockUniqueId) {
@@ -948,21 +1179,29 @@ public final class BlockRuntimeService {
             return;
         }
         final Material material = this.visualSyncSystem.resolveParticleMaterial(definition);
+        if (material == null) {
+            return;
+        }
+        
         final Location loc = blockCenterLocation(block, world);
-        try {
-            world.spawnParticle(
-                    Particle.BLOCK,
-                    loc,
-                    24,
-                    0.35D,
-                    0.35D,
-                    0.35D,
-                    0.0D,
-                    material.createBlockData()
-            );
-        } catch (final Throwable t) {
+        
+        if (material.isBlock()) {
             try {
-                // Fall back: spawn ITEM_CRACK using an ItemStack of the material.
+                world.spawnParticle(
+                        Particle.BLOCK,
+                        loc,
+                        24,
+                        0.35D,
+                        0.35D,
+                        0.35D,
+                        0.0D,
+                        material.createBlockData()
+                );
+            } catch (final Throwable t) {
+                // Ignore
+            }
+        } else if (material.isItem()) {
+            try {
                 world.spawnParticle(
                         Particle.ITEM,
                         loc,
@@ -1036,13 +1275,44 @@ public final class BlockRuntimeService {
 
     private record RespawnTarget(Location location, String facing) {}
 
+    public record RandomLocationContext(
+            double originX,
+            double originY,
+            double originZ,
+            boolean enabled,
+            double radius,
+            boolean closest,
+            double centerDistance
+    ) {}
+
     private RespawnTarget resolveRespawnTarget(final PlacedBlock block, final BlockDefinition definition, final World world) {
+        final RandomLocationContext nodeContext = this.nodeRandomLocationContexts.get(block.uniqueId());
+        if (nodeContext != null) {
+            final Location location = resolveRandomContextLocation(world, nodeContext, block.uniqueId());
+            if (location != null) {
+                final String facing = resolveRandomFacing(world, location.getBlockX(), location.getBlockY(), location.getBlockZ());
+                return new RespawnTarget(location, facing);
+            }
+            final Location fallback = findSafeBlockLocation(
+                    world,
+                    (int) Math.floor(nodeContext.originX()),
+                    (int) Math.floor(nodeContext.originY()),
+                    (int) Math.floor(nodeContext.originZ()),
+                    block.uniqueId(),
+                    nodeContext.closest()
+            );
+            final Location loc = fallback != null
+                    ? fallback
+                    : new Location(world, Math.floor(nodeContext.originX()), Math.floor(nodeContext.originY()), Math.floor(nodeContext.originZ()));
+            return new RespawnTarget(loc, block.facing());
+        }
+
         final int originBlockX = (int) Math.floor(block.originX());
         final int originBlockY = (int) Math.floor(block.originY());
         final int originBlockZ = (int) Math.floor(block.originZ());
 
         if (!definition.randomLocationEnabled() || definition.randomLocationRadius() <= 0.0D) {
-            final Location safeOrigin = findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ);
+            final Location safeOrigin = findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false);
             final Location loc = safeOrigin != null
                     ? safeOrigin
                     : new Location(world, originBlockX, originBlockY, originBlockZ);
@@ -1050,28 +1320,70 @@ public final class BlockRuntimeService {
         }
 
         final double radius = definition.randomLocationRadius();
-        final int maxAttempts = 24;
-        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+        for (int attempt = 0; attempt < RANDOM_LOCATION_MAX_ATTEMPTS; attempt++) {
             final double angle = ThreadLocalRandom.current().nextDouble(0.0D, Math.PI * 2.0D);
             final double distance = Math.sqrt(ThreadLocalRandom.current().nextDouble()) * radius;
             final int targetBlockX = originBlockX + (int) Math.round(Math.cos(angle) * distance);
             final int targetBlockZ = originBlockZ + (int) Math.round(Math.sin(angle) * distance);
 
-            final Location safe = findSafeBlockLocation(world, targetBlockX, originBlockY, targetBlockZ);
+            final Location safe = findSafeBlockLocation(world, targetBlockX, originBlockY, targetBlockZ, block.uniqueId(), false);
             if (safe != null) {
                 final String facing = resolveRandomFacing(world, (int) safe.getX(), (int) safe.getY(), (int) safe.getZ());
                 return new RespawnTarget(safe, facing);
             }
         }
 
-        final Location safeOrigin = findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ);
+        final Location safeOrigin = findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false);
         final Location loc = safeOrigin != null
                 ? safeOrigin
                 : new Location(world, originBlockX, originBlockY, originBlockZ);
         return new RespawnTarget(loc, block.facing());
     }
 
-    private Location findSafeBlockLocation(final World world, final int blockX, final int baseY, final int blockZ) {
+    private Location resolveRandomContextLocation(
+            final World world,
+            final RandomLocationContext context,
+            final UUID excludingBlockId
+    ) {
+        if (world == null || context == null) {
+            return null;
+        }
+
+        final int originBlockX = (int) Math.floor(context.originX());
+        final int originBlockY = (int) Math.floor(context.originY());
+        final int originBlockZ = (int) Math.floor(context.originZ());
+        if (!context.enabled() || context.radius() <= 0.0D) {
+            return findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, excludingBlockId, context.closest());
+        }
+
+        final double radius = Math.max(0.0D, context.radius());
+        final double centerDistance = Math.max(0.0D, context.centerDistance());
+        for (int attempt = 0; attempt < RANDOM_LOCATION_MAX_ATTEMPTS; attempt++) {
+            final double angle = ThreadLocalRandom.current().nextDouble(0.0D, Math.PI * 2.0D);
+            final double minDistance = Math.min(radius, centerDistance);
+            final double distance = minDistance + (Math.sqrt(ThreadLocalRandom.current().nextDouble()) * Math.max(0.0D, radius - minDistance));
+            final int targetBlockX = originBlockX + (int) Math.round(Math.cos(angle) * distance);
+            final int targetBlockZ = originBlockZ + (int) Math.round(Math.sin(angle) * distance);
+            if (horizontalDistanceSquared(targetBlockX, targetBlockZ, originBlockX, originBlockZ) < centerDistance * centerDistance) {
+                continue;
+            }
+
+            final Location safe = findSafeBlockLocation(world, targetBlockX, originBlockY, targetBlockZ, excludingBlockId, context.closest());
+            if (safe != null) {
+                return safe;
+            }
+        }
+        return null;
+    }
+
+    private Location findSafeBlockLocation(
+            final World world,
+            final int blockX,
+            final int baseY,
+            final int blockZ,
+            final UUID excludingBlockId,
+            final boolean requireClosestHorizontalBlock
+    ) {
         final int minY = world.getMinHeight();
         final int maxY = world.getMaxHeight();
         final int startY = Math.max(minY, baseY);
@@ -1080,6 +1392,8 @@ public final class BlockRuntimeService {
         for (int y = startY; y <= topY; y++) {
             final Block feet = world.getBlockAt(blockX, y, blockZ);
             final Block head = world.getBlockAt(blockX, y + 1, blockZ);
+            clearSnowLayer(feet);
+            clearSnowLayer(head);
             if (!feet.isPassable() || !head.isPassable()) {
                 continue;
             }
@@ -1090,6 +1404,15 @@ public final class BlockRuntimeService {
             }
             // Reject if hemmed in on 3+ horizontal sides
             if (isHemmedIn(world, blockX, groundedY, blockZ)) {
+                continue;
+            }
+            if (requireClosestHorizontalBlock && !hasHorizontalClosestBlock(world, blockX, groundedY, blockZ)) {
+                continue;
+            }
+            if (isTooCloseToPlacedBlock(world.getName(), blockX, groundedY, blockZ, excludingBlockId)) {
+                continue;
+            }
+            if (hasBlockingEntityAt(world, blockX, groundedY, blockZ)) {
                 continue;
             }
             return new Location(world, blockX, groundedY, blockZ);
@@ -1112,6 +1435,8 @@ public final class BlockRuntimeService {
 
             final Block feet = world.getBlockAt(blockX, candidateY, blockZ);
             final Block head = world.getBlockAt(blockX, candidateY + 1, blockZ);
+            clearSnowLayer(feet);
+            clearSnowLayer(head);
             if (!feet.isPassable() || !head.isPassable()) {
                 continue;
             }
@@ -1138,6 +1463,88 @@ public final class BlockRuntimeService {
         }
         // Reject if 3 or all 4 horizontal directions are blocked
         return blockedDirections >= 3;
+    }
+
+    private void clearSnowLayer(final Block block) {
+        if (block != null && block.getType() == Material.SNOW) {
+            block.setType(Material.AIR, false);
+        }
+    }
+
+    private double horizontalDistanceSquared(final int x, final int z, final int otherX, final int otherZ) {
+        final double dx = (x + 0.5D) - (otherX + 0.5D);
+        final double dz = (z + 0.5D) - (otherZ + 0.5D);
+        return (dx * dx) + (dz * dz);
+    }
+
+    private boolean hasHorizontalClosestBlock(final World world, final int blockX, final int spawnY, final int blockZ) {
+        final int[][] offsets = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};
+        for (final int[] offset : offsets) {
+            if (isSolidAt(world, blockX + offset[0], spawnY, blockZ + offset[1])
+                    || isSolidAt(world, blockX + offset[0], spawnY + 1, blockZ + offset[1])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isTooCloseToPlacedBlock(
+            final String worldName,
+            final int blockX,
+            final int blockY,
+            final int blockZ,
+            final UUID excludingBlockId
+    ) {
+        final double minDistanceSquared = NODE_RANDOM_MIN_BLOCK_DISTANCE * NODE_RANDOM_MIN_BLOCK_DISTANCE;
+        final double centerX = blockX + 0.5D;
+        final double centerZ = blockZ + 0.5D;
+        for (final PlacedBlock placedBlock : this.ecsState.blocks()) {
+            if (excludingBlockId != null && excludingBlockId.equals(placedBlock.uniqueId())) {
+                continue;
+            }
+            if (!worldName.equals(placedBlock.world())) {
+                continue;
+            }
+            if (Math.abs(placedBlock.y() - blockY) > 2.0D) {
+                continue;
+            }
+            final double otherX = Math.floor(placedBlock.x()) + 0.5D;
+            final double otherZ = Math.floor(placedBlock.z()) + 0.5D;
+            final double dx = centerX - otherX;
+            final double dz = centerZ - otherZ;
+            if ((dx * dx) + (dz * dz) < minDistanceSquared) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasBlockingEntityAt(final World world, final int blockX, final int blockY, final int blockZ) {
+        final BoundingBox spawnBox = new BoundingBox(
+                blockX,
+                blockY,
+                blockZ,
+                blockX + 1.0D,
+                blockY + 2.0D,
+                blockZ + 1.0D
+        );
+        final Location center = new Location(world, blockX + 0.5D, blockY + 1.0D, blockZ + 0.5D);
+        for (final Entity entity : world.getNearbyEntities(center, 1.0D, 1.5D, 1.0D)) {
+            if (!entity.isValid() || entity.isDead()) {
+                continue;
+            }
+            if (entity instanceof Interaction) {
+                continue;
+            }
+            try {
+                if (entity.getBoundingBox().overlaps(spawnBox)) {
+                    return true;
+                }
+            } catch (final Throwable ignored) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String resolveRandomFacing(final World world, final int blockX, final int spawnY, final int blockZ) {
@@ -1179,6 +1586,7 @@ public final class BlockRuntimeService {
             return false;
         }
         final Block support = world.getBlockAt(blockX, spawnY - 1, blockZ);
+        clearSnowLayer(support);
         if (support.getType().isAir()) {
             return false;
         }
