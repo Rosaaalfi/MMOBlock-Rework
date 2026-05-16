@@ -11,18 +11,24 @@
 
 </div>
 
-**MMOBlock** is a modular plugin for Paper-based Minecraft servers (and compatible forks). This repository is organized into several independent modules to simplify development, testing, and compatibility across different NMS versions.
+**MMOBlock** is a modular plugin built for Paper-based Minecraft servers and compatible server software. To ensure peak performance, stability, and seamless updates, the plugin's structure is divided into several independent modules that work together seamlessly.
+
 ---
 
 ## 📚 Repository Module Overview
 
-- **mmoblock-api**: Public interfaces and data models used across modules (the plugin API).
-- **nms-loader**: Loader/registry for `NmsAdapter` implementations and runtime utilities (includes ECS examples and hologram utilities).
-- **plugin**: Main plugin implementation (`MMOBlock`) containing runtime services, listeners, configuration, and user-facing resources.
-- **nms-mojang-v* / nms-spigot-v* / nms-v* / nms-v26_1**: NMS implementations targeting specific Minecraft/server versions. Each module provides adapters for its target version and registers them via `NmsAdapterProvider`.
-- **platform/**: Platform integration modules (schedulers, Paper/Folia adapters, etc.).
+* **`mmoblock-api`**
+The public bridge for third-party developers who want to integrate their own features with MMOBlock's core functionality.
+* **`nms-loader`**
+The background engine responsible for automatic system integration, running visual elements like holograms, and managing internal components.
+* **`plugin`**
+The main heart of `MMOBlock` that handles overall operations, including loading configurations, managing player interactions, and running core game features.
+* **`nms-mojang-v*` / `nms-spigot-v*` / `nms-v*` / `nms-v26_1**`
+The version-compatibility modules. These ensure that MMOBlock runs smoothly and remains fully compatible across many different versions of Minecraft.
+* **`platform/`**
+The performance optimization layer that ensures the plugin operates safely and efficiently on modern server software (such as Paper and Folia).
 
-If you're working on NMS-related features, edit the module that matches your target server version (e.g. `nms-v1_21_4` for 1.21.4).
+> **Development Note:** If you are making adjustments for a specific Minecraft version, simply navigate to the module that matches your target server version (e.g., use the `nms-v1_21_4` folder for Minecraft 1.21.4).
 ---
 
 ## ✨ Key Features (at a glance)
