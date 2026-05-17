@@ -1272,11 +1272,14 @@ public final class BlockRuntimeService {
             final BlockDefinition definition = this.blockConfigService.findBlock(block.type());
             final World world = this.plugin.getServer().getWorld(block.world());
             if (world != null && definition != null) {
-                try {
-                    this.visualSyncSystem.clearBreakAnimation(world, block);
-                } catch (final Throwable ignored) {
-                }
-                this.hologramRuntimeService.showActive(block, definition);
+                final Location loc = new Location(world, block.x(), block.y(), block.z());
+                this.scheduler.runAtLocation(loc, () -> {
+                    try {
+                        this.visualSyncSystem.clearBreakAnimation(world, block);
+                    } catch (final Throwable ignored) {
+                    }
+                    this.hologramRuntimeService.showActive(block, definition);
+                });
             }
         }
     }
