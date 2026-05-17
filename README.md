@@ -26,7 +26,7 @@
 * **`plugin`**
   The main heart of `MMOBlock` that handles overall operations, including loading configurations, managing player interactions, and running core game features.
 
-* **`nms-mojang-v`** / **`nms-spigot-v`** / **`nms-v`** / **`nms-v26_1**`
+* **`nms-mojang-v`** / **`nms-spigot-v`** / **`nms-v`** / **`nms-v26_1`**
   The version-compatibility modules. These ensure that MMOBlock runs smoothly and remains fully compatible across many different versions of Minecraft.
 
 * **`platform/`**
