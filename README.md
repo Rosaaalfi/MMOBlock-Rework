@@ -1,127 +1,176 @@
 <div align="center">
 
-![](https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png)
-# MMOBlock
-*- Unblock the Fun, One Click at a Time with MMOBlock -*
+<img src="https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png" width="120" alt="MMOBlock Logo"/>
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/Rosaaalfi/MMOBlock-Rework/gradle.yml?style=for-the-badge&label=build&labelColor=1A1B26&color=2EA043&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/actions)
-[![Open Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?label=open%20issues&style=for-the-badge&labelColor=1A1B26&color=D15794&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
-[![Maven Central](https://img.shields.io/badge/maven_central-v3.0.5--RELEASE-007ACC?style=for-the-badge&labelColor=1A1B26&logo=apachemaven)](https://search.maven.org/search?q=g:me.chyxelmc%20AND%20a:mmoblock-api)
-[![Javadoc](https://img.shields.io/badge/javadoc-javadoc.io-8957E5?style=for-the-badge&labelColor=1A1B26&logo=openjdk&logoColor=white)](https://www.javadoc.io/doc/me.chyxelmc/mmoblock-api)
+# MMOBlock
+
+### *Unblock the Fun, One Click at a Time.*
+
+[![Build](https://img.shields.io/github/actions/workflow/status/Rosaaalfi/MMOBlock-Rework/gradle.yml?style=for-the-badge&label=Build&labelColor=1A1B26&color=2EA043&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/actions)
+[![Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?style=for-the-badge&label=Issues&labelColor=1A1B26&color=D15794&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
+[![Maven Central](https://img.shields.io/badge/Maven_Central-v3.0.5--RELEASE-007ACC?style=for-the-badge&labelColor=1A1B26&logo=apachemaven)](https://search.maven.org/search?q=g:me.chyxelmc%20AND%20a:mmoblock-api)
+[![Javadocs](https://img.shields.io/badge/Javadocs-javadoc.io-8957E5?style=for-the-badge&labelColor=1A1B26&logo=openjdk&logoColor=white)](https://www.javadoc.io/doc/me.chyxelmc/mmoblock-api)
 
 </div>
 
-**MMOBlock** is a modular plugin built for Paper-based Minecraft servers and compatible server software. To ensure peak performance, stability, and seamless updates, the plugin's structure is divided into several independent modules that work together seamlessly.
+---
+
+## 📖 About
+
+**MMOBlock** is a modular Minecraft plugin designed for modern **Paper-based servers** and compatible server software such as **Folia**.
+
+The project focuses on:
+
+| Goal | Description |
+|------|-------------|
+| 🔀 **Cross-version** | Supports multiple Minecraft versions seamlessly |
+| 🧱 **Modular Architecture** | Independent modules for scalability |
+| 🧵 **Thread-safe Systems** | Full Folia & Paper multi-thread safety |
+| ⚡ **Performance** | Optimized for high-load servers |
+| 🔌 **Extensible API** | Developer-friendly API for integrations |
 
 ---
 
-## 📚 Repository Module Overview
+## 📚 Repository Structure
 
-* **`mmoblock-api`**
-  The public bridge for third-party developers who want to integrate their own features with MMOBlock's core functionality.
+```
+MMOBlock-Rework/
+├── mmoblock-api/     → Public API bridge for third-party developers
+├── plugin/           → Main gameplay & plugin logic
+├── nms-loader/       → Internal runtime loader and adapters
+├── nms-v*/           → Minecraft version compatibility layers
+└── platform/         → Thread-safe abstraction layer for Paper/Folia
+```
 
-* **`nms-loader`**
-  The background engine responsible for automatic system integration, running visual elements like holograms, and managing internal components.
-
-* **`plugin`**
-  The main heart of `MMOBlock` that handles overall operations, including loading configurations, managing player interactions, and running core game features.
-
-* **`nms-mojang-v*` / `nms-spigot-v*` / `nms-v*` / `nms-v26_1**`
-  The version-compatibility modules. These ensure that MMOBlock runs smoothly and remains fully compatible across many different versions of Minecraft.
-
-* **`platform/`**
-  The performance optimization layer that ensures the plugin operates safely and efficiently on modern server software (such as Paper and Folia).
-
-> **Development Note:** If you are making adjustments for a specific Minecraft version, simply navigate to the module that matches your target server version (e.g., use the `nms-v1_21_4` folder for Minecraft 1.21.4).
+> 💡 If you are working on a specific Minecraft version, navigate to the corresponding `nms-v*` module.
 
 ---
 
-## ✨ Key Features
+## ✨ Features
 
-- Custom block entities configured via YAML.
-- Configurable mining system tied to tools and actions.
-- Custom drops with chances and command-based rewards.
-- Holograms for displaying block status and progress.
-- Flexible persistence support (H2/MySQL/Redis).
-- 3D model integration support.
+- 🟩 YAML-based custom block configuration
+- ⛏️ Advanced mining systems
+- 🔨 Tool-based mechanics
+- 🎁 Custom rewards & drops
+- 💬 Hologram support
+- 🗄️ Multi-database support (**H2 / MySQL / Redis**)
+- 🎨 3D model integrations
+- 🔁 Cross-version compatibility
+- 🍃 Paper & Folia support
+- 🧩 Developer-friendly API
 
 ---
 
 ## 🗺️ Development Roadmap
 
-### Phase 1 — Foundation *(50% Complete)*
-- [x] Add legacy support
-- [~] Stabilize base version `1.19.4`
-- [ ] Stabilize other supported Minecraft versions
-
-### Phase 2 — Core Compatibility *(50% Complete)*
-- [~] Add multi-thread safe support
-- [~] Add single-thread support
-- [ ] Ensure full compatibility with:
-  - Folia
-  - Bukkit
-  - Paper
-
-### Phase 3 — Feature Expansion *(50% Complete)*
-- [~] Add Essentials-like utility features
-- [~] Improve optimization and performance
-
-### Phase 4 — Plugin & Model Integrations
-
-#### MMO Ecosystem
-- [ ] MMOItems integration
-- [ ] MMOCore integration
-
-#### Resource & Model Systems
-- [ ] ItemsAdder integration
-- [ ] Nexo integration
-- [ ] Oraxen integration
-- [ ] CraftEngine integration
-- [ ] ModelEngine integration
-- [ ] BetterModel integration
-
-### Phase 5 — Testing & Validation
-- [ ] Cross-version testing
-- [ ] Thread stress testing
-- [ ] Plugin compatibility validation
-- [ ] Performance benchmarking
-
-### Final Phase — Release
-- [ ] Production-ready build
-- [ ] Final bug fixing
-- [ ] Documentation & changelog polishing
-- [ ] Public release 🚀
-
-> **Note:** The roadmap may evolve over time as development priorities shift and new integrations/features are planned.
+> **Legend:** &nbsp;<img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="60" height="20"/> Done &nbsp;|&nbsp; <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="60" height="20"/> In Progress &nbsp;|&nbsp; <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="60" height="20"/> Not Started
 
 ---
 
-## 🔧 Quick Usage
+### 🛠️ Phase 1 — Foundation
+![Progress](https://img.shields.io/badge/Progress-50%25-238636?style=flat-square)
 
-1. Build the project with Gradle:
+<table><tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Add legacy support</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="72" height="22"/></td><td>Stabilize base version <code>1.19.4</code></td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Stabilize other supported versions</td></tr></table>
+
+---
+
+### ⚙️ Phase 2 — Core Compatibility
+![Progress](https://img.shields.io/badge/Progress-50%25-1f6feb?style=flat-square)
+
+<table><tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="72" height="22"/></td><td>Multi-thread safe support</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="72" height="22"/></td><td>Single-thread support</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Full Folia compatibility</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Full Bukkit compatibility</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Full Paper compatibility</td></tr></table>
+
+---
+
+### ✨ Phase 3 — Feature Expansion
+![Progress](https://img.shields.io/badge/Progress-50%25-8957e5?style=flat-square)
+
+<table><tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="72" height="22"/></td><td>Essentials-like utility systems</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="72" height="22"/></td><td>Performance optimization</td></tr></table>
+
+---
+
+
+### 🧩 Phase 4 — Integrations
+![Progress](https://img.shields.io/badge/Progress-0%25-6e7681?style=flat-square)
+
+**MMO Ecosystem**
+
+<table><tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>MMOItems integration</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>MMOCore integration</td></tr></table>
+
+
+**Resource & Model Systems**
+
+
+<table><tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>ItemsAdder integration</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Nexo integration</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Oraxen integration</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>CraftEngine integration</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>ModelEngine integration</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>BetterModel integration</td></tr></table>
+
+---
+
+### 🧪 Phase 5 — Testing
+![Progress](https://img.shields.io/badge/Progress-0%25-6e7681?style=flat-square)
+
+
+<table><tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Cross-version testing</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Stress testing</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Compatibility validation</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Performance benchmarking</td></tr></table>
+
+---
+
+### 🚀 Final Phase — Release
+![Progress](https://img.shields.io/badge/Progress-0%25-6e7681?style=flat-square)
+
+
+<table><tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Production-ready build</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Final bug fixing</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Documentation polishing</td></tr>
+<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Public release</td></tr></table>
+
+---
+
+## 🔧 Quick Start
+
+### 1. Build
 
 ```bash
 ./gradlew build
 ```
 
-2. Install the plugin jar from the `plugin` module into your server's `plugins/` folder.
+### 2. Install
 
-3. Configure `plugins/MMOBlock/`:
-  - `blocks/`
-  - `drops/`
-  - `tools/`
+Copy the generated `.jar` into your server's plugin folder:
+
+```
+server/
+└── plugins/
+    └── MMOBlock.jar   ← here
+```
+
+### 3. Configure
+
+Edit your settings under:
+
+```
+plugins/MMOBlock/
+├── blocks/    → Block definitions
+├── drops/     → Drop tables
+└── tools/     → Tool configurations
+```
 
 ---
 
-## 📦 Published Artifacts & Coordinates
-
-The `mmoblock-api` artifact is published to Maven Central.
-
-* **GroupId:** `me.chyxelmc`
-* **ArtifactId:** `mmoblock-api`
-* **Version:** `3.0.5-RELEASE`
-
-Add the dependency to your project.
+## 📦 Dependency
 
 ### Gradle (Kotlin DSL)
 
@@ -139,71 +188,58 @@ implementation("me.chyxelmc:mmoblock-api:3.0.5-RELEASE")
 </dependency>
 ```
 
-> *Note: The repository's development version in `gradle.properties` is `3.0.0` (snapshots). Snapshots are published to Sonatype snapshots; releases must follow the official release flow.*
-
 ---
 
-## Example: Using the API
+## 🧩 API Examples
 
-### Dependency (Gradle Kotlin DSL)
-
-```kotlin
-implementation("me.chyxelmc:mmoblock-api:3.0.5-RELEASE")
-```
-
-### Java Example — Place a Block Programmatically
+### Place a Block
 
 ```java
-import me.chyxelmc.mmoblock.api.MMOBlockApi;
-import org.bukkit.Bukkit;
-
 MMOBlockApi api = MMOBlockApi.get();
 
 if (api != null) {
     api.getBlockService().placeBlock(
         "exampleEntity",
         Bukkit.getWorlds().get(0),
-        100,
-        64,
-        100,
+        100, 64, 100,
         "north"
     );
 }
 ```
 
-### Java Example — Listen to Block Events
+### Listen to Events
 
 ```java
-import me.chyxelmc.mmoblock.api.event.BlockMineEvent;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-
-public class MyListener implements Listener {
-
-    @EventHandler
-    public void onBlockMine(BlockMineEvent e) {
-        if (e.isCompleted()) {
-            e.getPlayer().sendMessage(
-                "You finished mining: " + e.getDefinition().getId()
-            );
-        }
+@EventHandler
+public void onBlockMine(BlockMineEvent e) {
+    if (e.isCompleted()) {
+        e.getPlayer().sendMessage(
+            "You finished mining: " + e.getDefinition().getId()
+        );
     }
 }
 ```
 
 ---
 
-## 🧩 For Contributors
+## 🤝 Contributing
 
-* Use the `mmoblock-api` module when depending on the API from other modules to avoid cyclic dependencies.
-* Register `NmsAdapter` implementations under `META-INF/services` for runtime discovery.
-* Run module-specific tests before opening a PR.
+1. Use `mmoblock-api` for all API access — avoid touching internals
+2. Register your `NmsAdapter` implementations properly
+3. Run tests before opening a pull request
+4. Follow existing code style and module structure
 
 ---
 
 ## 📜 License & Support
 
-* Website: https://chyxelmc.me
-* Report issues via GitHub Issues.
+- 🌐 **Website:** [chyxelmc.me](https://chyxelmc.me)
+- 🐛 **Issues:** [GitHub Issues](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
 
-Thanks for using and contributing to MMOBlock!
+---
+
+<div align="center">
+
+❤️ **Thanks for using MMOBlock!**
+
+</div>
