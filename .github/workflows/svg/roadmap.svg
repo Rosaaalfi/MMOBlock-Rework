@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="860" height="1100" viewBox="0 0 860 1100">
+  <foreignObject width="860" height="1100">
+    <div xmlns="http://www.w3.org/1999/xhtml">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .wrap {
+          width: 860px;
+          background: #0d1117;
+          font-family: 'Segoe UI', system-ui, sans-serif;
+          padding: 32px 40px;
+          color: #e6edf3;
+        }
+        .section-title {
+          font-size: 20px;
+          font-weight: 600;
+          color: #f0f6fc;
+          margin-bottom: 24px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .section-title::before {
+          content: '';
+          display: inline-block;
+          width: 4px;
+          height: 20px;
+          background: #7ee787;
+          border-radius: 2px;
+        }
+        .legend {
+          display: flex;
+          gap: 20px;
+          margin-bottom: 28px;
+          padding: 10px 16px;
+          background: #161b22;
+          border: 1px solid #30363d;
+          border-radius: 8px;
+          width: fit-content;
+        }
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          color: #8b949e;
+        }
+        .dot-done  { width: 12px; height: 12px; border-radius: 50%; background: #238636; border: 2px solid #2ea043; flex-shrink: 0; }
+        .dot-wip   { width: 12px; height: 12px; border-radius: 50%; background: #9e6a03; border: 2px solid #d29922; flex-shrink: 0; }
+        .dot-undone{ width: 12px; height: 12px; border-radius: 50%; border: 2px solid #30363d; flex-shrink: 0; }
+
+        .phase {
+          background: #161b22;
+          border: 1px solid #30363d;
+          border-radius: 10px;
+          padding: 18px 22px;
+          margin-bottom: 14px;
+        }
+        .phase-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .phase-title {
+          font-size: 15px;
+          font-weight: 600;
+          color: #f0f6fc;
+        }
+        .pill {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 3px 12px;
+          border-radius: 999px;
+        }
+        .pill-green  { background: rgba(46,160,67,0.2); color: #7ee787; border: 1px solid rgba(46,160,67,0.4); }
+        .pill-blue   { background: rgba(56,139,253,0.15); color: #79c0ff; border: 1px solid rgba(56,139,253,0.3); }
+        .pill-purple { background: rgba(188,140,255,0.15); color: #d2a8ff; border: 1px solid rgba(188,140,255,0.3); }
+        .pill-gray   { background: rgba(139,148,158,0.1); color: #8b949e; border: 1px solid #30363d; }
+
+        .phase-bar-wrap {
+          width: 100%;
+          height: 3px;
+          background: #21262d;
+          border-radius: 2px;
+          margin-bottom: 14px;
+        }
+        .phase-bar {
+          height: 3px;
+          border-radius: 2px;
+        }
+        .bar-green  { background: #2ea043; }
+        .bar-blue   { background: #388bfd; }
+        .bar-purple { background: #bc8cff; }
+        .bar-gray   { background: #30363d; width: 0%; }
+
+        .items { display: flex; flex-direction: column; gap: 8px; }
+        .item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 13px;
+          color: #c9d1d9;
+        }
+        .subgroup {
+          font-size: 11px;
+          font-weight: 600;
+          color: #8b949e;
+          text-transform: uppercase;
+          letter-spacing: 0.6px;
+          margin: 10px 0 4px 24px;
+        }
+        .divider {
+          height: 1px;
+          background: #21262d;
+          margin: 10px 0;
+        }
+      </style>
+      <div class="wrap">
+        <div class="section-title">🗺️ Development Roadmap</div>
+
+        <div class="legend">
+          <div class="legend-item"><div class="dot-done"></div> Done</div>
+          <div class="legend-item"><div class="dot-wip"></div> In Progress</div>
+          <div class="legend-item"><div class="dot-undone"></div> Not Started</div>
+        </div>
+
+        <!-- Phase 1 -->
+        <div class="phase">
+          <div class="phase-header">
+            <div class="phase-title">🛠️ Phase 1 — Foundation</div>
+            <span class="pill pill-green">50%</span>
+          </div>
+          <div class="phase-bar-wrap"><div class="phase-bar bar-green" style="width:50%"></div></div>
+          <div class="items">
+            <div class="item"><div class="dot-done"></div> Add legacy support</div>
+            <div class="item"><div class="dot-wip"></div> Stabilize base version 1.19.4</div>
+            <div class="item"><div class="dot-undone"></div> Stabilize other supported versions</div>
+          </div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="phase">
+          <div class="phase-header">
+            <div class="phase-title">⚙️ Phase 2 — Core Compatibility</div>
+            <span class="pill pill-blue">50%</span>
+          </div>
+          <div class="phase-bar-wrap"><div class="phase-bar bar-blue" style="width:50%"></div></div>
+          <div class="items">
+            <div class="item"><div class="dot-wip"></div> Multi-thread safe support</div>
+            <div class="item"><div class="dot-wip"></div> Single-thread support</div>
+            <div class="item"><div class="dot-undone"></div> Full Folia compatibility</div>
+            <div class="item"><div class="dot-undone"></div> Full Bukkit compatibility</div>
+            <div class="item"><div class="dot-undone"></div> Full Paper compatibility</div>
+          </div>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="phase">
+          <div class="phase-header">
+            <div class="phase-title">✨ Phase 3 — Feature Expansion</div>
+            <span class="pill pill-purple">50%</span>
+          </div>
+          <div class="phase-bar-wrap"><div class="phase-bar bar-purple" style="width:50%"></div></div>
+          <div class="items">
+            <div class="item"><div class="dot-wip"></div> Essentials-like utility systems</div>
+            <div class="item"><div class="dot-wip"></div> Performance optimization</div>
+          </div>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="phase">
+          <div class="phase-header">
+            <div class="phase-title">🧩 Phase 4 — Integrations</div>
+            <span class="pill pill-gray">0%</span>
+          </div>
+          <div class="phase-bar-wrap"><div class="phase-bar bar-gray"></div></div>
+          <div class="items">
+            <div class="subgroup">MMO Ecosystem</div>
+            <div class="item"><div class="dot-undone"></div> MMOItems integration</div>
+            <div class="item"><div class="dot-undone"></div> MMOCore integration</div>
+            <div class="divider"></div>
+            <div class="subgroup">Resource &amp; Model Systems</div>
+            <div class="item"><div class="dot-undone"></div> ItemsAdder integration</div>
+            <div class="item"><div class="dot-undone"></div> Nexo integration</div>
+            <div class="item"><div class="dot-undone"></div> Oraxen integration</div>
+            <div class="item"><div class="dot-undone"></div> CraftEngine integration</div>
+            <div class="item"><div class="dot-undone"></div> ModelEngine integration</div>
+            <div class="item"><div class="dot-undone"></div> BetterModel integration</div>
+          </div>
+        </div>
+
+        <!-- Phase 5 -->
+        <div class="phase">
+          <div class="phase-header">
+            <div class="phase-title">🧪 Phase 5 — Testing</div>
+            <span class="pill pill-gray">0%</span>
+          </div>
+          <div class="phase-bar-wrap"><div class="phase-bar bar-gray"></div></div>
+          <div class="items">
+            <div class="item"><div class="dot-undone"></div> Cross-version testing</div>
+            <div class="item"><div class="dot-undone"></div> Stress testing</div>
+            <div class="item"><div class="dot-undone"></div> Compatibility validation</div>
+            <div class="item"><div class="dot-undone"></div> Performance benchmarking</div>
+          </div>
+        </div>
+
+        <!-- Final Phase -->
+        <div class="phase">
+          <div class="phase-header">
+            <div class="phase-title">🚀 Final Phase — Release</div>
+            <span class="pill pill-gray">0%</span>
+          </div>
+          <div class="phase-bar-wrap"><div class="phase-bar bar-gray"></div></div>
+          <div class="items">
+            <div class="item"><div class="dot-undone"></div> Production-ready build</div>
+            <div class="item"><div class="dot-undone"></div> Final bug fixing</div>
+            <div class="item"><div class="dot-undone"></div> Documentation polishing</div>
+            <div class="item"><div class="dot-undone"></div> Public release</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </foreignObject>
+</svg>
