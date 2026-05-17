@@ -47,54 +47,79 @@
 
 ---
 
-## 🗺️ Development Roadmap
+## Development Roadmap
+
+> ⬤ Completed  
+> ◐ In Progress  
+> ◯ Not Started  
+
+---
 
 ### Phase 1 — Foundation *(50% Complete)*
-- [x] Add legacy support
-- [~] Stabilize base version `1.19.4`
-- [ ] Stabilize other supported Minecraft versions
+
+- ⬤ Add legacy support
+- ◐ Stabilize base version `1.19.4`
+- ◯ Stabilize other supported Minecraft versions
+
+---
 
 ### Phase 2 — Core Compatibility *(50% Complete)*
-- [~] Add multi-thread safe support
-- [~] Add single-thread support
-- [ ] Ensure full compatibility with:
+
+- ◐ Add multi-thread safe support
+- ◐ Add single-thread support
+- ◯ Ensure full compatibility with:
   - Folia
   - Bukkit
   - Paper
 
+---
+
 ### Phase 3 — Feature Expansion *(50% Complete)*
-- [~] Add Essentials-like utility features
-- [~] Improve optimization and performance
+
+- ◐ Add Essentials-like utility features
+- ◐ Improve optimization and performance
+
+---
 
 ### Phase 4 — Plugin & Model Integrations
 
 #### MMO Ecosystem
-- [ ] MMOItems integration
-- [ ] MMOCore integration
+
+- ◯ MMOItems integration
+- ◯ MMOCore integration
 
 #### Resource & Model Systems
-- [ ] ItemsAdder integration
-- [ ] Nexo integration
-- [ ] Oraxen integration
-- [ ] CraftEngine integration
-- [ ] ModelEngine integration
-- [ ] BetterModel integration
 
-### Phase 5 — Testing & Validation
-- [ ] Cross-version testing
-- [ ] Thread stress testing
-- [ ] Plugin compatibility validation
-- [ ] Performance benchmarking
-
-### Final Phase — Release
-- [ ] Production-ready build
-- [ ] Final bug fixing
-- [ ] Documentation & changelog polishing
-- [ ] Public release 🚀
-
-> **Note:** The roadmap may evolve over time as development priorities shift and new integrations/features are planned.
+- ◯ ItemsAdder integration
+- ◯ Nexo integration
+- ◯ Oraxen integration
+- ◯ CraftEngine integration
+- ◯ ModelEngine integration
+- ◯ BetterModel integration
 
 ---
+
+### Phase 5 — Testing & Validation
+
+- ◯ Cross-version testing
+- ◯ Thread stress testing
+- ◯ Plugin compatibility validation
+- ◯ Performance benchmarking
+
+---
+
+### Final Phase — Release
+
+- ◯ Production-ready build
+- ◯ Final bug fixing
+- ◯ Documentation & changelog polishing
+- ◯ Public release
+
+---
+
+> **Note:** The roadmap may evolve over time as development priorities shift and new integrations/features are planned.
+---
+
 
 ## 🔧 Quick Usage
 
