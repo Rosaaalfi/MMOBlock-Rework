@@ -1,6 +1,7 @@
 <div align="center">
 
 ![](https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png)
+
 # MMOBlock
 *- Unblock the Fun, One Click at a Time with MMOBlock -*
 
@@ -11,131 +12,193 @@
 
 </div>
 
-**MMOBlock** is a modular plugin built for Paper-based Minecraft servers and compatible server software. To ensure peak performance, stability, and seamless updates, the plugin's structure is divided into several independent modules that work together seamlessly.
+---
+
+## 📖 About MMOBlock
+
+**MMOBlock** is a modular plugin built for Paper-based Minecraft servers and compatible server software.  
+The project is designed with scalability, maintainability, and cross-version compatibility in mind.
+
+To ensure maximum stability and performance, the repository is divided into multiple independent modules that work together seamlessly.
 
 ---
 
-## 📚 Repository Module Overview
+# 📚 Repository Module Overview
 
-* **`mmoblock-api`**
-  The public bridge for third-party developers who want to integrate their own features with MMOBlock's core functionality.
+| Module | Description |
+|---|---|
+| `mmoblock-api` | Public API bridge for third-party developers. |
+| `nms-loader` | Internal engine responsible for integrations, holograms, and runtime systems. |
+| `plugin` | Main plugin module handling gameplay logic and player interactions. |
+| `nms-mojang-v*` / `nms-spigot-v*` / `nms-v*` | Minecraft version compatibility layers. |
+| `platform/` | Thread-safe abstraction layer for Paper/Folia compatibility. |
 
-* **`nms-loader`**
-  The background engine responsible for automatic system integration, running visual elements like holograms, and managing internal components.
-
-* **`plugin`**
-  The main heart of `MMOBlock` that handles overall operations, including loading configurations, managing player interactions, and running core game features.
-
-* **`nms-mojang-v`** / **`nms-spigot-v`** / **`nms-v`** / **`nms-v26_1`**
-  The version-compatibility modules. These ensure that MMOBlock runs smoothly and remains fully compatible across many different versions of Minecraft.
-
-* **`platform/`**
-  The performance optimization layer that ensures the plugin operates safely and efficiently on modern server software (such as Paper and Folia).
-
-> **Development Note:** If you are making adjustments for a specific Minecraft version, simply navigate to the module that matches your target server version (e.g., use the `nms-v1_21_4` folder for Minecraft 1.21.4).
+> **Development Note:**  
+> If you are working on a specific Minecraft version, navigate to the corresponding NMS module (e.g., `nms-v1_21_4`).
 
 ---
 
-## ✨ Key Features
+# ✨ Features
 
-- Custom block entities configured via YAML.
-- Configurable mining system tied to tools and actions.
-- Custom drops with chances and command-based rewards.
-- Holograms for displaying block status and progress.
-- Flexible persistence support (H2/MySQL/Redis).
-- 3D model integration support.
+- Custom block entities via YAML configuration
+- Advanced mining system
+- Tool-based mechanics
+- Custom drops & reward commands
+- Hologram support
+- Multi-database support (H2 / MySQL / Redis)
+- 3D model compatibility
+- Cross-version compatibility architecture
+- Paper & Folia support layer
 
 ---
 
-## 🗺️ Development Roadmap
+# 🗺️ Development Roadmap
 
-### 🛠️ Phase 1 — Foundation `50%`
-- 🟢 Add legacy support
-- 🟡 Stabilize base version `1.19.4`
-- ⚪ Stabilize other supported Minecraft versions
+<p align="center">
+  <img src="https://img.shields.io/badge/Completed-2ea043?style=for-the-badge">
+  <img src="https://img.shields.io/badge/In_Progress-d29922?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Not_Started-6e7681?style=for-the-badge">
+</p>
 
-### ⚙️ Phase 2 — Core Compatibility `50%`
-- 🟡 Add multi-thread safe support
-- 🟡 Add single-thread support
-- ⚪ Ensure full compatibility with:
+<table>
+<tr>
+<td width="50%" valign="top">
+
+## 🛠️ Phase 1 — Foundation
+
+<img src="https://img.shields.io/badge/Progress-50%25-238636?style=flat-square">
+
+<br><br>
+
+- <img src="https://img.shields.io/badge/-2ea043?style=flat-square"> Add legacy support  
+- <img src="https://img.shields.io/badge/-d29922?style=flat-square"> Stabilize base version `1.19.4`  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Stabilize other supported Minecraft versions  
+
+</td>
+<td width="50%" valign="top">
+
+## ⚙️ Phase 2 — Core Compatibility
+
+<img src="https://img.shields.io/badge/Progress-50%25-1f6feb?style=flat-square">
+
+<br><br>
+
+- <img src="https://img.shields.io/badge/-d29922?style=flat-square"> Add multi-thread safe support  
+- <img src="https://img.shields.io/badge/-d29922?style=flat-square"> Add single-thread support  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Ensure full compatibility with:
   - Folia
   - Bukkit
   - Paper
 
-### ✨ Phase 3 — Feature Expansion `50%`
-- 🟡 Add Essentials-like utility features
-- 🟡 Improve optimization and performance
+</td>
+</tr>
 
-### 🧩 Phase 4 — Plugin & Model Integrations
+<tr>
+<td width="50%" valign="top">
 
-#### MMO Ecosystem
-- ⚪ MMOItems integration
-- ⚪ MMOCore integration
+## ✨ Phase 3 — Feature Expansion
 
-#### Resource & Model Systems
-- ⚪ ItemsAdder integration
-- ⚪ Nexo integration
-- ⚪ Oraxen integration
-- ⚪ CraftEngine integration
-- ⚪ ModelEngine integration
-- ⚪ BetterModel integration
+<img src="https://img.shields.io/badge/Progress-50%25-8957e5?style=flat-square">
 
-### 🧪 Phase 5 — Testing & Validation
-- ⚪ Cross-version testing
-- ⚪ Thread stress testing
-- ⚪ Plugin compatibility validation
-- ⚪ Performance benchmarking
+<br><br>
 
-### 🚀 Final Phase — Release
-- ⚪ Production-ready build
-- ⚪ Final bug fixing
-- ⚪ Documentation & changelog polishing
-- ⚪ Public release
+- <img src="https://img.shields.io/badge/-d29922?style=flat-square"> Add Essentials-like utility features  
+- <img src="https://img.shields.io/badge/-d29922?style=flat-square"> Improve optimization and performance  
+
+</td>
+<td width="50%" valign="top">
+
+## 🧩 Phase 4 — Plugin & Model Integrations
+
+### MMO Ecosystem
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> MMOItems integration  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> MMOCore integration  
+
+### Resource & Model Systems
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> ItemsAdder integration  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Nexo integration  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Oraxen integration  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> CraftEngine integration  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> ModelEngine integration  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> BetterModel integration  
+
+</td>
+</tr>
+
+<tr>
+<td width="50%" valign="top">
+
+## 🧪 Phase 5 — Testing & Validation
+
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Cross-version testing  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Thread stress testing  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Plugin compatibility validation  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Performance benchmarking  
+
+</td>
+<td width="50%" valign="top">
+
+## 🚀 Final Phase — Release
+
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Production-ready build  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Final bug fixing  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Documentation & changelog polishing  
+- <img src="https://img.shields.io/badge/-6e7681?style=flat-square"> Public release  
+
+</td>
+</tr>
+</table>
+
+> **Note:** The roadmap may evolve over time as development priorities shift and new integrations/features are planned.
 
 ---
 
-### Legend
-- 🟢 Completed
-- 🟡 In Progress
-- ⚪ Not Started
+# 🔧 Quick Usage
 
----
-
-
-## 🔧 Quick Usage
-
-1. Build the project with Gradle:
+## Build the Project
 
 ```bash
 ./gradlew build
 ```
 
-2. Install the plugin jar from the `plugin` module into your server's `plugins/` folder.
+## Installation
 
-3. Configure `plugins/MMOBlock/`:
-   - `blocks/`
-   - `drops/`
-   - `tools/`
+1. Build the project using Gradle.
+2. Move the generated plugin jar from the `plugin` module into your server's `plugins/` folder.
+3. Configure MMOBlock inside:
+
+```text
+plugins/MMOBlock/
+```
+
+Folders:
+- `blocks/`
+- `drops/`
+- `tools/`
 
 ---
 
-## 📦 Published Artifacts & Coordinates
+# 📦 Published Artifacts
 
-The `mmoblock-api` artifact is published to Maven Central.
+The `mmoblock-api` artifact is published on Maven Central.
 
-* **GroupId:** `me.chyxelmc`
-* **ArtifactId:** `mmoblock-api`
-* **Version:** `3.0.5-RELEASE`
+| Property | Value |
+|---|---|
+| GroupId | `me.chyxelmc` |
+| ArtifactId | `mmoblock-api` |
+| Version | `3.0.5-RELEASE` |
 
-Add the dependency to your project.
+---
 
-### Gradle (Kotlin DSL)
+## Gradle (Kotlin DSL)
 
 ```kotlin
 implementation("me.chyxelmc:mmoblock-api:3.0.5-RELEASE")
 ```
 
-### Maven
+---
+
+## Maven
 
 ```xml
 <dependency>
@@ -145,19 +208,11 @@ implementation("me.chyxelmc:mmoblock-api:3.0.5-RELEASE")
 </dependency>
 ```
 
-> *Note: The repository's development version in `gradle.properties` is `3.0.0` (snapshots). Snapshots are published to Sonatype snapshots; releases must follow the official release flow.*
-
 ---
 
-## Example: Using the API
+# 🧩 API Examples
 
-### Dependency (Gradle Kotlin DSL)
-
-```kotlin
-implementation("me.chyxelmc:mmoblock-api:3.0.5-RELEASE")
-```
-
-### Java Example — Place a Block Programmatically
+## Place a Block Programmatically
 
 ```java
 import me.chyxelmc.mmoblock.api.MMOBlockApi;
@@ -177,7 +232,9 @@ if (api != null) {
 }
 ```
 
-### Java Example — Listen to Block Events
+---
+
+## Listen to Block Events
 
 ```java
 import me.chyxelmc.mmoblock.api.event.BlockMineEvent;
@@ -199,17 +256,23 @@ public class MyListener implements Listener {
 
 ---
 
-## 🧩 For Contributors
+# 🤝 Contributing
 
-* Use the `mmoblock-api` module when depending on the API from other modules to avoid cyclic dependencies.
-* Register `NmsAdapter` implementations under `META-INF/services` for runtime discovery.
-* Run module-specific tests before opening a PR.
+- Use `mmoblock-api` when depending on the API from other modules.
+- Register `NmsAdapter` implementations under `META-INF/services`.
+- Run module-specific tests before opening pull requests.
 
 ---
 
-## 📜 License & Support
+# 📜 License & Support
 
-* Website: https://chyxelmc.me
-* Report issues via GitHub Issues.
+- Website: https://chyxelmc.me
+- Report issues via GitHub Issues
 
-Thanks for using and contributing to MMOBlock!
+---
+
+<div align="center">
+
+### Thanks for using and contributing to MMOBlock ❤️
+
+</div>
