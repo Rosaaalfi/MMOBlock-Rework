@@ -20,11 +20,11 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class NodeRuntimeService {
@@ -42,8 +42,8 @@ public final class NodeRuntimeService {
     private final DataCache dataCache;
     private final HologramRuntimeService hologramRuntimeService;
 
-    private final Map<UUID, PlacedNode> nodesById = new HashMap<>();
-    private final Map<NodeKey, UUID> nodesByKey = new HashMap<>();
+    private final Map<UUID, PlacedNode> nodesById = new ConcurrentHashMap<>();
+    private final Map<NodeKey, UUID> nodesByKey = new ConcurrentHashMap<>();
     private SchedulerTask updateTask;
 
     public NodeRuntimeService(

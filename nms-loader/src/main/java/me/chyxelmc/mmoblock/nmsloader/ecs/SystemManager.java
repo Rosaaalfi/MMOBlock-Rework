@@ -23,5 +23,13 @@ public final class SystemManager {
             s.tick(entityManager, tick);
         }
     }
+
+    @SuppressWarnings("unchecked")
+    public <T extends SystemBase> T getSystem(final Class<T> type) {
+        for (final SystemBase s : systems) {
+            if (type.isInstance(s)) return (T) s;
+        }
+        return null;
+    }
 }
 

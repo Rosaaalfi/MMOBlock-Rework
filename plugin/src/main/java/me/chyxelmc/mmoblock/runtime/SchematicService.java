@@ -124,6 +124,7 @@ public final class SchematicService {
             clearSchematic(entry.getKey(), world);
         }
         this.activeSchematicBlocks.clear();
+        this.schematicCache.clear();
     }
 
     private SchematicData loadSchematic(final String schematicName) {

@@ -172,7 +172,13 @@ public final class MMOBlock extends JavaPlugin{
         );
         getServer().getPluginManager().registerEvents(new FakeBlockSyncListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService), this);
         getServer().getPluginManager().registerEvents(new ChunkLifecycleListener(this.blockRuntimeService, this.nodeRuntimeService), this);
-        getServer().getPluginManager().registerEvents(new HologramCleanupListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService), this);
+        final java.util.function.Consumer<java.util.UUID> hologramCleanup = this.systemManager != null
+                ? playerId -> {
+                    final me.chyxelmc.mmoblock.nmsloader.ecs.systems.HologramSystem holo = this.systemManager.getSystem(me.chyxelmc.mmoblock.nmsloader.ecs.systems.HologramSystem.class);
+                    if (holo != null) holo.removePlayerEntries(playerId);
+                }
+                : null;
+        getServer().getPluginManager().registerEvents(new HologramCleanupListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService, hologramCleanup), this);
 
         this.runtimeCoordinator.restoreFromPersistence();
 
@@ -314,6 +320,7 @@ public final class MMOBlock extends JavaPlugin{
         this.entityManager = null;
         this.systemManager = null;
         this.nmsAdapter = null;
+        me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.clear();
     }
 
     private void syncPlayerVisualsNowAndDelayed(final Player player) {

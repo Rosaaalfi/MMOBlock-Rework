@@ -556,6 +556,9 @@ public final class BlockRuntimeService {
         this.hologramRuntimeService.shutdown();
         this.schematicService.clearAll();
         this.ecsState.clear();
+        this.transientBlocks.clear();
+        this.suppressDeadHologram.clear();
+        this.nodeRandomLocationContexts.clear();
     }
 
     private void startLookRaytraceTask() {

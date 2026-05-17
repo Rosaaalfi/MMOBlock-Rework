@@ -13,6 +13,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -173,6 +174,13 @@ public final class InteractionListener implements Listener {
         }
         // Legacy click also should keep fake blocks visible
         this.runtimeService.syncFakeBlocksForPlayer(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onQuit(final PlayerQuitEvent event) {
+        final java.util.UUID playerId = event.getPlayer().getUniqueId();
+        this.legacyRightClickDebounce.remove(playerId);
+        this.legacyLeftClickDebounce.remove(playerId);
     }
 
     @EventHandler

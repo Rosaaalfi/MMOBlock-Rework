@@ -69,6 +69,10 @@ public final class HologramSystem extends SystemBase {
         }
     }
 
+    public void removePlayerEntries(final UUID playerId) {
+        sentRevisions.keySet().removeIf(key -> key.playerUniqueId().equals(playerId));
+    }
+
     private record SyncKey(UUID playerUniqueId, UUID hologramUniqueId) {
     }
 }

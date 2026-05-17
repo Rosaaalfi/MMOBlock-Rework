@@ -10,18 +10,26 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.Plugin;
 
+import java.util.UUID;
+
 public final class HologramCleanupListener implements Listener {
 
     private final Plugin plugin;
     private final Scheduler scheduler;
     private final BlockRuntimeService runtimeService;
     private final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService;
+    private final java.util.function.Consumer<java.util.UUID> onPlayerQuit;
 
     public HologramCleanupListener(final Plugin plugin, final Scheduler scheduler, final BlockRuntimeService runtimeService, final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService) {
+        this(plugin, scheduler, runtimeService, nodeRuntimeService, null);
+    }
+
+    public HologramCleanupListener(final Plugin plugin, final Scheduler scheduler, final BlockRuntimeService runtimeService, final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService, final java.util.function.Consumer<java.util.UUID> onPlayerQuit) {
         this.plugin = plugin;
         this.scheduler = scheduler;
         this.runtimeService = runtimeService;
         this.nodeRuntimeService = nodeRuntimeService;
+        this.onPlayerQuit = onPlayerQuit;
     }
 
     @EventHandler
@@ -34,9 +42,16 @@ public final class HologramCleanupListener implements Listener {
 
     @EventHandler
     public void onQuit(final PlayerQuitEvent event) {
-        this.runtimeService.handlePlayerQuit(event.getPlayer().getUniqueId());
+        final UUID playerId = event.getPlayer().getUniqueId();
+        this.runtimeService.handlePlayerQuit(playerId);
         if (this.nodeRuntimeService != null) {
-            this.nodeRuntimeService.handlePlayerQuit(event.getPlayer().getUniqueId());
+            this.nodeRuntimeService.handlePlayerQuit(playerId);
+        }
+        if (this.onPlayerQuit != null) {
+            try {
+                this.onPlayerQuit.accept(playerId);
+            } catch (final Throwable ignored) {
+            }
         }
         // Uninject netty handler for this player to avoid leaks (best-effort)
         try {

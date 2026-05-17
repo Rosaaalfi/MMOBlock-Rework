@@ -15,7 +15,7 @@ public final class FoliaSafeScheduler {
     private static final MethodHandle GLOBAL_SCHEDULER_RUN;
     private static final MethodHandle GLOBAL_SCHEDULER_RUN_DELAYED;
     private static final MethodHandle GET_GLOBAL_REGION_SCHEDULER;
-    private static Consumer<Object> wrapTask;
+
 
     static {
         boolean folia = false;
@@ -85,11 +85,6 @@ public final class FoliaSafeScheduler {
     }
 
     private static Consumer<Object> getWrapped(final Runnable task) {
-        Consumer<Object> w = wrapTask;
-        if (w == null) {
-            w = ignored -> task.run();
-            wrapTask = w;
-        }
-        return w;
+        return ignored -> task.run();
     }
 }
