@@ -19,12 +19,16 @@
 
 * **`mmoblock-api`**
   The public bridge for third-party developers who want to integrate their own features with MMOBlock's core functionality.
+
 * **`nms-loader`**
   The background engine responsible for automatic system integration, running visual elements like holograms, and managing internal components.
+
 * **`plugin`**
   The main heart of `MMOBlock` that handles overall operations, including loading configurations, managing player interactions, and running core game features.
+
 * **`nms-mojang-v*` / `nms-spigot-v*` / `nms-v*` / `nms-v26_1**`
   The version-compatibility modules. These ensure that MMOBlock runs smoothly and remains fully compatible across many different versions of Minecraft.
+
 * **`platform/`**
   The performance optimization layer that ensures the plugin operates safely and efficiently on modern server software (such as Paper and Folia).
 
@@ -32,13 +36,63 @@
 
 ---
 
-## ✨ Key Features (at a glance)
+## ✨ Key Features
 
 - Custom block entities configured via YAML.
 - Configurable mining system tied to tools and actions.
 - Custom drops with chances and command-based rewards.
 - Holograms for displaying block status and progress.
-- Flexible persistence (H2/MySQL/Redis) and 3D model support.
+- Flexible persistence support (H2/MySQL/Redis).
+- 3D model integration support.
+
+---
+
+## 🗺️ Development Roadmap
+
+### Phase 1 — Foundation *(50% Complete)*
+- [x] Add legacy support
+- [~] Stabilize base version `1.19.4`
+- [ ] Stabilize other supported Minecraft versions
+
+### Phase 2 — Core Compatibility *(50% Complete)*
+- [~] Add multi-thread safe support
+- [~] Add single-thread support
+- [ ] Ensure full compatibility with:
+  - Folia
+  - Bukkit
+  - Paper
+
+### Phase 3 — Feature Expansion *(50% Complete)*
+- [~] Add Essentials-like utility features
+- [~] Improve optimization and performance
+
+### Phase 4 — Plugin & Model Integrations
+
+#### MMO Ecosystem
+- [ ] MMOItems integration
+- [ ] MMOCore integration
+
+#### Resource & Model Systems
+- [ ] ItemsAdder integration
+- [ ] Nexo integration
+- [ ] Oraxen integration
+- [ ] CraftEngine integration
+- [ ] ModelEngine integration
+- [ ] BetterModel integration
+
+### Phase 5 — Testing & Validation
+- [ ] Cross-version testing
+- [ ] Thread stress testing
+- [ ] Plugin compatibility validation
+- [ ] Performance benchmarking
+
+### Final Phase — Release
+- [ ] Production-ready build
+- [ ] Final bug fixing
+- [ ] Documentation & changelog polishing
+- [ ] Public release 🚀
+
+> **Note:** The roadmap may evolve over time as development priorities shift and new integrations/features are planned.
 
 ---
 
@@ -48,11 +102,14 @@
 
 ```bash
 ./gradlew build
-
 ```
 
 2. Install the plugin jar from the `plugin` module into your server's `plugins/` folder.
-3. Configure `plugins/MMOBlock/` (folders: `blocks/`, `drops/`, `tools/`).
+
+3. Configure `plugins/MMOBlock/`:
+   - `blocks/`
+   - `drops/`
+   - `tools/`
 
 ---
 
@@ -64,16 +121,15 @@ The `mmoblock-api` artifact is published to Maven Central.
 * **ArtifactId:** `mmoblock-api`
 * **Version:** `3.0.5-RELEASE`
 
-Add the dependency to your project:
+Add the dependency to your project.
 
-* Gradle (Kotlin DSL):
+### Gradle (Kotlin DSL)
 
 ```kotlin
 implementation("me.chyxelmc:mmoblock-api:3.0.5-RELEASE")
-
 ```
 
-* Maven:
+### Maven
 
 ```xml
 <dependency>
@@ -81,39 +137,41 @@ implementation("me.chyxelmc:mmoblock-api:3.0.5-RELEASE")
     <artifactId>mmoblock-api</artifactId>
     <version>3.0.5-RELEASE</version>
 </dependency>
-
 ```
 
-*Note: The repository's development version in `gradle.properties` is `3.0.0` (snapshots). Snapshots are published to Sonatype snapshots; releases must be published via the release flow.*
+> *Note: The repository's development version in `gradle.properties` is `3.0.0` (snapshots). Snapshots are published to Sonatype snapshots; releases must follow the official release flow.*
 
 ---
 
 ## Example: Using the API
 
-Below are short examples showing how to add the `mmoblock-api` dependency and use common API features in your project.
-
-Dependency (Gradle Kotlin DSL):
+### Dependency (Gradle Kotlin DSL)
 
 ```kotlin
 implementation("me.chyxelmc:mmoblock-api:3.0.5-RELEASE")
-
 ```
 
-Java example — place a block programmatically:
+### Java Example — Place a Block Programmatically
 
 ```java
 import me.chyxelmc.mmoblock.api.MMOBlockApi;
 import org.bukkit.Bukkit;
 
-// inside your plugin code
 MMOBlockApi api = MMOBlockApi.get();
-if (api != null) {
-    api.getBlockService().placeBlock("exampleEntity", Bukkit.getWorlds().get(0), 100, 64, 100, "north");
-}
 
+if (api != null) {
+    api.getBlockService().placeBlock(
+        "exampleEntity",
+        Bukkit.getWorlds().get(0),
+        100,
+        64,
+        100,
+        "north"
+    );
+}
 ```
 
-Java example — listen to block events:
+### Java Example — Listen to Block Events
 
 ```java
 import me.chyxelmc.mmoblock.api.event.BlockMineEvent;
@@ -121,14 +179,16 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
 public class MyListener implements Listener {
+
     @EventHandler
     public void onBlockMine(BlockMineEvent e) {
         if (e.isCompleted()) {
-            e.getPlayer().sendMessage("You finished mining: " + e.getDefinition().getId());
+            e.getPlayer().sendMessage(
+                "You finished mining: " + e.getDefinition().getId()
+            );
         }
     }
 }
-
 ```
 
 ---
@@ -146,6 +206,4 @@ public class MyListener implements Listener {
 * Website: https://chyxelmc.me
 * Report issues via GitHub Issues.
 
-Thanks for using and contributing to MMOBlock!kembali agar terlihat rapi saat di-render GitHub.
-
-```
+Thanks for using and contributing to MMOBlock!
