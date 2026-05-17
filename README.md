@@ -1,4 +1,3 @@
-
 <div align="center">
 
 <img src="https://raw.githubusercontent.com/Rosaaalfi/MMOBlock-Rework/refs/heads/support-old-clients/plugin/src/main/resources/icon.png" width="140" alt="MMOBlock Logo"/>
@@ -20,7 +19,7 @@
 
 # 📖 About
 
-**MMOBlock** is a modular Minecraft plugin designed for Paper-based servers and modern server software such as Folia.
+**MMOBlock** is a modular Minecraft plugin designed for modern Paper-based servers and compatible server software such as Folia.
 
 The project focuses on:
 - Cross-version compatibility
@@ -29,7 +28,7 @@ The project focuses on:
 - Performance optimization
 - Extensible API integrations
 
-MMOBlock is structured into multiple isolated modules to improve maintainability, scalability, and long-term support.
+The repository is separated into multiple independent modules to ensure scalability, maintainability, and long-term support.
 
 ---
 
@@ -37,27 +36,27 @@ MMOBlock is structured into multiple isolated modules to improve maintainability
 
 | Module | Description |
 |---|---|
-| `mmoblock-api` | Public API for third-party integrations |
+| `mmoblock-api` | Public API bridge for third-party developers |
 | `plugin` | Main gameplay & plugin logic |
 | `nms-loader` | Internal runtime loader and adapters |
 | `nms-v*` | Minecraft version compatibility layers |
-| `platform/` | Thread-safe Paper/Folia abstraction layer |
+| `platform/` | Thread-safe abstraction layer for Paper/Folia |
 
-> If you are developing for a specific Minecraft version, use the corresponding `nms-v*` module.
+> If you are working on a specific Minecraft version, navigate to the corresponding `nms-v*` module.
 
 ---
 
 # ✨ Features
 
 - YAML-based custom block configuration
-- Advanced mining system
+- Advanced mining systems
 - Tool-based mechanics
 - Custom rewards & drops
 - Hologram support
-- H2 / MySQL / Redis support
+- Multi-database support (H2 / MySQL / Redis)
 - 3D model integrations
-- Multi-version compatibility
-- Folia & Paper support layer
+- Cross-version compatibility
+- Paper & Folia support
 - Developer-friendly API
 
 ---
@@ -69,54 +68,61 @@ MMOBlock is structured into multiple isolated modules to improve maintainability
 <td width="50%" valign="top">
 
 ## 🛠️ Phase 1 — Foundation
+
 <img src="https://img.shields.io/badge/Progress-50%25-238636?style=flat-square">
+
 <br><br>
 
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#2ea043"/></svg> Add legacy support  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#d29922"/></svg> Stabilize base version `1.19.4`  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Stabilize other supported versions  
-</td>
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="12"> Add legacy support  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Stabilize base version `1.19.4`  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Stabilize other supported versions  
 
+</td>
 <td width="50%" valign="top">
 
 ## ⚙️ Phase 2 — Core Compatibility
+
 <img src="https://img.shields.io/badge/Progress-50%25-1f6feb?style=flat-square">
+
 <br><br>
 
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#d29922"/></svg> Multi-thread safe support  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#d29922"/></svg> Single-thread support  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Full Folia compatibility  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Full Bukkit compatibility  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Full Paper compatibility  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Multi-thread safe support  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Single-thread support  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Full Folia compatibility  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Full Bukkit compatibility  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Full Paper compatibility  
+
 </td>
 </tr>
-<tr>
 
+<tr>
 <td width="50%" valign="top">
 
 ## ✨ Phase 3 — Feature Expansion
+
 <img src="https://img.shields.io/badge/Progress-50%25-8957e5?style=flat-square">
+
 <br><br>
 
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#d29922"/></svg> Essentials-like utility systems  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#d29922"/></svg> Performance optimization  
-</td>
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Essentials-like utility systems  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Performance optimization  
 
+</td>
 <td width="50%" valign="top">
 
 ## 🧩 Phase 4 — Integrations
 
 ### MMO Ecosystem
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> MMOItems integration  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> MMOCore integration  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> MMOItems integration  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> MMOCore integration  
 
 ### Resource & Model Systems
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> ItemsAdder integration  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Nexo integration  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Oraxen integration  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> CraftEngine integration  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> ModelEngine integration  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> BetterModel integration  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> ItemsAdder integration  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Nexo integration  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Oraxen integration  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> CraftEngine integration  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> ModelEngine integration  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> BetterModel integration  
 
 </td>
 </tr>
@@ -126,20 +132,20 @@ MMOBlock is structured into multiple isolated modules to improve maintainability
 
 ## 🧪 Phase 5 — Testing
 
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Cross-version testing  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Stress testing  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Compatibility validation  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Performance benchmarking  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Cross-version testing  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Stress testing  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Compatibility validation  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Performance benchmarking  
 
 </td>
 <td width="50%" valign="top">
 
 ## 🚀 Final Phase — Release
 
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Production-ready build  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Final bug fixing  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Documentation polishing  
-- <svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#6e7681"/></svg> Public release  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Production-ready build  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Final bug fixing  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Documentation polishing  
+- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Public release  
 
 </td>
 </tr>
