@@ -73,9 +73,9 @@ The repository is separated into multiple independent modules to ensure scalabil
 
 <br><br>
 
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="12"> Add legacy support  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Stabilize base version `1.19.4`  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Stabilize other supported versions  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="12"> Add legacy support  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Stabilize base version `1.19.4`  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Stabilize other supported versions  
 
 </td>
 <td width="50%" valign="top">
@@ -86,11 +86,11 @@ The repository is separated into multiple independent modules to ensure scalabil
 
 <br><br>
 
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Multi-thread safe support  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Single-thread support  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Full Folia compatibility  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Full Bukkit compatibility  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Full Paper compatibility  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Multi-thread safe support  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Single-thread support  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Full Folia compatibility  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Full Bukkit compatibility  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Full Paper compatibility  
 
 </td>
 </tr>
@@ -104,8 +104,8 @@ The repository is separated into multiple independent modules to ensure scalabil
 
 <br><br>
 
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Essentials-like utility systems  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Performance optimization  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Essentials-like utility systems  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="12"> Performance optimization  
 
 </td>
 <td width="50%" valign="top">
@@ -113,16 +113,16 @@ The repository is separated into multiple independent modules to ensure scalabil
 ## 🧩 Phase 4 — Integrations
 
 ### MMO Ecosystem
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> MMOItems integration  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> MMOCore integration  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> MMOItems integration  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> MMOCore integration  
 
 ### Resource & Model Systems
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> ItemsAdder integration  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Nexo integration  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Oraxen integration  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> CraftEngine integration  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> ModelEngine integration  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> BetterModel integration  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> ItemsAdder integration  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Nexo integration  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Oraxen integration  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> CraftEngine integration  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> ModelEngine integration  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> BetterModel integration  
 
 </td>
 </tr>
@@ -132,10 +132,10 @@ The repository is separated into multiple independent modules to ensure scalabil
 
 ## 🧪 Phase 5 — Testing
 
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Cross-version testing  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Stress testing  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Compatibility validation  
-- <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Performance benchmarking  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Cross-version testing  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Stress testing  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Compatibility validation  
+ <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="12"> Performance benchmarking  
 
 </td>
 <td width="50%" valign="top">
