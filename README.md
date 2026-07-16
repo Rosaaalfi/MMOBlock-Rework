@@ -8,8 +8,7 @@
 
 [![Build](https://img.shields.io/github/actions/workflow/status/Rosaaalfi/MMOBlock-Rework/gradle.yml?style=for-the-badge&label=Build&labelColor=1A1B26&color=2EA043&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/actions)
 [![Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?style=for-the-badge&label=Issues&labelColor=1A1B26&color=D15794&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
-[![Maven Central](https://img.shields.io/badge/Maven_Central-v3.0.5--RELEASE-007ACC?style=for-the-badge&labelColor=1A1B26&logo=apachemaven)](https://search.maven.org/search?q=g:me.chyxelmc%20AND%20a:mmoblock-api)
-[![Javadocs](https://img.shields.io/badge/Javadocs-javadoc.io-8957E5?style=for-the-badge&labelColor=1A1B26&logo=openjdk&logoColor=white)](https://www.javadoc.io/doc/me.chyxelmc/mmoblock-api)
+[![Chyxel Repository](https://img.shields.io/badge/Chyxel_Repository-v3.5.0--RELEASE-007ACC?style=for-the-badge&labelColor=1A1B26&logo=apachemaven)](https://repo.chyxelmc.me/home/)
 
 </div>
 
@@ -172,19 +171,38 @@ plugins/MMOBlock/
 
 ## 📦 Dependency
 
+MMOBlock API artifacts are published to **Chyxel Repository**. Repository docs and browsing live at <https://repo.chyxelmc.me/home/>, while Maven artifacts are served from:
+
+```
+https://public-repo.chyxelmc.me/repository
+```
+
 ### Gradle (Kotlin DSL)
 
 ```kotlin
-implementation("me.chyxelmc:mmoblock-api:3.0.5-RELEASE")
+repositories {
+    maven("https://public-repo.chyxelmc.me/repository")
+}
+
+dependencies {
+    implementation("me.chyxelmc:mmoblock-api:3.5.0-RELEASE")
+}
 ```
 
 ### Maven
 
 ```xml
+<repositories>
+    <repository>
+        <id>chyxel-repo</id>
+        <url>https://public-repo.chyxelmc.me/repository</url>
+    </repository>
+</repositories>
+
 <dependency>
     <groupId>me.chyxelmc</groupId>
     <artifactId>mmoblock-api</artifactId>
-    <version>3.0.5-RELEASE</version>
+    <version>3.5.0-RELEASE</version>
 </dependency>
 ```
 
