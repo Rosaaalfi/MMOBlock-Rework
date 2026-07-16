@@ -554,19 +554,19 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
     }
 
     private SchematicData parseSpongeSchematic(final CompoundTag tag) {
-        final int width = tag.getShort("Width");
-        final int height = tag.getShort("Height");
-        final int length = tag.getShort("Length");
-        final CompoundTag palette = tag.getCompound("Palette");
-        final byte[] blockData = tag.getByteArray("BlockData");
+        final int width = tag.getShort("Width").orElse((short) 0);
+        final int height = tag.getShort("Height").orElse((short) 0);
+        final int length = tag.getShort("Length").orElse((short) 0);
+        final CompoundTag palette = tag.getCompound("Palette").orElse(null);
+        final byte[] blockData = tag.getByteArray("BlockData").orElse(null);
 
         if (width <= 0 || height <= 0 || length <= 0 || palette == null || blockData == null) {
             return null;
         }
 
         final java.util.Map<Integer, String> paletteMap = new java.util.HashMap<>();
-        for (final String key : palette.getAllKeys()) {
-            final int index = palette.getInt(key);
+        for (final String key : palette.keySet()) {
+            final int index = palette.getInt(key).orElse(0);
             final String materialName = extractMaterialName(key);
             if (materialName != null) {
                 paletteMap.put(index, materialName);
@@ -591,11 +591,11 @@ public final class NmsAdapter_v1_21_11 implements NmsAdapter {
     }
 
     private SchematicData parseMceSchematic(final CompoundTag tag) {
-        final int width = tag.getShort("Width");
-        final int height = tag.getShort("Height");
-        final int length = tag.getShort("Length");
-        final byte[] blocks = tag.getByteArray("Blocks");
-        final byte[] data = tag.getByteArray("Data");
+        final int width = tag.getShort("Width").orElse((short) 0);
+        final int height = tag.getShort("Height").orElse((short) 0);
+        final int length = tag.getShort("Length").orElse((short) 0);
+        final byte[] blocks = tag.getByteArray("Blocks").orElse(null);
+        final byte[] data = tag.getByteArray("Data").orElse(null);
 
         if (width <= 0 || height <= 0 || length <= 0 || blocks == null) return null;
 

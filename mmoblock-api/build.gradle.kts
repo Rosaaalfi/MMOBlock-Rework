@@ -55,13 +55,54 @@ project.version = when {
 }
 println("Publishing version: ${project.version}")
 
-fun optionalGradleProperty(name: String): String? {
-    return project.findProperty(name)?.toString()?.takeIf { it.isNotBlank() }
+fun loadRootDotEnv(): Map<String, String> {
+    val envFile = rootProject.file(".env")
+    if (!envFile.isFile) {
+        return emptyMap()
+    }
+
+    return envFile.readLines()
+        .asSequence()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") }
+        .mapNotNull { line ->
+            val separator = line.indexOf('=')
+            if (separator <= 0) {
+                null
+            } else {
+                val key = line.substring(0, separator).trim()
+                val value = line.substring(separator + 1).trim()
+                    .removeSurrounding("\"")
+                    .removeSurrounding("'")
+                key to value
+            }
+        }
+        .toMap()
 }
 
-fun requiredGradleProperty(name: String): String {
-    return optionalGradleProperty(name)
-        ?: error("Missing Gradle property '$name'. Add it to gradle.properties.")
+val rootDotEnv: Map<String, String> by lazy { loadRootDotEnv() }
+
+fun envKey(name: String): String {
+    return buildString {
+        name.forEachIndexed { index, char ->
+            if (char.isUpperCase() && index > 0) {
+                append('_')
+            }
+            append(char.uppercaseChar())
+        }
+    }
+}
+
+fun optionalPublishProperty(name: String): String? {
+    return providers.environmentVariable(name).orNull?.takeIf { it.isNotBlank() }
+        ?: providers.environmentVariable(envKey(name)).orNull?.takeIf { it.isNotBlank() }
+        ?: rootDotEnv[name]?.takeIf { it.isNotBlank() }
+        ?: rootDotEnv[envKey(name)]?.takeIf { it.isNotBlank() }
+}
+
+fun requiredPublishProperty(name: String): String {
+    return optionalPublishProperty(name)
+        ?: error("Missing publish setting '$name'. Add it to .env or provide it as an environment variable.")
 }
 
 // ==========================================================
@@ -123,7 +164,7 @@ publishing {
 tasks.register("publishToChyxelRepo") {
     group = "publishing"
     description =
-        "Publishes MMOBlock API to Cloudflare R2 using gradle.properties credentials."
+        "Publishes MMOBlock API to Cloudflare R2 using .env or environment credentials."
 
     dependsOn("publishMavenJavaPublicationToLocalRepoRepository")
 
@@ -143,15 +184,15 @@ tasks.register("publishToChyxelRepo") {
             error("Expected Maven artifact directory was not created: $versionDir")
         }
 
-        val r2AccountId = requiredGradleProperty("r2AccountId")
-        val r2Bucket = requiredGradleProperty("r2Bucket")
-        val r2AccessKeyId = requiredGradleProperty("r2AccessKeyId")
-        val r2SecretAccessKey = requiredGradleProperty("r2SecretAccessKey")
+        val r2AccountId = requiredPublishProperty("r2AccountId")
+        val r2Bucket = requiredPublishProperty("r2Bucket")
+        val r2AccessKeyId = requiredPublishProperty("r2AccessKeyId")
+        val r2SecretAccessKey = requiredPublishProperty("r2SecretAccessKey")
         val r2PublicUrl =
-            optionalGradleProperty("r2PublicUrl")
+            optionalPublishProperty("r2PublicUrl")
                 ?: "https://public-repo.chyxelmc.me"
         val r2Endpoint = "https://$r2AccountId.r2.cloudflarestorage.com"
-        val awsCliPath = optionalGradleProperty("awsCliPath") ?: "aws"
+        val awsCliPath = optionalPublishProperty("awsCliPath") ?: "aws"
 
         fun runAws(
             vararg args: String,
@@ -172,7 +213,7 @@ tasks.register("publishToChyxelRepo") {
             } catch (error: IOException) {
                 error(
                     "AWS CLI was not found. Install AWS CLI v2 or set " +
-                        "awsCliPath in gradle.properties. Current value: $awsCliPath"
+                        "awsCliPath in .env. Current value: $awsCliPath"
                 )
             }
 
@@ -309,12 +350,12 @@ tasks.register("publishToChyxelRepo") {
 
 tasks.register("printChyxelRepoProperties") {
     group = "help"
-    description = "Prints gradle.properties keys used by Chyxel auto publish."
+    description = "Prints .env keys used by Chyxel auto publish."
 
     doLast {
         println(
             """
-            Add these to gradle.properties:
+            Add these to .env:
 
             r2AccountId=your-cloudflare-account-id
             r2Bucket=your-r2-bucket
