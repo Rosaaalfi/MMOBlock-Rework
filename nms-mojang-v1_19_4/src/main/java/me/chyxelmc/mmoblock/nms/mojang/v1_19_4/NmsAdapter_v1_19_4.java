@@ -2,6 +2,7 @@ package me.chyxelmc.mmoblock.nms.mojang.v1_19_4;
 
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
 import me.chyxelmc.mmoblock.nmsloader.utils.ClientProtocolUtils;
+import com.mojang.math.Transformation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -16,8 +17,10 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.util.Brightness;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Material;
@@ -32,6 +35,7 @@ import org.bukkit.craftbukkit.v1_19_R3.util.CraftMagicNumbers;
 import net.minecraft.world.phys.Vec3;
 import io.papermc.paper.adventure.PaperAdventure;
 import me.chyxelmc.mmoblock.nmsloader.utils.HologramColorUtil;
+import org.joml.Matrix4f;
 
 import me.chyxelmc.mmoblock.nmsloader.SchematicData;
 import me.chyxelmc.mmoblock.nmsloader.SchematicData.SchematicBlock;
@@ -48,6 +52,7 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
 
     private static final EntityType<net.minecraft.world.entity.Interaction> CUSTOM_INTERACTION_TYPE = createCustomInteractionType();
     private final Map<String, PacketHologramState> packetHologramEntityIds = new ConcurrentHashMap<>();
+    private final Map<String, PacketBdEngineModelState> packetBdEngineEntityIds = new ConcurrentHashMap<>();
     // Small marker ArmorStand nameplate renders ~0.23 above entity Y.
     // 0.595 is for full-size ArmorStand — setSmall(true) reduces this significantly.
     private static final double ARMOR_STAND_NAME_Y_OFFSET = 0.23D;
@@ -351,6 +356,178 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
     public void clearPacketHologramCacheForPlayer(final UUID playerUniqueId) {
         final String prefix = playerUniqueId + ":";
         this.packetHologramEntityIds.keySet().removeIf(key -> key.startsWith(prefix));
+    }
+
+    @Override
+    public boolean supportsPacketBdEngineModels() {
+        return true;
+    }
+
+    @Override
+    public void upsertPacketBdEngineModel(
+            final Player player,
+            final UUID modelUniqueId,
+            final Location baseLocation,
+            final List<NmsAdapter.BdEngineDisplayPart> parts
+    ) {
+        if (!(player instanceof CraftPlayer craftPlayer) || baseLocation.getWorld() == null || parts == null || parts.isEmpty()) {
+            return;
+        }
+
+        final String key = sessionKey(player.getUniqueId(), modelUniqueId);
+        final PacketBdEngineModelState previous = this.packetBdEngineEntityIds.get(key);
+        final PacketBaseSignature baseSignature = packetBaseSignature(baseLocation);
+        final ServerPlayer handle = craftPlayer.getHandle();
+        final ServerLevel level = ((CraftWorld) baseLocation.getWorld()).getHandle();
+
+        if (previous != null && previous.entityIds().size() == parts.size() && previous.baseSignature().equals(baseSignature)) {
+            for (int i = 0; i < parts.size(); i++) {
+                final net.minecraft.world.entity.Entity display = createBdEngineDisplay(level, baseLocation, parts.get(i));
+                if (display == null) {
+                    continue;
+                }
+                final List<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>> values = display.getEntityData().getNonDefaultValues();
+                if (values != null && !values.isEmpty()) {
+                    handle.connection.send(new ClientboundSetEntityDataPacket(previous.entityIds().get(i), values));
+                }
+            }
+            return;
+        }
+
+        if (previous != null && !previous.entityIds().isEmpty()) {
+            handle.connection.send(new ClientboundRemoveEntitiesPacket(previous.entityIds().stream().mapToInt(Integer::intValue).toArray()));
+        }
+
+        final List<Integer> entityIds = new ArrayList<>(parts.size());
+        for (final NmsAdapter.BdEngineDisplayPart part : parts) {
+            final net.minecraft.world.entity.Entity display = createBdEngineDisplay(level, baseLocation, part);
+            if (display == null) {
+                continue;
+            }
+            entityIds.add(display.getId());
+            handle.connection.send(new ClientboundAddEntityPacket(
+                    display.getId(),
+                    display.getUUID(),
+                    baseLocation.getX(),
+                    baseLocation.getY(),
+                    baseLocation.getZ(),
+                    display.getXRot(),
+                    display.getYRot(),
+                    display.getType(),
+                    0,
+                    Vec3.ZERO,
+                    display.getYHeadRot()
+            ));
+            final List<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>> values = display.getEntityData().getNonDefaultValues();
+            if (values != null && !values.isEmpty()) {
+                handle.connection.send(new ClientboundSetEntityDataPacket(display.getId(), values));
+            }
+        }
+        this.packetBdEngineEntityIds.put(key, new PacketBdEngineModelState(List.copyOf(entityIds), baseSignature));
+    }
+
+    @Override
+    public void removePacketBdEngineModel(final Player player, final UUID modelUniqueId) {
+        if (!(player instanceof CraftPlayer craftPlayer)) {
+            return;
+        }
+        final String key = sessionKey(player.getUniqueId(), modelUniqueId);
+        final PacketBdEngineModelState state = this.packetBdEngineEntityIds.remove(key);
+        if (state == null || state.entityIds().isEmpty()) {
+            return;
+        }
+        craftPlayer.getHandle().connection.send(new ClientboundRemoveEntitiesPacket(state.entityIds().stream().mapToInt(Integer::intValue).toArray()));
+    }
+
+    @Override
+    public void clearPacketBdEngineModelCacheForPlayer(final UUID playerUniqueId) {
+        final String prefix = playerUniqueId + ":";
+        this.packetBdEngineEntityIds.keySet().removeIf(key -> key.startsWith(prefix));
+    }
+
+    private net.minecraft.world.entity.Entity createBdEngineDisplay(
+            final ServerLevel level,
+            final Location baseLocation,
+            final NmsAdapter.BdEngineDisplayPart part
+    ) {
+        if (part.type() == NmsAdapter.BdEngineDisplayType.ITEM) {
+            return createBdEngineItemDisplay(level, baseLocation, part);
+        }
+        if (part.type() == NmsAdapter.BdEngineDisplayType.TEXT) {
+            return createBdEngineTextDisplay(level, baseLocation, part);
+        }
+        return createBdEngineBlockDisplay(level, baseLocation, part);
+    }
+
+    private Display.BlockDisplay createBdEngineBlockDisplay(
+            final ServerLevel level,
+            final Location baseLocation,
+            final NmsAdapter.BdEngineDisplayPart part
+    ) {
+        if (part.material() == null || !part.material().isBlock()) {
+            return null;
+        }
+        final Display.BlockDisplay display = new Display.BlockDisplay(EntityType.BLOCK_DISPLAY, level);
+        display.setPos(baseLocation.getX(), baseLocation.getY(), baseLocation.getZ());
+        display.setBlockState(CraftMagicNumbers.getBlock(part.material()).defaultBlockState());
+        configureBdEngineDisplay(display, part);
+        return display;
+    }
+
+    private Display.ItemDisplay createBdEngineItemDisplay(
+            final ServerLevel level,
+            final Location baseLocation,
+            final NmsAdapter.BdEngineDisplayPart part
+    ) {
+        if (part.material() == null) {
+            return null;
+        }
+        final Display.ItemDisplay display = new Display.ItemDisplay(EntityType.ITEM_DISPLAY, level);
+        display.setPos(baseLocation.getX(), baseLocation.getY(), baseLocation.getZ());
+        display.setItemStack(CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(part.material())));
+        display.setItemTransform(ItemDisplayContext.NONE);
+        configureBdEngineDisplay(display, part);
+        return display;
+    }
+
+    private Display.TextDisplay createBdEngineTextDisplay(
+            final ServerLevel level,
+            final Location baseLocation,
+            final NmsAdapter.BdEngineDisplayPart part
+    ) {
+        final Display.TextDisplay display = new Display.TextDisplay(EntityType.TEXT_DISPLAY, level);
+        display.setPos(baseLocation.getX(), baseLocation.getY(), baseLocation.getZ());
+        display.setText(parseVanillaText(part.text() == null ? "" : part.text()));
+        display.setBackgroundColor(0);
+        configureBdEngineDisplay(display, part);
+        return display;
+    }
+
+    private void configureBdEngineDisplay(final Display display, final NmsAdapter.BdEngineDisplayPart part) {
+        display.setTransformation(new Transformation(toMatrix(part.matrix())));
+        display.setInterpolationDelay(-1);
+        display.setInterpolationDuration(2);
+        display.setViewRange(1.0F);
+        display.setWidth(4.0F);
+        display.setHeight(4.0F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        display.setBrightnessOverride(new Brightness(
+                Math.max(0, Math.min(15, part.blockLight())),
+                Math.max(0, Math.min(15, part.skyLight()))
+        ));
+    }
+
+    private Matrix4f toMatrix(final float[] values) {
+        final float[] safe = values != null && values.length >= 16
+                ? values
+                : new float[]{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+        return new Matrix4f(
+                safe[0], safe[1], safe[2], safe[3],
+                safe[4], safe[5], safe[6], safe[7],
+                safe[8], safe[9], safe[10], safe[11],
+                safe[12], safe[13], safe[14], safe[15]
+        );
     }
 
     @Override
@@ -674,6 +851,9 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
     }
 
     private record PacketBaseSignature(String worldName, double x, double y, double z) {
+    }
+
+    private record PacketBdEngineModelState(List<Integer> entityIds, PacketBaseSignature baseSignature) {
     }
 
     private record PacketLineSignature(NmsAdapter.HologramLineType type, double offsetY, String content) {
