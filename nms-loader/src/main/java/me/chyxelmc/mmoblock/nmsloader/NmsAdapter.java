@@ -67,6 +67,36 @@ public interface NmsAdapter {
         // Optional adapter feature.
     }
 
+    default boolean supportsPacketBdEngineModels() {
+        return false;
+    }
+
+    default void upsertPacketBdEngineModel(
+            final Player player,
+            final UUID modelUniqueId,
+            final Location baseLocation,
+            final List<BdEngineDisplayPart> parts
+    ) {
+        // Optional adapter feature.
+    }
+
+    default void removePacketBdEngineModel(final Player player, final UUID modelUniqueId) {
+        // Optional adapter feature.
+    }
+
+    default void clearPacketBdEngineModelCacheForPlayer(final UUID playerUniqueId) {
+        // Optional adapter feature.
+    }
+
+    record BdEngineDisplayPart(BdEngineDisplayType type, Material material, String text, float[] matrix, int skyLight, int blockLight) {
+    }
+
+    enum BdEngineDisplayType {
+        BLOCK,
+        ITEM,
+        TEXT
+    }
+
     record HologramLine(HologramLineType type, String text, Material material, double offsetY) {
 
         public static HologramLine text(final String text, final double offsetY) {

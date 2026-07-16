@@ -16,6 +16,7 @@ include("nms-v1_21_1")
 include("nms-v1_21_4")
 include("nms-v1_21_11")
 include("nms-v26_1")
+include("nms-v26_2")
 
 include("nms-mojang-v1_19_4")
 include("nms-spigot-v1_19_4")

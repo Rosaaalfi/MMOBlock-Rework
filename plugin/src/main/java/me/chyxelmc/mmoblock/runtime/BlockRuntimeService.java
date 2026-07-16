@@ -119,6 +119,7 @@ public final class BlockRuntimeService {
     private final DataCache dataCache;
     private final HologramRuntimeService hologramRuntimeService;
     private final SchematicService schematicService;
+    private final BdEngineService bdEngineService;
     private final NamespacedKey uniqueIdKey;
     private final BlockEcsState ecsState = new BlockEcsState();
     // Optional ECS integration
@@ -159,6 +160,7 @@ public final class BlockRuntimeService {
         this.dataCache = dataCache;
         this.hologramRuntimeService = new HologramRuntimeService(plugin, nmsAdapter, scheduler);
         this.schematicService = new SchematicService(plugin, nmsAdapter);
+        this.bdEngineService = new BdEngineService(plugin, nmsAdapter);
         this.uniqueIdKey = new NamespacedKey(plugin, "unique_id");
         this.miningSystem = new MiningSystem(this.ecsState);
         this.respawnSystem = new RespawnSystem(plugin, scheduler, this.ecsState);
@@ -190,6 +192,7 @@ public final class BlockRuntimeService {
                 if (def != null && world != null) {
                     this.visualSyncSystem.applyRealBlockModel(block, def, world);
                     applySchematicModel(block, def, world, false);
+                    applyBdEngineModel(block, def, world);
                 }
                 } catch (final Throwable ignored) {
                 }
@@ -370,6 +373,7 @@ public final class BlockRuntimeService {
             if (blockWorld != null) {
                 this.visualSyncSystem.clearRealBlockModel(placedBlock, definition, blockWorld);
                 clearSchematicModel(placedBlock, blockWorld);
+                clearBdEngineModel(placedBlock, blockWorld);
             }
         }
         despawnInteraction(placedBlock);
@@ -493,6 +497,9 @@ public final class BlockRuntimeService {
                 FAKE_BLOCK_SYNC_RADIUS_SQUARED
         );
         this.hologramRuntimeService.syncForPlayer(player, this.ecsState.blocks());
+        for (final PlacedBlock block : this.ecsState.blocks()) {
+            this.bdEngineService.syncForPlayer(player, block.uniqueId());
+        }
     }
 
     public void syncFakeBlocksForPlayerChunkWindow(final Player player) {
@@ -512,11 +519,15 @@ public final class BlockRuntimeService {
                 FAKE_BLOCK_SYNC_RADIUS_SQUARED
         );
         this.hologramRuntimeService.syncForPlayer(player, candidateBlocks);
+        for (final PlacedBlock block : candidateBlocks) {
+            this.bdEngineService.syncForPlayer(player, block.uniqueId());
+        }
     }
 
     public void handlePlayerQuit(final UUID playerUniqueId) {
         this.hologramRuntimeService.handleViewerQuit(playerUniqueId);
         this.nmsAdapter.clearPacketHologramCacheForPlayer(playerUniqueId);
+        this.nmsAdapter.clearPacketBdEngineModelCacheForPlayer(playerUniqueId);
         // Clear dead schematics for the quitting player so their client doesn't
         // retain stale fake blocks during the disconnect edge case
         final Player player = this.plugin.getServer().getPlayer(playerUniqueId);
@@ -550,11 +561,13 @@ public final class BlockRuntimeService {
             if (!serverStopping && definition != null && world != null) {
                 this.visualSyncSystem.clearRealBlockModel(block, definition, world);
                 clearSchematicModel(block, world);
+                clearBdEngineModel(block, world);
             }
             despawnInteraction(block);
         }
         this.hologramRuntimeService.shutdown();
         this.schematicService.clearAll();
+        this.bdEngineService.clearAll();
         this.ecsState.clear();
         this.transientBlocks.clear();
         this.suppressDeadHologram.clear();
@@ -667,6 +680,7 @@ public final class BlockRuntimeService {
             this.hologramRuntimeService.remove(block);
             this.visualSyncSystem.clearBreakAnimation(world, block);
             clearSchematicModel(block, world);
+            clearBdEngineModel(block, world);
         }
     }
 
@@ -699,6 +713,12 @@ public final class BlockRuntimeService {
         }
 
         playConfiguredSound(player.getWorld(), block, definition.soundOnClick());
+        playBdEngineAnimation(
+                block,
+                definition.bdengineOnClickAnimation(),
+                definition.bdengineOnClickTimelineLength(),
+                definition.bdengineOnClickAnimationMode()
+        );
 
         applyDurability(item, action.decreaseDurability());
         final int progress = this.miningSystem.incrementProgress(block.uniqueId(), player.getUniqueId(), System.currentTimeMillis());
@@ -791,6 +811,7 @@ public final class BlockRuntimeService {
         if (world != null) {
             this.visualSyncSystem.clearRealBlockModel(block, definition, world);
             clearSchematicModel(block, world);
+            clearBdEngineModel(block, world);
         }
         despawnInteraction(block);
         if (world != null && definition.schematicsEnabled() && definition.schematicsDeadFile() != null && !definition.schematicsDeadFile().isBlank()) {
@@ -949,6 +970,7 @@ public final class BlockRuntimeService {
                     } catch (final Throwable ignored) {
                     }
                     applySchematicModel(placedBlock, definition, world, false);
+                    applyBdEngineModel(placedBlock, definition, world);
                     return true;
                 }
             }
@@ -993,6 +1015,7 @@ public final class BlockRuntimeService {
 
             this.visualSyncSystem.applyRealBlockModel(placedBlock, definition, world);
             applySchematicModel(placedBlock, definition, world, false);
+            applyBdEngineModel(placedBlock, definition, world);
             // logging removed: spawned interaction info
             return true;
         } catch (final RuntimeException exception) {
@@ -1024,6 +1047,43 @@ public final class BlockRuntimeService {
         if (world == null) return;
         try {
             this.schematicService.clearSchematic(block.uniqueId().toString(), world);
+        } catch (final Throwable ignored) {
+        }
+    }
+
+    private void applyBdEngineModel(final PlacedBlock block, final BlockDefinition definition, final World world) {
+        if (definition == null || !definition.bdengineEnabled()) return;
+        try {
+            this.bdEngineService.showModel(
+                    new BdEngineService.PlacedBlockKey(block.uniqueId()),
+                    definition,
+                    world,
+                    block.x(),
+                    block.y(),
+                    block.z()
+            );
+            playBdEngineAnimation(
+                    block,
+                    definition.bdengineOnSpawnAnimation(),
+                    definition.bdengineOnSpawnTimelineLength(),
+                    definition.bdengineOnSpawnAnimationMode()
+            );
+        } catch (final Throwable ignored) {
+        }
+    }
+
+    private void clearBdEngineModel(final PlacedBlock block, final World world) {
+        if (block == null) return;
+        try {
+            this.bdEngineService.clearModel(block.uniqueId(), world);
+        } catch (final Throwable ignored) {
+        }
+    }
+
+    private void playBdEngineAnimation(final PlacedBlock block, final String animationName, final double timelineLengthSeconds, final String mode) {
+        if (block == null || animationName == null || animationName.isBlank()) return;
+        try {
+            this.bdEngineService.playAnimation(block.uniqueId(), animationName, timelineLengthSeconds, mode);
         } catch (final Throwable ignored) {
         }
     }
@@ -1077,6 +1137,7 @@ public final class BlockRuntimeService {
                 this.visualSyncSystem.clearRealBlockModel(block, existing, world);
             }
             clearSchematicModel(block, world);
+            clearBdEngineModel(block, world);
         }
         despawnInteraction(block);
         this.ecsState.removeBlock(block.uniqueId());

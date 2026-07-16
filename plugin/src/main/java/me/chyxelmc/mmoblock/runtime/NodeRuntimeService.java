@@ -15,6 +15,7 @@ import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.ecs.system.LifecycleSystem;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -376,6 +377,7 @@ public final class NodeRuntimeService {
                 List.of(),
                 "", 0.0D, 0.0D,
                 false, "", "", "north", List.of(), List.of(),
+                false, "", 1.0D, "", "", 0.0D, 0.0D, "once", "once", "none", Material.BARRIER, List.of(),
                 null,
                 null
         );

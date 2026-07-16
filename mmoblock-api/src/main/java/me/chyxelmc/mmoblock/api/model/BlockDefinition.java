@@ -34,6 +34,14 @@ public interface BlockDefinition {
     String schematicsPlaceFacing();
     List<String> schematicsAdjustPosNormal();
     List<String> schematicsAdjustPosDead();
+    boolean bdengineEnabled();
+    String bdengineModel();
+    double bdengineSize();
+    String bdengineOnSpawnAnimation();
+    String bdengineOnClickAnimation();
+    String bdengineCollisionType();
+    Material bdengineCollisionBlock();
+    List<String> bdengineCollisionPositions();
     String itemName();
     Material itemMaterial();
 }

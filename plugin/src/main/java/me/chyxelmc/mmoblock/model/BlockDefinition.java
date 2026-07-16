@@ -36,6 +36,19 @@ public record BlockDefinition(
     String schematicsPlaceFacing,
     List<String> schematicsAdjustPosNormal,
     List<String> schematicsAdjustPosDead,
+    // bdengine
+    boolean bdengineEnabled,
+    String bdengineModel,
+    double bdengineSize,
+    String bdengineOnSpawnAnimation,
+    String bdengineOnClickAnimation,
+    double bdengineOnSpawnTimelineLength,
+    double bdengineOnClickTimelineLength,
+    String bdengineOnSpawnAnimationMode,
+    String bdengineOnClickAnimationMode,
+    String bdengineCollisionType,
+    Material bdengineCollisionBlock,
+    List<String> bdengineCollisionPositions,
     // item
     String itemName,
     Material itemMaterial

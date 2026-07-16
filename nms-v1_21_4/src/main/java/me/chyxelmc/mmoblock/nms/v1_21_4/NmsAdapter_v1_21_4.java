@@ -1,7 +1,13 @@
 package me.chyxelmc.mmoblock.nms.v1_21_4;
 
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.CompoundTag;
+import me.chyxelmc.mmoblock.nmsloader.SchematicData.SchematicBlock;
+import me.chyxelmc.mmoblock.nmsloader.SchematicData;
 import me.chyxelmc.mmoblock.nmsloader.utils.ClientProtocolUtils;
+import com.mojang.math.Transformation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -18,9 +24,11 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.util.Brightness;
 import net.minecraft.resources.ResourceKey;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
@@ -35,6 +43,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.craftbukkit.util.CraftMagicNumbers;
 import io.papermc.paper.adventure.PaperAdventure;
 import me.chyxelmc.mmoblock.nmsloader.utils.HologramColorUtil;
+import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +61,7 @@ public final class NmsAdapter_v1_21_4 implements NmsAdapter {
     private static final double ITEM_ENTITY_Y_OFFSET_LEGACY = 0.16D;
 
     private final Map<String, PacketHologramState> packetHologramEntityIds = new ConcurrentHashMap<>();
+    private final Map<String, PacketBdEngineModelState> packetBdEngineEntityIds = new ConcurrentHashMap<>();
 
     @Override
     public String targetMinecraftVersion() {
@@ -344,6 +354,345 @@ public final class NmsAdapter_v1_21_4 implements NmsAdapter {
         this.packetHologramEntityIds.keySet().removeIf(key -> key.startsWith(prefix));
     }
 
+    @Override
+    public boolean supportsPacketBdEngineModels() {
+        return true;
+    }
+
+    @Override
+    public void upsertPacketBdEngineModel(
+            final Player player,
+            final UUID modelUniqueId,
+            final Location baseLocation,
+            final List<NmsAdapter.BdEngineDisplayPart> parts
+    ) {
+        if (!(player instanceof CraftPlayer craftPlayer) || baseLocation.getWorld() == null || parts == null || parts.isEmpty()) {
+            return;
+        }
+
+        final String key = sessionKey(player.getUniqueId(), modelUniqueId);
+        final PacketBdEngineModelState previous = this.packetBdEngineEntityIds.get(key);
+        final PacketBaseSignature baseSignature = packetBaseSignature(baseLocation);
+        final ServerPlayer handle = craftPlayer.getHandle();
+        final ServerLevel level = ((CraftWorld) baseLocation.getWorld()).getHandle();
+
+        if (previous != null && previous.entityIds().size() == parts.size() && previous.baseSignature().equals(baseSignature)) {
+            for (int i = 0; i < parts.size(); i++) {
+                final net.minecraft.world.entity.Entity display = createBdEngineDisplay(level, baseLocation, parts.get(i));
+                if (display == null) {
+                    continue;
+                }
+                final List<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>> values = display.getEntityData().getNonDefaultValues();
+                if (values != null && !values.isEmpty()) {
+                    handle.connection.send(new ClientboundSetEntityDataPacket(previous.entityIds().get(i), values));
+                }
+            }
+            return;
+        }
+
+        if (previous != null && !previous.entityIds().isEmpty()) {
+            handle.connection.send(new ClientboundRemoveEntitiesPacket(previous.entityIds().stream().mapToInt(Integer::intValue).toArray()));
+        }
+
+        final List<Integer> entityIds = new ArrayList<>(parts.size());
+        for (final NmsAdapter.BdEngineDisplayPart part : parts) {
+            final net.minecraft.world.entity.Entity display = createBdEngineDisplay(level, baseLocation, part);
+            if (display == null) {
+                continue;
+            }
+            entityIds.add(display.getId());
+            handle.connection.send(new ClientboundAddEntityPacket(
+                    display.getId(),
+                    display.getUUID(),
+                    baseLocation.getX(),
+                    baseLocation.getY(),
+                    baseLocation.getZ(),
+                    display.getXRot(),
+                    display.getYRot(),
+                    display.getType(),
+                    0,
+                    Vec3.ZERO,
+                    display.getYHeadRot()
+            ));
+            final List<net.minecraft.network.syncher.SynchedEntityData.DataValue<?>> values = display.getEntityData().getNonDefaultValues();
+            if (values != null && !values.isEmpty()) {
+                handle.connection.send(new ClientboundSetEntityDataPacket(display.getId(), values));
+            }
+        }
+        this.packetBdEngineEntityIds.put(key, new PacketBdEngineModelState(List.copyOf(entityIds), baseSignature));
+    }
+
+    @Override
+    public void removePacketBdEngineModel(final Player player, final UUID modelUniqueId) {
+        if (!(player instanceof CraftPlayer craftPlayer)) {
+            return;
+        }
+        final String key = sessionKey(player.getUniqueId(), modelUniqueId);
+        final PacketBdEngineModelState state = this.packetBdEngineEntityIds.remove(key);
+        if (state == null || state.entityIds().isEmpty()) {
+            return;
+        }
+        craftPlayer.getHandle().connection.send(new ClientboundRemoveEntitiesPacket(state.entityIds().stream().mapToInt(Integer::intValue).toArray()));
+    }
+
+    @Override
+    public void clearPacketBdEngineModelCacheForPlayer(final UUID playerUniqueId) {
+        final String prefix = playerUniqueId + ":";
+        this.packetBdEngineEntityIds.keySet().removeIf(key -> key.startsWith(prefix));
+    }
+
+    private net.minecraft.world.entity.Entity createBdEngineDisplay(
+            final ServerLevel level,
+            final Location baseLocation,
+            final NmsAdapter.BdEngineDisplayPart part
+    ) {
+        if (part.type() == NmsAdapter.BdEngineDisplayType.ITEM) {
+            return createBdEngineItemDisplay(level, baseLocation, part);
+        }
+        if (part.type() == NmsAdapter.BdEngineDisplayType.TEXT) {
+            return createBdEngineTextDisplay(level, baseLocation, part);
+        }
+        return createBdEngineBlockDisplay(level, baseLocation, part);
+    }
+
+    private Display.BlockDisplay createBdEngineBlockDisplay(
+            final ServerLevel level,
+            final Location baseLocation,
+            final NmsAdapter.BdEngineDisplayPart part
+    ) {
+        if (part.material() == null || !part.material().isBlock()) {
+            return null;
+        }
+        final Display.BlockDisplay display = new Display.BlockDisplay(EntityType.BLOCK_DISPLAY, level);
+        display.setPos(baseLocation.getX(), baseLocation.getY(), baseLocation.getZ());
+        display.setBlockState(CraftMagicNumbers.getBlock(part.material()).defaultBlockState());
+        configureBdEngineDisplay(display, part);
+        return display;
+    }
+
+    private Display.ItemDisplay createBdEngineItemDisplay(
+            final ServerLevel level,
+            final Location baseLocation,
+            final NmsAdapter.BdEngineDisplayPart part
+    ) {
+        if (part.material() == null) {
+            return null;
+        }
+        final Display.ItemDisplay display = new Display.ItemDisplay(EntityType.ITEM_DISPLAY, level);
+        display.setPos(baseLocation.getX(), baseLocation.getY(), baseLocation.getZ());
+        display.setItemStack(CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(part.material())));
+        display.setItemTransform(ItemDisplayContext.NONE);
+        configureBdEngineDisplay(display, part);
+        return display;
+    }
+
+    private Display.TextDisplay createBdEngineTextDisplay(
+            final ServerLevel level,
+            final Location baseLocation,
+            final NmsAdapter.BdEngineDisplayPart part
+    ) {
+        final Display.TextDisplay display = new Display.TextDisplay(EntityType.TEXT_DISPLAY, level);
+        display.setPos(baseLocation.getX(), baseLocation.getY(), baseLocation.getZ());
+        display.setText(parseVanillaText(part.text() == null ? "" : part.text()));
+        display.getEntityData().set(Display.TextDisplay.DATA_BACKGROUND_COLOR_ID, 0);
+        configureBdEngineDisplay(display, part);
+        return display;
+    }
+
+    private void configureBdEngineDisplay(final Display display, final NmsAdapter.BdEngineDisplayPart part) {
+        display.setTransformation(new Transformation(toMatrix(part.matrix())));
+        display.setTransformationInterpolationDelay(-1);
+        display.setTransformationInterpolationDuration(2);
+        display.setViewRange(1.0F);
+        display.setWidth(4.0F);
+        display.setHeight(4.0F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        display.setBrightnessOverride(new Brightness(
+                Math.max(0, Math.min(15, part.blockLight())),
+                Math.max(0, Math.min(15, part.skyLight()))
+        ));
+    }
+
+    private Matrix4f toMatrix(final float[] values) {
+        final float[] safe = values != null && values.length >= 16
+                ? values
+                : new float[]{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+        return new Matrix4f(
+                safe[0], safe[1], safe[2], safe[3],
+                safe[4], safe[5], safe[6], safe[7],
+                safe[8], safe[9], safe[10], safe[11],
+                safe[12], safe[13], safe[14], safe[15]
+        );
+    }
+
+    @Override
+    public SchematicData loadSchematic(final String filePath) {
+        if (filePath == null || filePath.isBlank()) return null;
+        final java.io.File file = new java.io.File(filePath);
+        if (!file.exists() || !file.isFile()) return null;
+        try {
+            final CompoundTag tag = NbtIo.readCompressed(file.toPath(), NbtAccounter.unlimitedHeap());
+            return parseSchematicTag(tag);
+        } catch (final Throwable ignored) {
+            return null;
+        }
+    }
+
+    private SchematicData parseSchematicTag(final CompoundTag tag) {
+        try {
+            if (tag.contains("Version") && tag.contains("Palette") && tag.contains("BlockData")) {
+                return parseSpongeSchematic(tag);
+            }
+            if (tag.contains("Blocks") && tag.contains("Data")) {
+                return parseMceSchematic(tag);
+            }
+            return null;
+        } catch (final Throwable ignored) {
+            return null;
+        }
+    }
+
+    private SchematicData parseSpongeSchematic(final CompoundTag tag) {
+        final int width = tag.getShort("Width");
+        final int height = tag.getShort("Height");
+        final int length = tag.getShort("Length");
+        final CompoundTag palette = tag.getCompound("Palette");
+        final byte[] blockData = tag.getByteArray("BlockData");
+
+        if (width <= 0 || height <= 0 || length <= 0 || palette == null || blockData == null) {
+            return null;
+        }
+
+        final java.util.Map<Integer, String> paletteMap = new java.util.HashMap<>();
+        for (final String key : palette.getAllKeys()) {
+            final int index = palette.getInt(key);
+            final String materialName = extractMaterialName(key);
+            if (materialName != null) {
+                paletteMap.put(index, materialName);
+            }
+        }
+
+        final java.util.List<SchematicBlock> blocks = new java.util.ArrayList<>();
+        for (int y = 0; y < height; y++) {
+            for (int z = 0; z < length; z++) {
+                for (int x = 0; x < width; x++) {
+                    final int dataIndex = y * width * length + z * width + x;
+                    if (dataIndex >= blockData.length) continue;
+                    final int paletteIndex = blockData[dataIndex] & 0xFF;
+                    final String materialName = paletteMap.get(paletteIndex);
+                    if (materialName == null || "AIR".equals(materialName)) continue;
+                    blocks.add(new SchematicBlock(x, y, z, materialName));
+                }
+            }
+        }
+
+        return new SchematicData(width, height, length, blocks);
+    }
+
+    private SchematicData parseMceSchematic(final CompoundTag tag) {
+        final int width = tag.getShort("Width");
+        final int height = tag.getShort("Height");
+        final int length = tag.getShort("Length");
+        final byte[] blocks = tag.getByteArray("Blocks");
+        final byte[] data = tag.getByteArray("Data");
+
+        if (width <= 0 || height <= 0 || length <= 0 || blocks == null) return null;
+
+        final byte[] dataArr = (data != null && data.length == blocks.length) ? data : new byte[blocks.length];
+
+        final java.util.List<SchematicBlock> result = new java.util.ArrayList<>();
+        for (int y = 0; y < height; y++) {
+            for (int z = 0; z < length; z++) {
+                for (int x = 0; x < width; x++) {
+                    final int index = y * width * length + z * width + x;
+                    if (index >= blocks.length) continue;
+                    final int blockId = blocks[index] & 0xFF;
+                    final int blockData = dataArr[index] & 0xFF;
+                    if (blockId == 0) continue;
+                    final String materialName = legacyIdToMaterial(blockId, blockData);
+                    if (materialName == null) continue;
+                    result.add(new SchematicBlock(x, y, z, materialName));
+                }
+            }
+        }
+
+        return new SchematicData(width, height, length, result);
+    }
+
+    private static String extractMaterialName(final String blockStateKey) {
+        if (blockStateKey == null || blockStateKey.isBlank()) return null;
+        final String key = blockStateKey.contains("[") ? blockStateKey.substring(0, blockStateKey.indexOf('[')) : blockStateKey;
+        final String name = key.contains(":") ? key.substring(key.indexOf(':') + 1) : key;
+        if (name == null || name.isBlank()) return null;
+        return name.toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private static String legacyIdToMaterial(final int blockId, final int data) {
+        return switch (blockId) {
+            case 1 -> "STONE";
+            case 2 -> "GRASS_BLOCK";
+            case 3 -> "DIRT";
+            case 4 -> "COBBLESTONE";
+            case 5 -> "OAK_PLANKS";
+            case 6 -> "OAK_SAPLING";
+            case 7 -> "BEDROCK";
+            case 8 -> "WATER";
+            case 9 -> "WATER";
+            case 12 -> "SAND";
+            case 13 -> "GRAVEL";
+            case 14 -> "GOLD_ORE";
+            case 15 -> "IRON_ORE";
+            case 16 -> "COAL_ORE";
+            case 17 -> "OAK_LOG";
+            case 18 -> "OAK_LEAVES";
+            case 19 -> "SPONGE";
+            case 20 -> "GLASS";
+            case 21 -> "LAPIS_ORE";
+            case 24 -> "SANDSTONE";
+            case 25 -> "NOTE_BLOCK";
+            case 41 -> "GOLD_BLOCK";
+            case 42 -> "IRON_BLOCK";
+            case 45 -> "BRICK";
+            case 46 -> "TNT";
+            case 47 -> "BOOKSHELF";
+            case 48 -> "MOSSY_COBBLESTONE";
+            case 49 -> "OBSIDIAN";
+            case 53 -> "OAK_STAIRS";
+            case 56 -> "DIAMOND_ORE";
+            case 57 -> "DIAMOND_BLOCK";
+            case 58 -> "CRAFTING_TABLE";
+            case 61 -> "FURNACE";
+            case 73 -> "REDSTONE_ORE";
+            case 78 -> "SNOW";
+            case 79 -> "ICE";
+            case 80 -> "SNOW_BLOCK";
+            case 82 -> "CLAY";
+            case 84 -> "JUKEBOX";
+            case 86 -> "PUMPKIN";
+            case 87 -> "NETHERRACK";
+            case 88 -> "SOUL_SAND";
+            case 89 -> "GLOWSTONE";
+            case 95 -> "STAINED_GLASS";
+            case 98 -> "STONE_BRICKS";
+            case 103 -> "MELON";
+            case 133 -> "EMERALD_BLOCK";
+            case 152 -> "REDSTONE_BLOCK";
+            case 153 -> "QUARTZ_BLOCK";
+            case 155 -> "QUARTZ_PILLAR";
+            case 159 -> "STAINED_HARDENED_CLAY";
+            case 161 -> "ACACIA_LEAVES";
+            case 162 -> "ACACIA_LOG";
+            case 168 -> "PRISMARINE";
+            case 169 -> "SEA_LANTERN";
+            case 173 -> "COAL_BLOCK";
+            case 179 -> "RED_SANDSTONE";
+            case 198 -> "END_ROD";
+            case 199 -> "CHORUS_PLANT";
+            default -> blockId < 256 ? ("minecraft:" + blockId) : null;
+        };
+    }
+
     private net.minecraft.world.entity.Entity createDisplay(
             final ServerLevel level,
             final Location base,
@@ -507,6 +856,9 @@ public final class NmsAdapter_v1_21_4 implements NmsAdapter {
     }
 
     private record PacketBaseSignature(String worldName, double x, double y, double z) {
+    }
+
+    private record PacketBdEngineModelState(List<Integer> entityIds, PacketBaseSignature baseSignature) {
     }
 
     private record PacketLineSignature(NmsAdapter.HologramLineType type, double offsetY, String content) {

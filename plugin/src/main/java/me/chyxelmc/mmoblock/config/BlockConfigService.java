@@ -157,6 +157,50 @@ public final class BlockConfigService {
                 final List<String> schematicsAdjustPosDead = schematicsSection != null
                         ? schematicsSection.getStringList("adjustPos.dead")
                         : List.of();
+                final ConfigurationSection bdengineSection = section.getConfigurationSection("modelType.bdengine");
+                final boolean bdengineEnabled = bdengineSection != null && bdengineSection.getBoolean("enabled", false);
+                final String bdengineModel = bdengineSection != null
+                        ? bdengineSection.getString("model", "")
+                        : "";
+                final double bdengineSize = bdengineSection != null
+                        ? Math.max(0.01D, bdengineSection.getDouble("size", 1.0D))
+                        : 1.0D;
+                final String bdengineOnSpawnAnimation = bdengineSection != null
+                        ? bdengineAnimationName(bdengineSection, "onSpawn")
+                        : "";
+                final String bdengineOnClickAnimation = bdengineSection != null
+                        ? bdengineAnimationName(bdengineSection, "onClick", "onCLick")
+                        : "";
+                final double bdengineOnSpawnTimelineLength = bdengineSection != null
+                        ? bdengineAnimationTimelineLength(bdengineSection, "onSpawn")
+                        : 0.0D;
+                final double bdengineOnClickTimelineLength = bdengineSection != null
+                        ? bdengineAnimationTimelineLength(bdengineSection, "onClick", "onCLick")
+                        : 0.0D;
+                final String bdengineOnSpawnAnimationMode = bdengineSection != null
+                        ? bdengineAnimationMode(bdengineSection, "onSpawn")
+                        : "once";
+                final String bdengineOnClickAnimationMode = bdengineSection != null
+                        ? bdengineAnimationMode(bdengineSection, "onClick", "onCLick")
+                        : "once";
+                final ConfigurationSection bdengineCollision = bdengineSection != null
+                        ? bdengineSection.getConfigurationSection("collision")
+                        : null;
+                final String bdengineCollisionType = bdengineCollision != null
+                        ? bdengineCollision.getString("type", "none")
+                        : "none";
+                final Material bdengineCollisionBlock = bdengineCollision != null
+                        ? parseMaterial(bdengineCollision.getString("block", "minecraft:barrier"))
+                        : Material.BARRIER;
+                final List<String> bdengineCollisionPositions = bdengineCollision != null
+                        ? bdengineCollision.getStringList("position")
+                        : List.of();
+                if (bdengineEnabled && (bdengineModel == null || bdengineModel.isBlank())) {
+                    report.error("Block '" + key + "' enables modelType.bdengine but has no model configured.");
+                }
+                if (bdengineEnabled && bdengineCollisionBlock == null) {
+                    report.warn("Block '" + key + "' has invalid modelType.bdengine.collision.block.");
+                }
                 final ConfigurationSection itemSection = section.getConfigurationSection("item");
                 final String itemName = itemSection != null ? itemSection.getString("name") : null;
                 final Material itemMaterial = itemSection != null ? parseMaterial(itemSection.getString("material")) : null;
@@ -195,6 +239,18 @@ public final class BlockConfigService {
                                 schematicsPlaceFacing,
                                 schematicsAdjustPosNormal,
                                 schematicsAdjustPosDead,
+                                bdengineEnabled,
+                                bdengineModel,
+                                bdengineSize,
+                                bdengineOnSpawnAnimation,
+                                bdengineOnClickAnimation,
+                                bdengineOnSpawnTimelineLength,
+                                bdengineOnClickTimelineLength,
+                                bdengineOnSpawnAnimationMode,
+                                bdengineOnClickAnimationMode,
+                                bdengineCollisionType,
+                                bdengineCollisionBlock == null ? Material.BARRIER : bdengineCollisionBlock,
+                                bdengineCollisionPositions,
                                 itemName,
                                 itemMaterial
                         )
@@ -648,6 +704,68 @@ public final class BlockConfigService {
         }
         final String normalized = raw.contains(":") ? raw.substring(raw.indexOf(':') + 1) : raw;
         return Material.matchMaterial(normalized, false);
+    }
+
+    private String firstConfiguredString(final ConfigurationSection section, final String... paths) {
+        if (section == null || paths == null) {
+            return "";
+        }
+        for (final String path : paths) {
+            if (path == null || !section.isSet(path)) {
+                continue;
+            }
+            final String value = section.getString(path, "");
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private String bdengineAnimationName(final ConfigurationSection section, final String... paths) {
+        final ConfigurationSection animationSection = firstConfiguredSection(section, paths);
+        if (animationSection != null) {
+            final String name = animationSection.getString("name", "");
+            return name == null ? "" : name.trim();
+        }
+        return firstConfiguredString(section, paths);
+    }
+
+    private double bdengineAnimationTimelineLength(final ConfigurationSection section, final String... paths) {
+        final ConfigurationSection animationSection = firstConfiguredSection(section, paths);
+        if (animationSection == null) {
+            return 0.0D;
+        }
+        return Math.max(0.0D, animationSection.getDouble("timeline_length", animationSection.getDouble("timelineLength", 0.0D)));
+    }
+
+    private String bdengineAnimationMode(final ConfigurationSection section, final String... paths) {
+        final ConfigurationSection animationSection = firstConfiguredSection(section, paths);
+        if (animationSection == null) {
+            return "once";
+        }
+        final String mode = animationSection.getString("mode", "once");
+        if (mode == null || mode.isBlank()) {
+            return "once";
+        }
+        final String normalized = mode.trim().toLowerCase(Locale.ROOT);
+        return "loop".equals(normalized) ? "loop" : "once";
+    }
+
+    private ConfigurationSection firstConfiguredSection(final ConfigurationSection section, final String... paths) {
+        if (section == null || paths == null) {
+            return null;
+        }
+        for (final String path : paths) {
+            if (path == null) {
+                continue;
+            }
+            final ConfigurationSection child = section.getConfigurationSection(path);
+            if (child != null) {
+                return child;
+            }
+        }
+        return null;
     }
 
     private Sound parseSound(

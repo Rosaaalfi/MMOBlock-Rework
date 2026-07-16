@@ -103,6 +103,7 @@ public final class VisualSyncSystem {
     public boolean usesRealBlockModel(final BlockDefinition definition) {
         if (definition == null) return false;
         if (definition.schematicsEnabled()) return false;
+        if (definition.bdengineEnabled()) return false;
         return definition.useRealBlockModel()
             && definition.realBlockMaterial() != null
             && definition.realBlockMaterial().isBlock();

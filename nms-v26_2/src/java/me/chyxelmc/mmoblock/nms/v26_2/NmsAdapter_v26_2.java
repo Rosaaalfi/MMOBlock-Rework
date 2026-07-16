@@ -1,4 +1,4 @@
-package me.chyxelmc.mmoblock.nms.v26_1;
+package me.chyxelmc.mmoblock.nms.v26_2;
 
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
 import net.minecraft.nbt.NbtIo;
@@ -52,7 +52,7 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class NmsAdapter_v26_1 implements NmsAdapter {
+public final class NmsAdapter_v26_2 implements NmsAdapter {
 
     private static final int TEXT_DISPLAY_INTERPOLATION_DURATION = 2;
     private static final EntityType<net.minecraft.world.entity.Interaction> CUSTOM_INTERACTION_TYPE = createCustomInteractionType();
@@ -66,7 +66,7 @@ public final class NmsAdapter_v26_1 implements NmsAdapter {
     @Override
     public String targetMinecraftVersion() {
         // Cukup kembalikan String tunggal dengan pemisah koma tanpa spasi
-        return "26,26.1,26.1.1,26.1.2";
+        return "26.2";
     }
 
     @Override

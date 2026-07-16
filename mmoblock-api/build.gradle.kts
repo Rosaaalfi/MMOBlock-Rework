@@ -1,13 +1,12 @@
-import java.text.SimpleDateFormat
-import java.util.Date
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.io.IOException
+import java.time.Instant
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
 
 plugins {
     `java-library`
     `maven-publish`
-    signing
-
-    id("com.tddworks.central-publisher") version "0.2.0-alpha.1"
 }
 
 dependencies {
@@ -56,21 +55,13 @@ project.version = when {
 }
 println("Publishing version: ${project.version}")
 
-// ==========================================================
-// SIGNING
-// ==========================================================
+fun optionalGradleProperty(name: String): String? {
+    return project.findProperty(name)?.toString()?.takeIf { it.isNotBlank() }
+}
 
-signing {
-    val signingKey =
-        System.getenv("SIGNING_KEY")
-            ?: project.findProperty("signingKey")?.toString()
-    val signingPassword =
-        System.getenv("SIGNING_PASSWORD")
-            ?: project.findProperty("signingPassword")?.toString()
-    if (signingKey != null && signingPassword != null) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
-    }
-    sign(publishing.publications)
+fun requiredGradleProperty(name: String): String {
+    return optionalGradleProperty(name)
+        ?: error("Missing Gradle property '$name'. Add it to gradle.properties.")
 }
 
 // ==========================================================
@@ -78,25 +69,44 @@ signing {
 // ==========================================================
 
 publishing {
-    repositories {
-        maven {
-            name = "SonatypeSnapshots"
-            url = uri(
-                "https://central.sonatype.com/repository/maven-snapshots/"
-            )
-            credentials {
-                username =
-                    System.getenv("MAVEN_CENTRAL_USERNAME")
-                        ?: project.findProperty("mavenCentralUsername")?.toString()
-                password =
-                    System.getenv("MAVEN_CENTRAL_PASSWORD")
-                        ?: project.findProperty("mavenCentralPassword")?.toString()
-            }
-            mavenContent {
-                snapshotsOnly()
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+
+            pom {
+                name.set("MMOBlock API")
+                description.set("API for MMOBlock")
+                url.set("https://github.com/Rosaaalfi/MMOBlock-Rework")
+
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://opensource.org/licenses/MIT")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("chyxelmc")
+                        name.set("ChyxelMC")
+                        email.set("anikosyahraramadhani@outlook.com")
+                    }
+                }
+
+                scm {
+                    connection.set(
+                        "scm:git:git@github.com:Rosaaalfi/MMOBlock-Rework.git"
+                    )
+                    developerConnection.set(
+                        "scm:git:git@github.com:Rosaaalfi/MMOBlock-Rework.git"
+                    )
+                    url.set("https://github.com/Rosaaalfi/MMOBlock-Rework")
+                }
             }
         }
+    }
 
+    repositories {
         maven {
             name = "LocalRepo"
             url = uri(
@@ -107,44 +117,212 @@ publishing {
 }
 
 // ==========================================================
-// CENTRAL PUBLISHER (RELEASE ONLY)
+// CHYXEL REPOSITORY AUTO PUBLISH
 // ==========================================================
 
-centralPublisher {
-    credentials {
-        username =
-            System.getenv("MAVEN_CENTRAL_USERNAME")
-                ?: project.findProperty("mavenCentralUsername")?.toString()
-                        ?: ""
-        password =
-            System.getenv("MAVEN_CENTRAL_PASSWORD")
-                ?: project.findProperty("mavenCentralPassword")?.toString()
-                        ?: ""
+tasks.register("publishToChyxelRepo") {
+    group = "publishing"
+    description =
+        "Publishes MMOBlock API to Cloudflare R2 using gradle.properties credentials."
+
+    dependsOn("publishMavenJavaPublicationToLocalRepoRepository")
+
+    doLast {
+        val localRepoDir = rootProject.layout.buildDirectory
+            .dir("maven-repo")
+            .get()
+            .asFile
+        val artifactId = base.archivesName.get()
+        val versionName = project.version.toString()
+        val groupId = project.group.toString()
+        val groupPath = groupId.replace('.', '/')
+        val artifactDir = localRepoDir.resolve("$groupPath/$artifactId")
+        val versionDir = artifactDir.resolve(versionName)
+
+        if (!versionDir.isDirectory) {
+            error("Expected Maven artifact directory was not created: $versionDir")
+        }
+
+        val r2AccountId = requiredGradleProperty("r2AccountId")
+        val r2Bucket = requiredGradleProperty("r2Bucket")
+        val r2AccessKeyId = requiredGradleProperty("r2AccessKeyId")
+        val r2SecretAccessKey = requiredGradleProperty("r2SecretAccessKey")
+        val r2PublicUrl =
+            optionalGradleProperty("r2PublicUrl")
+                ?: "https://public-repo.chyxelmc.me"
+        val r2Endpoint = "https://$r2AccountId.r2.cloudflarestorage.com"
+        val awsCliPath = optionalGradleProperty("awsCliPath") ?: "aws"
+
+        fun runAws(
+            vararg args: String,
+            ignoreExitValue: Boolean = false,
+            printIgnoredOutput: Boolean = false
+        ): Int {
+            val command = listOf(awsCliPath) + args
+            val process = try {
+                ProcessBuilder(command)
+                    .directory(rootProject.projectDir)
+                    .redirectErrorStream(true)
+                    .apply {
+                        environment()["AWS_ACCESS_KEY_ID"] = r2AccessKeyId
+                        environment()["AWS_SECRET_ACCESS_KEY"] = r2SecretAccessKey
+                        environment()["AWS_DEFAULT_REGION"] = "auto"
+                    }
+                    .start()
+            } catch (error: IOException) {
+                error(
+                    "AWS CLI was not found. Install AWS CLI v2 or set " +
+                        "awsCliPath in gradle.properties. Current value: $awsCliPath"
+                )
+            }
+
+            val output = process.inputStream.bufferedReader().readText()
+
+            val exitCode = process.waitFor()
+            if (output.isNotBlank() && (exitCode == 0 || !ignoreExitValue || printIgnoredOutput)) {
+                print(output)
+            }
+            if (exitCode != 0 && !ignoreExitValue) {
+                error(
+                    "AWS CLI failed with exit code $exitCode: ${command.joinToString(" ")}\n" +
+                        "Check r2Bucket='$r2Bucket', r2AccountId='$r2AccountId', and make sure " +
+                        "the R2 access key belongs to the same Cloudflare account and can write to that bucket."
+                )
+            }
+
+            return exitCode
+        }
+
+        val indexFile = localRepoDir.resolve("index.json")
+        val indexJsFile = localRepoDir.resolve("index.js")
+        val currentIndexFile = temporaryDir.resolve("chyxel-index-current.json")
+
+        val downloadIndexExitCode = runAws(
+            "s3",
+            "cp",
+            "s3://$r2Bucket/repository/index.json",
+            currentIndexFile.absolutePath,
+            "--endpoint-url",
+            r2Endpoint,
+            ignoreExitValue = true,
+            printIgnoredOutput = false
+        )
+
+        val index: MutableMap<String, Any?> =
+            if (downloadIndexExitCode == 0 && currentIndexFile.isFile) {
+            (JsonSlurper().parse(currentIndexFile) as Map<*, *>)
+                .mapKeys { it.key.toString() }
+                .mapValues { it.value }
+                .toMutableMap()
+        } else {
+            mutableMapOf("generatedAt" to "", "artifacts" to mutableListOf<Any>())
+        }
+
+        val artifacts = (index["artifacts"] as? List<*>)
+            ?.mapNotNull { item ->
+                (item as? Map<*, *>)
+                    ?.mapKeys { it.key.toString() }
+                    ?.toMutableMap()
+            }
+            ?.toMutableList()
+            ?: mutableListOf()
+
+        val existingArtifact = artifacts.firstOrNull {
+            it["groupId"] == groupId && it["artifactId"] == artifactId
+        }
+
+        artifacts.removeAll {
+            it["groupId"] == groupId && it["artifactId"] == artifactId
+        }
+
+        val versionFiles = versionDir
+            .listFiles()
+            ?.filter { it.isFile }
+            ?.sortedBy { it.name }
+            ?: emptyList()
+        val jarFile = versionFiles.firstOrNull {
+            it.name == "$artifactId-$versionName.jar"
+        } ?: error("JAR file not found in $versionDir")
+
+        @Suppress("UNCHECKED_CAST")
+        val existingVersions =
+            existingArtifact?.get("versions") as? List<String> ?: emptyList()
+        @Suppress("UNCHECKED_CAST")
+        val existingFiles =
+            existingArtifact?.get("files") as? Map<String, Any?> ?: emptyMap()
+        @Suppress("UNCHECKED_CAST")
+        val existingFileSizes =
+            existingArtifact?.get("fileSizes") as? Map<String, Any?> ?: emptyMap()
+
+        val updatedFiles = existingFiles.toMutableMap()
+        updatedFiles[versionName] = versionFiles.map { it.name }
+
+        val updatedFileSizes = existingFileSizes.toMutableMap()
+        updatedFileSizes[versionName] =
+            versionFiles.associate { it.name to it.length() }
+
+        val artifactEntry = linkedMapOf<String, Any?>(
+            "groupId" to groupId,
+            "artifactId" to artifactId,
+            "latestVersion" to versionName,
+            "description" to "$groupId:$artifactId",
+            "size" to jarFile.length(),
+            "versions" to (existingVersions + versionName).distinct().sorted(),
+            "files" to updatedFiles,
+            "fileSizes" to updatedFileSizes
+        )
+
+        artifacts.add(artifactEntry)
+        artifacts.sortWith(
+            compareBy<MutableMap<String, Any?>>(
+                { it["groupId"].toString() },
+                { it["artifactId"].toString() }
+            )
+        )
+
+        index["generatedAt"] = Instant.now().toString()
+        index["artifacts"] = artifacts
+        indexFile.writeText(JsonOutput.prettyPrint(JsonOutput.toJson(index)))
+        indexJsFile.writeText(
+            "window.CHYXEL_REPOSITORY_INDEX = ${indexFile.readText()};\n"
+        )
+
+        runAws(
+            "s3",
+            "sync",
+            localRepoDir.absolutePath,
+            "s3://$r2Bucket/repository",
+            "--endpoint-url",
+            r2Endpoint,
+            "--cache-control",
+            "public, max-age=600"
+        )
+
+        println(
+            "Published $groupId:$artifactId:$versionName to Chyxel Repository"
+        )
+        println(
+            "$r2PublicUrl/repository/$groupPath/$artifactId/$versionName/"
+        )
     }
-    projectInfo {
-        name = "MMOBlock API"
-        description = "API for MMOBlock"
-        url = "https://github.com/Rosaaalfi/MMOBlock-Rework"
-        license {
-            name = "MIT License"
-            url = "https://opensource.org/licenses/MIT"
-        }
-        developer {
-            id = "chyxelmc"
-            name = "ChyxelMC"
-            email = "anikosyahraramadhani@outlook.com"
-        }
-        scm {
-            connection =
-                "scm:git:git@github.com:Rosaaalfi/MMOBlock-Rework.git"
-            developerConnection =
-                "scm:git:git@github.com:Rosaaalfi/MMOBlock-Rework.git"
-            url =
-                "https://github.com/Rosaaalfi/MMOBlock-Rework"
-        }
-    }
-    publishing {
-        autoPublish = true
-        aggregation = false
+}
+
+tasks.register("printChyxelRepoProperties") {
+    group = "help"
+    description = "Prints gradle.properties keys used by Chyxel auto publish."
+
+    doLast {
+        println(
+            """
+            Add these to gradle.properties:
+
+            r2AccountId=your-cloudflare-account-id
+            r2Bucket=your-r2-bucket
+            r2AccessKeyId=your-r2-access-key-id
+            r2SecretAccessKey=your-r2-secret-access-key
+            r2PublicUrl=https://public-repo.chyxelmc.me
+            # awsCliPath=C:/Program Files/Amazon/AWSCLIV2/aws.exe
+            """.trimIndent()
+        )
     }
 }
