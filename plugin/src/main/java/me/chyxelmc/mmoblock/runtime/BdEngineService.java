@@ -1,18 +1,5 @@
 package me.chyxelmc.mmoblock.runtime;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.model.BlockDefinition;
-import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
-import org.bukkit.entity.Player;
-import org.joml.Matrix4f;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -23,12 +10,27 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.LinkedHashMap;
 import java.util.UUID;
 import java.util.zip.GZIPInputStream;
+
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.entity.Player;
+import org.joml.Matrix4f;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
+import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.model.BlockDefinition;
+import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
 
 public final class BdEngineService {
 
@@ -100,6 +102,7 @@ public final class BdEngineService {
         if (!displayParts.isEmpty()) {
             final PacketModelState state = new PacketModelState(
                     base,
+                    List.copyOf(displayParts),
                     List.copyOf(displayParts),
                     List.copyOf(renderedParts),
                     size,
@@ -188,6 +191,7 @@ public final class BdEngineService {
             this.plugin.scheduler().runAtLocationLater(
                     runningState.baseLocation(),
                     () -> sendParts(blockUniqueId, state.baseLocation(), transformParts(
+                            runningState.baseParts(),
                             runningState.renderedParts(),
                             animation.bindTransform(),
                             frame,
@@ -204,6 +208,12 @@ public final class BdEngineService {
             this.plugin.scheduler().runAtLocationLater(
                     runningState.baseLocation(),
                     () -> replayLoop(blockUniqueId, animationName, timelineLengthSeconds, mode, sequence),
+                    loopDelay
+            );
+        } else if (loopDelay > 0L) {
+            this.plugin.scheduler().runAtLocationLater(
+                    runningState.baseLocation(),
+                    () -> sendParts(blockUniqueId, runningState.baseLocation(), runningState.baseParts(), sequence),
                     loopDelay
             );
         }
@@ -239,6 +249,7 @@ public final class BdEngineService {
     }
 
     private List<NmsAdapter.BdEngineDisplayPart> transformParts(
+            final List<NmsAdapter.BdEngineDisplayPart> baseParts,
             final List<BdEngineRenderedPart> parts,
             final Matrix4f bindTransform,
             final BdEngineAnimationFrame frame,
@@ -247,11 +258,7 @@ public final class BdEngineService {
     ) {
         final Matrix4f frameTransform = frame.transform();
         if (sameTransform(frameTransform, bindTransform)) {
-            final List<NmsAdapter.BdEngineDisplayPart> rest = new ArrayList<>(parts.size());
-            for (final BdEngineRenderedPart part : parts) {
-                rest.add(toDisplayPart(part, size, bounds));
-            }
-            return rest;
+            return List.copyOf(baseParts);
         }
         final Matrix4f inverseBind = new Matrix4f(bindTransform).invert();
         final Matrix4f delta = new Matrix4f(frameTransform).mul(inverseBind);
@@ -268,15 +275,19 @@ public final class BdEngineService {
         return Math.abs(first.m00() - second.m00()) <= epsilon
                 && Math.abs(first.m01() - second.m01()) <= epsilon
                 && Math.abs(first.m02() - second.m02()) <= epsilon
+                && Math.abs(first.m03() - second.m03()) <= epsilon
                 && Math.abs(first.m10() - second.m10()) <= epsilon
                 && Math.abs(first.m11() - second.m11()) <= epsilon
                 && Math.abs(first.m12() - second.m12()) <= epsilon
+                && Math.abs(first.m13() - second.m13()) <= epsilon
                 && Math.abs(first.m20() - second.m20()) <= epsilon
                 && Math.abs(first.m21() - second.m21()) <= epsilon
                 && Math.abs(first.m22() - second.m22()) <= epsilon
+                && Math.abs(first.m23() - second.m23()) <= epsilon
                 && Math.abs(first.m30() - second.m30()) <= epsilon
                 && Math.abs(first.m31() - second.m31()) <= epsilon
-                && Math.abs(first.m32() - second.m32()) <= epsilon;
+                && Math.abs(first.m32() - second.m32()) <= epsilon
+                && Math.abs(first.m33() - second.m33()) <= epsilon;
     }
 
     private NmsAdapter.BdEngineDisplayPart toDisplayPart(
@@ -768,6 +779,7 @@ public final class BdEngineService {
     private Matrix4f toDisplayMatrix(final Matrix4f modelMatrix, final double size, final BdEngineBounds bounds) {
         final float scale = (float) size;
         final Matrix4f scaled = new Matrix4f(modelMatrix);
+
         scaled.m00(scaled.m00() * scale);
         scaled.m01(scaled.m01() * scale);
         scaled.m02(scaled.m02() * scale);
@@ -777,9 +789,9 @@ public final class BdEngineService {
         scaled.m20(scaled.m20() * scale);
         scaled.m21(scaled.m21() * scale);
         scaled.m22(scaled.m22() * scale);
-        scaled.m30(0.5F + ((scaled.m30() - bounds.centerX()) * scale));
+        scaled.m30(0.5F + ((scaled.m30() - 0.5F) * scale));
         scaled.m31((scaled.m31() - bounds.minY()) * scale);
-        scaled.m32(0.5F + ((scaled.m32() - bounds.centerZ()) * scale));
+        scaled.m32(0.5F + ((scaled.m32() - 0.5F) * scale));
         return scaled;
     }
 
@@ -888,7 +900,14 @@ public final class BdEngineService {
     private record BdEnginePart(NmsAdapter.BdEngineDisplayType type, String materialName, String text, Matrix4f transforms, int skyLight, int blockLight) {
     }
 
-    private record BdEngineRenderedPart(NmsAdapter.BdEngineDisplayType type, Material material, String text, Matrix4f transforms, int skyLight, int blockLight) {
+    private record BdEngineRenderedPart(
+            NmsAdapter.BdEngineDisplayType type,
+            Material material,
+            String text,
+            Matrix4f transforms,
+            int skyLight,
+            int blockLight
+    ) {
 
         private BdEngineRenderedPart withTransforms(final Matrix4f transforms) {
             return new BdEngineRenderedPart(this.type, this.material, this.text, transforms, this.skyLight, this.blockLight);
@@ -946,6 +965,7 @@ public final class BdEngineService {
     private record PacketModelState(
             Location baseLocation,
             List<NmsAdapter.BdEngineDisplayPart> parts,
+            List<NmsAdapter.BdEngineDisplayPart> baseParts,
             List<BdEngineRenderedPart> renderedParts,
             double size,
             BdEngineBounds bounds,
@@ -954,11 +974,11 @@ public final class BdEngineService {
     ) {
 
         private PacketModelState withAnimationSequence(final long animationSequence) {
-            return new PacketModelState(this.baseLocation, this.parts, this.renderedParts, this.size, this.bounds, this.animations, animationSequence);
+            return new PacketModelState(this.baseLocation, this.parts, this.baseParts, this.renderedParts, this.size, this.bounds, this.animations, animationSequence);
         }
 
         private PacketModelState withParts(final List<NmsAdapter.BdEngineDisplayPart> parts) {
-            return new PacketModelState(this.baseLocation, List.copyOf(parts), this.renderedParts, this.size, this.bounds, this.animations, this.animationSequence);
+            return new PacketModelState(this.baseLocation, List.copyOf(parts), this.baseParts, this.renderedParts, this.size, this.bounds, this.animations, this.animationSequence);
         }
     }
 

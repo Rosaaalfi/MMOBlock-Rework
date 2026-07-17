@@ -22,7 +22,7 @@ exampleEntityBDEngine:
   breakAnimation: true # Whether to play the block breaking animation when the entity is click. using packet block breaking animation.
   hitbox: # AABB hitbox for the entity. The hitbox will be centered on the entity's location.
     width: 1.2 # The width of the entity's hitbox.
-    height: 1.2 # The height of the entity's hitbox.
+    height: 5 # The height of the entity's hitbox.
   modelType:
     bdengine:
       enabled: true # Enable BDEngine for this entity. If false.
@@ -32,14 +32,14 @@ exampleEntityBDEngine:
         block: minecraft:barrier # The block to use for the hitbox. This block will be used to determine the entity's hitbox size and shape. You can use any block that has a collision box, such as barrier, stone, dirt, etc.
         position:
           - "0, 0, 0" # The position of the hitbox relative to the entity's location. This is a list of x, y, z coordinates. The hitbox will be centered on the entity's location, so you can use negative values to offset the hitbox in any direction.
-      size: 2.0 # The size of the BDEngine model.
+      size: 1.0 # The size of the BDEngine model.
       onSpawn: # Custom animation to play when the BDEngine model is spawned.
         name: spawn
         timeline_length: 0.5 # The length of the timeline in seconds. This is the total length of the animation, including all keyframes.
         mode: once # The mode of the animation. Supported modes are: once, loop. Once will play the animation once and then stop. Loop will play the animation in a loop.
       onCLick: # Example of a click animation from BDEngine.
         name: click
-        timeline_length: 0.5 # The length of the timeline in seconds. This is the total length of the animation, including all keyframes.
+        timeline_length: 0.2 # The length of the timeline in seconds. This is the total length of the animation, including all keyframes.
         mode: once # The mode of the animation. Supported modes are: once, loop. Once will play the animation once and then stop. Loop will play the animation in a loop.
   allowedTools:
     - exampleTools
