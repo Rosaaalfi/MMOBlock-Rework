@@ -1,5 +1,38 @@
 package me.chyxelmc.mmoblock.runtime;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageEvent;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
+
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.api.event.BlockMineEvent;
 import me.chyxelmc.mmoblock.api.event.BlockPlaceEvent;
@@ -12,7 +45,6 @@ import me.chyxelmc.mmoblock.model.PlacedBlock;
 import me.chyxelmc.mmoblock.model.ToolAction;
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
 import me.chyxelmc.mmoblock.persistence.cache.DataCache;
-import me.chyxelmc.mmoblock.nmsloader.utils.ClientProtocolUtils;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.ecs.BlockEcsState;
@@ -28,38 +60,6 @@ import me.chyxelmc.mmoblock.utils.ConditionEvaluator;
 import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.Bukkit;
-import org.bukkit.World;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Interaction;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockDamageEvent;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.Damageable;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.block.Block;
-import org.bukkit.util.BoundingBox;
-import org.bukkit.util.Vector;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.ThreadLocalRandom;
 
 public final class BlockRuntimeService {
 
@@ -165,7 +165,7 @@ public final class BlockRuntimeService {
         this.miningSystem = new MiningSystem(this.ecsState);
         this.respawnSystem = new RespawnSystem(plugin, scheduler, this.ecsState);
         this.visualSyncSystem = new VisualSyncSystem(plugin, nmsAdapter);
-        this.dropSystem = new DropSystem(plugin, blockConfigService);
+        this.dropSystem = new DropSystem(plugin, blockConfigService, scheduler);
         this.lifecycleSystem = new LifecycleSystem();
         this.reconcileSystem = new ReconcileSystem();
         startMiningProgressResetTask();
@@ -268,13 +268,18 @@ public final class BlockRuntimeService {
         final UUID uniqueId = UUID.randomUUID();
         final PlacedBlock placedBlock = new PlacedBlock(uniqueId, definition.id(), world.getName(), x, y, z, facing, LifecycleSystem.STATUS_ACTIVE);
 
+        // Register the block in ecsState BEFORE spawning the interaction entity
+        // to close a race window where a player could click the entity before
+        // the block is findable in ecsState, causing handleInteraction to return
+        // null and the click to be silently dropped.
+        this.ecsState.putBlock(placedBlock);
+
         if (isChunkLoaded(world, x, z) && !spawnInteraction(placedBlock, definition, world)) {
+            this.ecsState.removeBlock(placedBlock.uniqueId());
             return PlaceResult.error("Failed to spawn interaction entity");
         }
 
         this.plugin.getServer().getPluginManager().callEvent(new BlockPlaceEvent(null, placedBlock, definition));
-
-        this.ecsState.putBlock(placedBlock);
         if (persist) {
             this.persistenceSystem.persistBlockAsync(placedBlock);
         } else {
@@ -1467,8 +1472,9 @@ public final class BlockRuntimeService {
         for (int y = startY; y <= topY; y++) {
             final Block feet = world.getBlockAt(blockX, y, blockZ);
             final Block head = world.getBlockAt(blockX, y + 1, blockZ);
-            clearSnowLayer(feet);
-            clearSnowLayer(head);
+            // Snow layers are no longer cleared from the world. Thin snow (1–7)
+            // is naturally passable so placement proceeds; thick snow (8 layers)
+            // is non-passable and correctly prevents placement inside it.
             if (!feet.isPassable() || !head.isPassable()) {
                 continue;
             }
@@ -1510,8 +1516,7 @@ public final class BlockRuntimeService {
 
             final Block feet = world.getBlockAt(blockX, candidateY, blockZ);
             final Block head = world.getBlockAt(blockX, candidateY + 1, blockZ);
-            clearSnowLayer(feet);
-            clearSnowLayer(head);
+            // Snow layers are no longer cleared — natural passability applies.
             if (!feet.isPassable() || !head.isPassable()) {
                 continue;
             }
@@ -1538,12 +1543,6 @@ public final class BlockRuntimeService {
         }
         // Reject if 3 or all 4 horizontal directions are blocked
         return blockedDirections >= 3;
-    }
-
-    private void clearSnowLayer(final Block block) {
-        if (block != null && isOwnedByCurrentRegion(block.getLocation()) && block.getType() == Material.SNOW) {
-            block.setType(Material.AIR, false);
-        }
     }
 
     private static boolean isOwnedByCurrentRegion(final Location location) {
@@ -1675,7 +1674,13 @@ public final class BlockRuntimeService {
             return false;
         }
         final Block support = world.getBlockAt(blockX, spawnY - 1, blockZ);
-        clearSnowLayer(support);
+        // Snow layers are not valid ground support — the entity would sink
+        // through them. Previously the snow was set to AIR here and caught
+        // by the isAir check below; now we reject it explicitly so the
+        // world block data is never modified and can be restored later.
+        if (support.getType() == Material.SNOW) {
+            return false;
+        }
         if (support.getType().isAir()) {
             return false;
         }

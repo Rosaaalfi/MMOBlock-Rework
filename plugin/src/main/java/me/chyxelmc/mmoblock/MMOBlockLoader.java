@@ -1,19 +1,19 @@
 package me.chyxelmc.mmoblock;
 
-import io.papermc.paper.plugin.loader.PluginClasspathBuilder;
-import io.papermc.paper.plugin.loader.PluginLoader;
-import io.papermc.paper.plugin.loader.library.impl.JarLibrary;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
+
+import io.papermc.paper.plugin.loader.PluginClasspathBuilder;
+import io.papermc.paper.plugin.loader.PluginLoader;
+import io.papermc.paper.plugin.loader.library.impl.JarLibrary;
 
 public final class MMOBlockLoader implements PluginLoader {
 
@@ -43,6 +43,12 @@ public final class MMOBlockLoader implements PluginLoader {
                     "com/zaxxer/HikariCP/7.0.2/HikariCP-7.0.2.jar",
                     "HikariCP-7.0.2.jar",
                     "f1e612fa27345be3107a85431e8a8aeb205c15364ab2f2d411e40a9d7bb08095"
+            ),
+            new ExternalLibrary(
+                    "com.google.code.gson:gson:2.10.1",
+                    "com/google/code/gson/gson/2.10.1/gson-2.10.1.jar",
+                    "gson-2.10.1.jar",
+                    "4241c14a7727c34feea6507ec801318a3d4a90f070e4525681079fb94ee4c593"
             )
     );
 

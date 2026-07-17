@@ -11,7 +11,7 @@ dependencies {
     compileOnly(libs.paperApiV1194)
     compileOnly(libs.miniMessageLib)
     compileOnly(libs.h2SqlLib)
-    implementation(libs.gson)
+    compileOnly(libs.gson)
     compileOnly(libs.papi)
     compileOnly("com.github.ben-manes.caffeine:caffeine:3.2.4")
     compileOnly("com.zaxxer:HikariCP:7.0.2")

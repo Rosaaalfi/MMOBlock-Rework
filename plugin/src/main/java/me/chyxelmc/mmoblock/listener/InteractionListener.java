@@ -1,5 +1,17 @@
 package me.chyxelmc.mmoblock.listener;
 
+import java.util.UUID;
+
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.ItemStack;
+
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigService;
 import me.chyxelmc.mmoblock.config.NodeConfigService;
@@ -7,15 +19,6 @@ import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
 import me.chyxelmc.mmoblock.runtime.NodeRuntimeService;
 import me.chyxelmc.mmoblock.utils.CustomItemUtil;
 import net.kyori.adventure.text.Component;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerInteractAtEntityEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 
 public final class InteractionListener implements Listener {
 
@@ -98,20 +101,30 @@ public final class InteractionListener implements Listener {
             return;
         }
 
+        // Resolve whether the entity belongs to this plugin to guarantee we cancel
+        // the event for our Interaction entities — this prevents the vanilla entity
+        // hit sound and avoids count-reset race conditions when the entity exists
+        // with PDC but the block hasn't been fully registered in ecsState yet.
+        final UUID resolvedId = this.runtimeService.resolveBlockUniqueId(event.getEntity());
+        final boolean isOurEntity = resolvedId != null;
+
         final CustomItemUtil.CustomItemData itemData = readCustomItem(player);
         if (itemData != null) {
             if (CustomItemUtil.TYPE_BLOCK_REMOVER.equals(itemData.type())) {
                 if (this.runtimeService.removeByInteractionEntity(event.getEntity())) {
                     event.setCancelled(true);
                     this.runtimeService.syncFakeBlocksForPlayer(player);
+                } else if (isOurEntity) {
+                    event.setCancelled(true);
                 }
                 return;
             }
             if (CustomItemUtil.TYPE_NODE_REMOVER.equals(itemData.type()) && this.nodeRuntimeService != null) {
-                final java.util.UUID blockId = this.runtimeService.resolveBlockUniqueId(event.getEntity());
-                if (blockId != null && this.nodeRuntimeService.removeNodeByBlockUniqueId(blockId)) {
+                if (resolvedId != null && this.nodeRuntimeService.removeNodeByBlockUniqueId(resolvedId)) {
                     event.setCancelled(true);
                     this.runtimeService.syncFakeBlocksForPlayer(player);
+                } else if (isOurEntity) {
+                    event.setCancelled(true);
                 }
                 return;
             }
@@ -119,6 +132,12 @@ public final class InteractionListener implements Listener {
 
         final Component message = this.runtimeService.handleInteraction(event.getEntity(), player, CLICK_LEFT);
         if (message == null) {
+            // Even if the block is not found in ecsState (race window during placement),
+            // cancel the event for our entities to suppress the vanilla hit sound and
+            // prevent mining-progress from timing out due to unregistered clicks.
+            if (isOurEntity) {
+                event.setCancelled(true);
+            }
             return;
         }
 

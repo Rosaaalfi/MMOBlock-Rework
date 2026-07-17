@@ -5,6 +5,7 @@ import me.chyxelmc.mmoblock.config.BlockConfigService;
 import me.chyxelmc.mmoblock.model.DropEntry;
 import me.chyxelmc.mmoblock.model.PlacedBlock;
 import me.chyxelmc.mmoblock.model.ToolAction;
+import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -21,10 +22,12 @@ public final class DropSystem {
 
     private final MMOBlock plugin;
     private final BlockConfigService blockConfigService;
+    private final Scheduler scheduler;
 
-    public DropSystem(final MMOBlock plugin, final BlockConfigService blockConfigService) {
+    public DropSystem(final MMOBlock plugin, final BlockConfigService blockConfigService, final Scheduler scheduler) {
         this.plugin = plugin;
         this.blockConfigService = blockConfigService;
+        this.scheduler = scheduler;
     }
 
     public void executeDrops(final PlacedBlock block, final ToolAction action, final Player player) {
@@ -39,7 +42,11 @@ public final class DropSystem {
                     case EXPERIENCE -> player.giveExp(amount);
                     case COMMAND -> {
                         if (entry.command() != null && !entry.command().isBlank()) {
-                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), entry.command().replace("%player%", player.getName()));
+                            final String resolved = entry.command().replace("%player%", player.getName());
+                            // Bukkit.dispatchCommand must run on the global tick thread;
+                            // in Folia the caller may be on a region thread so we
+                            // schedule via the global-region-aware scheduler.
+                            this.scheduler.run(() -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), resolved));
                         }
                     }
                 }
