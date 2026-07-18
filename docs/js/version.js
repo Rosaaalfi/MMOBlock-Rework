@@ -13,8 +13,9 @@ const Version = {
    */
   async fetchLatest() {
     try {
-      // Added corsproxy.io to bypass the local CORS block
-      const url = `https://corsproxy.io/?${this.REPO_URL}/${this.GROUP_PATH}/maven-metadata.xml`;
+      // Using AllOrigins as the proxy
+      const targetUrl = `${this.REPO_URL}/${this.GROUP_PATH}/maven-metadata.xml`;
+      const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
       const res = await fetch(url);
       if (!res.ok) return null;
       const xml = await res.text();
