@@ -13,9 +13,7 @@ const Version = {
    */
   async fetchLatest() {
     try {
-      // Using AllOrigins as the proxy
-      const targetUrl = `${this.REPO_URL}/${this.GROUP_PATH}/maven-metadata.xml`;
-      const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+      const url = `${this.REPO_URL}/${this.GROUP_PATH}/maven-metadata.xml`;
       const res = await fetch(url);
       if (!res.ok) return null;
       const xml = await res.text();
