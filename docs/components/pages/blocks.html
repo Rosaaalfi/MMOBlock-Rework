@@ -1,0 +1,575 @@
+<title>Blocks — MMOBlock Docs</title>
+
+
+    <div class="top-nav">
+      <div class="top-nav-breadcrumb">
+        <a href="#/">Home</a>
+        <span class="sep">/</span>
+        <a href="#/overview">Documentation</a>
+        <span class="sep">/</span>
+        <span class="current">Blocks</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1>Block <span class="accent">Definitions</span></h1>
+      <p class="lead">Define custom mineable blocks with YAML — properties, drops, tools, models, display holograms, conditions, and more.</p>
+
+      <p>Block definitions are the core of MMOBlock. Each block is defined in a separate YAML file inside the <code style="font-family:'Pixel Operator Mono',monospace;">blocks/</code> folder. These definitions control every aspect of the block: its appearance, behavior, drops, allowed tools, display holograms, sound effects, particles, and interaction conditions.</p>
+
+      <div class="info-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div>Block files are placed in <code style="font-family:'Pixel Operator Mono',monospace;">plugins/MMOBlock/blocks/</code> and can be reloaded at runtime with <code style="font-family:'Pixel Operator Mono',monospace;">/mmoblock reload blocks</code>.</div>
+      </div>
+
+      <div class="toc-card">
+        <div class="toc-title">On this page</div>
+        <ol>
+          <li><a href="#structure">File Structure</a></li>
+          <li><a href="#item">Item Configuration</a></li>
+          <li><a href="#timing">Timing &amp; Location</a></li>
+          <li><a href="#particles">Particles &amp; Sound</a></li>
+          <li><a href="#model">Model Display</a></li>
+          <li><a href="#hitbox">Hitbox &amp; Break Animation</a></li>
+          <li><a href="#display">Display Hologram</a></li>
+          <li><a href="#tools">Allowed Tools</a></li>
+          <li><a href="#conditions">Conditions</a></li>
+          <li><a href="#full-example">Full Example</a></li>
+        </ol>
+      </div>
+
+      <h2 id="structure">1. File Structure <a class="anchor-link" href="#structure">#</a></h2>
+
+      <p>Each block is a single YAML file in the <code style="font-family:'Pixel Operator Mono',monospace;">blocks/</code> directory. The file name becomes the block ID (without <code style="font-family:'Pixel Operator Mono',monospace;">.yml</code>). Here is the top-level structure:</p>
+
+      <div class="code-block" data-filename="blocks/exampleEntity.yml"><span class="yaml-comment"># Top-level key = block ID</span>
+<span class="yaml-key">exampleEntity</span>:
+  <span class="yaml-key">item</span>:
+    <span class="yaml-key">name</span>: <span class="yaml-val">"Example Entity"</span>
+    <span class="yaml-key">material</span>: <span class="yaml-val">diamond_ore</span>
+  <span class="yaml-key">respawnTime</span>: <span class="yaml-val">1</span>
+  <span class="yaml-key">deadDelay</span>: <span class="yaml-val">5</span>
+  <span class="yaml-key">randomLocation</span>:
+    <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span>
+    <span class="yaml-key">radius</span>: <span class="yaml-val">5</span>
+  <span class="yaml-key">particleBreak</span>:
+    <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span>
+    <span class="yaml-key">source</span>:
+      <span class="yaml-key">type</span>: <span class="yaml-val">VANILLA</span>
+      <span class="yaml-key">value</span>: <span class="yaml-val">"minecraft:lava"</span>
+  <span class="yaml-key">sound</span>:
+    <span class="yaml-key">onClick</span>: <span class="yaml-val">block.stone.hit</span>
+    <span class="yaml-key">onDead</span>: <span class="yaml-val">block.stone.break</span>
+    <span class="yaml-key">onRespawn</span>: <span class="yaml-val">block.stone.place</span>
+  <span class="yaml-key">breakAnimation</span>: <span class="yaml-val">true</span>
+  <span class="yaml-key">hitbox</span>:
+    <span class="yaml-key">width</span>: <span class="yaml-val">1.2</span>
+    <span class="yaml-key">height</span>: <span class="yaml-val">1.2</span>
+  <span class="yaml-key">modelType</span>:
+    <span class="yaml-key">block</span>: <span class="yaml-val">{ ... }</span>
+    <span class="yaml-key">bdengine</span>: <span class="yaml-val">{ ... }</span>
+  <span class="yaml-key">allowedTools</span>:
+    - <span class="yaml-val">exampleTools</span>
+  <span class="yaml-key">conditions</span>:
+    - <span class="yaml-val">{ ... }</span>
+  <span class="yaml-key">display</span>:
+    <span class="yaml-key">displayHeight</span>: <span class="yaml-val">2.1</span>
+    <span class="yaml-key">lines</span>:
+      - <span class="yaml-val">{ ... }</span></div>
+
+      <h2 id="item">2. Item Configuration <a class="anchor-link" href="#item">#</a></h2>
+
+      <p>The <code style="font-family:'Pixel Operator Mono',monospace;">item</code> section defines the item that represents this block in inventories, the creative menu, and as the held item when placing.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>name</code></td>
+            <td>String</td>
+            <td>—</td>
+            <td>Display name of the block item. Supports <span class="def">&amp;</span> color codes.</td>
+          </tr>
+          <tr>
+            <td><code>material</code></td>
+            <td>Material</td>
+            <td>—</td>
+            <td>Bukkit <span class="def">Material</span> for the item icon (e.g., <span class="def">diamond_ore</span>, <span class="def">stone</span>).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="timing">3. Timing &amp; Location <a class="anchor-link" href="#timing">#</a></h2>
+
+      <p>Control how the block behaves over time and where it can appear when using spawn randomization.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>respawnTime</code></td>
+            <td>Integer</td>
+            <td>—</td>
+            <td>Seconds after the block is killed before it respawns.</td>
+          </tr>
+          <tr>
+            <td><code>deadDelay</code></td>
+            <td>Integer</td>
+            <td>—</td>
+            <td>Seconds before the dead hologram disappears after the block is killed.</td>
+          </tr>
+          <tr>
+            <td><code>randomLocation.enabled</code></td>
+            <td>Boolean</td>
+            <td><span class="def">false</span></td>
+            <td>Whether to randomize the respawn location within a radius.</td>
+          </tr>
+          <tr>
+            <td><code>randomLocation.radius</code></td>
+            <td>Integer</td>
+            <td>—</td>
+            <td>Radius in blocks for random respawn positioning.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="particles">4. Particles &amp; Sound <a class="anchor-link" href="#particles">#</a></h2>
+
+      <p>Configure visual and audio feedback during block interaction.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Section</th>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="3"><code>particleBreak</code></td>
+            <td><code>enabled</code></td>
+            <td>Boolean</td>
+            <td>Enable/disable break particles.</td>
+          </tr>
+          <tr>
+            <td><code>source.type</code></td>
+            <td>String</td>
+            <td>Particle source type: <span class="def">VANILLA</span>.</td>
+          </tr>
+          <tr>
+            <td><code>source.value</code></td>
+            <td>String</td>
+            <td>Particle key (e.g., <span class="def">minecraft:lava</span>).</td>
+          </tr>
+          <tr>
+            <td rowspan="3"><code>sound</code></td>
+            <td><code>onClick</code></td>
+            <td>String</td>
+            <td>Sound played on each click.</td>
+          </tr>
+          <tr>
+            <td><code>onDead</code></td>
+            <td>String</td>
+            <td>Sound played when the block dies.</td>
+          </tr>
+          <tr>
+            <td><code>onRespawn</code></td>
+            <td>String</td>
+            <td>Sound played when the block respawns.</td>
+          </tr>
+          <tr>
+            <td><code>breakAnimation</code></td>
+            <td colspan="2">Boolean</td>
+            <td>Show the vanilla block break animation via packets.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="model">5. Model Display <a class="anchor-link" href="#model">#</a></h2>
+
+      <p>MMOBlock supports several visual model types for rendering your blocks. Choose one or more under <code style="font-family:'Pixel Operator Mono',monospace;">modelType</code>.</p>
+
+      <h3>Block Model</h3>
+      <p>The simplest option — renders the block as a vanilla Minecraft block display.</p>
+      <div class="code-block" data-filename="blocks/example.yml"><span class="yaml-key">modelType</span>:
+  <span class="yaml-key">block</span>:
+    <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span>
+    <span class="yaml-key">block</span>: <span class="yaml-val">minecraft:diamond_ore</span></div>
+
+      <h3>BDEngine Model</h3>
+      <p>Native 3D model rendering via display-entity packets. Supports keyframe animations, collision fake-blocks, and scaling. See <a href="#/models">Models / BDEngine</a> for full details.</p>
+
+      <div class="code-block" data-filename="blocks/example.yml"><span class="yaml-key">modelType</span>:
+  <span class="yaml-key">bdengine</span>:
+    <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span>
+    <span class="yaml-key">model</span>: <span class="yaml-val">iron_ore</span>
+    <span class="yaml-key">size</span>: <span class="yaml-val">2.0</span>
+    <span class="yaml-key">collision</span>:
+      <span class="yaml-key">type</span>: <span class="yaml-val">block</span>
+      <span class="yaml-key">block</span>: <span class="yaml-val">minecraft:barrier</span>
+      <span class="yaml-key">position</span>:
+        - <span class="yaml-val">"0, 0, 0"</span>
+    <span class="yaml-key">onSpawn</span>:
+      <span class="yaml-key">name</span>: <span class="yaml-val">spawn</span>
+      <span class="yaml-key">timeline_length</span>: <span class="yaml-val">0.5</span>
+      <span class="yaml-key">mode</span>: <span class="yaml-val">once</span>
+    <span class="yaml-key">onClick</span>:
+      <span class="yaml-key">name</span>: <span class="yaml-val">click</span>
+      <span class="yaml-key">timeline_length</span>: <span class="yaml-val">0.5</span>
+      <span class="yaml-key">mode</span>: <span class="yaml-val">once</span></div>
+
+      <h3>Schematic Model</h3>
+      <p>Load <span class="def">.schem</span> or <span class="def">.schematic</span> files for complex structures with normal and dead variants.</p>
+
+      <div class="code-block" data-filename="blocks/example.yml"><span class="yaml-key">modelType</span>:
+  <span class="yaml-key">schematics</span>:
+    <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span>
+    <span class="yaml-key">file</span>:
+      <span class="yaml-key">normal</span>: <span class="yaml-val">"tree"</span>
+      <span class="yaml-key">dead</span>: <span class="yaml-val">"dead/dead_tree"</span>
+    <span class="yaml-key">placeFacing</span>: <span class="yaml-val">north</span>
+    <span class="yaml-key">adjustPos</span>:
+      <span class="yaml-key">normal</span>:
+        - <span class="yaml-val">"-14, 0, -15"</span>
+      <span class="yaml-key">dead</span>:
+        - <span class="yaml-val">"-14, 0, -15"</span></div>
+
+      <h3>ModelEngine (External)</h3>
+      <p>Compatibility with the ModelEngine plugin <span class="def">RR</span> format.</p>
+
+      <div class="code-block" data-filename="blocks/example.yml"><span class="yaml-key">modelType</span>:
+  <span class="yaml-key">modelEngine</span>:
+    <span class="yaml-key">enabled</span>: <span class="yaml-val">false</span>
+    <span class="yaml-key">model</span>: <span class="yaml-val">iron_crystal:1.0</span>
+    <span class="yaml-key">onClick</span>:
+      <span class="yaml-key">name</span>: <span class="yaml-val">example_onClick_animation</span>
+      <span class="yaml-key">lerpin</span>: <span class="yaml-val">0.1</span>
+      <span class="yaml-key">lerpout</span>: <span class="yaml-val">0.1</span>
+      <span class="yaml-key">speed</span>: <span class="yaml-val">1.0</span></div>
+
+      <h2 id="hitbox">6. Hitbox &amp; Break Animation <a class="anchor-link" href="#hitbox">#</a></h2>
+
+      <p>Define the interaction hitbox dimensions and whether to show the vanilla block-breaking texture animation.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>hitbox.width</code></td>
+            <td>Double</td>
+            <td><span class="def">1.0</span></td>
+            <td>Width of the interaction hitbox (blocks).</td>
+          </tr>
+          <tr>
+            <td><code>hitbox.height</code></td>
+            <td>Double</td>
+            <td><span class="def">1.0</span></td>
+            <td>Height of the interaction hitbox (blocks).</td>
+          </tr>
+          <tr>
+            <td><code>breakAnimation</code></td>
+            <td>Boolean</td>
+            <td><span class="def">false</span></td>
+            <td>Send block break animation packets while mining.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="display">7. Display Hologram <a class="anchor-link" href="#display">#</a></h2>
+
+      <p>The display hologram renders floating text, items, and blocks above the block. It supports multiple lines with different content depending on the block state (active, being mined, dead).</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>displayHeight</code></td>
+            <td>Double</td>
+            <td><span class="def">2.0</span></td>
+            <td>Height of the hologram above the block.</td>
+          </tr>
+          <tr>
+            <td><code>displayFacing.facing</code></td>
+            <td>String</td>
+            <td><span class="def">""</span></td>
+            <td>Hologram facing mode: <span class="def">cardinal</span>, <span class="def">intercardinal</span>, or empty for always-facing.</td>
+          </tr>
+          <tr>
+            <td><code>displayFacing.distance</code></td>
+            <td>Double</td>
+            <td><span class="def">0</span></td>
+            <td>Distance from block center for facing offset.</td>
+          </tr>
+          <tr>
+            <td><code>displayFacing.detectRange</code></td>
+            <td>Integer</td>
+            <td><span class="def">16</span></td>
+            <td>Radius to detect the nearest player for facing.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Display Lines</h4>
+      <p>Each line in the <code style="font-family:'Pixel Operator Mono',monospace;">lines</code> list defines a row in the hologram. Lines can contain text, items, or blocks, and change based on the block state.</p>
+
+      <div class="code-block" data-filename="blocks/example.yml"><span class="yaml-key">display</span>:
+  <span class="yaml-key">displayHeight</span>: <span class="yaml-val">2.1</span>
+  <span class="yaml-key">displayFacing</span>:
+    <span class="yaml-key">facing</span>: <span class="yaml-val">cardinal</span>
+    <span class="yaml-key">distance</span>: <span class="yaml-val">0</span>
+    <span class="yaml-key">detectRange</span>: <span class="yaml-val">16</span>
+  <span class="yaml-key">lines</span>:
+    - <span class="yaml-key">line</span>: <span class="yaml-val">1</span>
+      <span class="yaml-key">contents</span>:
+        <span class="yaml-key">item</span>: <span class="yaml-val">minecraft:diamond</span>
+        <span class="yaml-key">click</span>: <span class="yaml-val">hide</span>
+    - <span class="yaml-key">line</span>: <span class="yaml-val">2</span>
+      <span class="yaml-key">contents</span>:
+        <span class="yaml-key">text</span>: <span class="yaml-val">"&lt;anim:wave:&amp;1;&amp;b&gt;Example Entity&lt;/anim&gt;"</span>
+        <span class="yaml-key">click</span>: <span class="yaml-val">hide</span>
+    - <span class="yaml-key">line</span>: <span class="yaml-val">3</span>
+      <span class="yaml-key">contents</span>:
+        <span class="yaml-key">text</span>: <span class="yaml-val">"{condition_1}"</span>
+        <span class="yaml-key">click</span>: <span class="yaml-val">"&lt;anim:typewriter:&amp;e;&amp;6&gt;Mining......&lt;/anim&gt;"</span>
+    - <span class="yaml-key">line</span>: <span class="yaml-val">4</span>
+      <span class="yaml-key">contents</span>:
+        <span class="yaml-key">text</span>: <span class="yaml-val">"&lt;anim:burn:#999bff;#ffe599&gt;Click to Mine!&lt;/anim&gt;"</span>
+        <span class="yaml-key">dead</span>: <span class="yaml-val">"&amp;7Respawns in: &amp;c{respawn_time}s"</span>
+        <span class="yaml-key">click</span>: <span class="yaml-val">"&amp;7[&amp;r{progress_bar}&amp;7] &amp;f(%mmoblock_progress%/%mmoblock_max_progress%)"</span></div>
+
+      <p><strong>Content types per line:</strong></p>
+      <ul>
+        <li><code>text</code> — Display text. Supports MiniMessage format, <span class="def">&amp;</span> color codes, placeholders, and animation tags.</li>
+        <li><code>item</code> — Display an item (floating item model).</li>
+        <li><code>block</code> — Display a block (floating block model).</li>
+      </ul>
+
+      <p><strong>State-specific fields:</strong></p>
+      <ul>
+        <li><code>text</code> — Shown when the block is in <span class="def">ACTIVE</span> state (idle, waiting to be mined).</li>
+        <li><code>click</code> — Shown when the block is being <span class="def">MINED</span> (progress state). Falls back to <code>text</code> if not set.</li>
+        <li><code>dead</code> — Shown when the block is <span class="def">DEAD</span> (destroyed, waiting to respawn). Falls back to <code>text</code> if not set.</li>
+        <li>Set to <span class="def">hide</span> to hide this line entirely during that state.</li>
+      </ul>
+
+      <p><strong>Available placeholders:</strong></p>
+      <ul>
+        <li><code>{condition_&lt;id&gt;}</code> — Shows the requirement text or met text for a condition.</li>
+        <li><code>{progress_bar}</code> — Renders the progress bar defined in <code>config.yml</code>.</li>
+        <li><code>{respawn_time}</code> — Countdown of remaining respawn seconds.</li>
+        <li><code>%mmoblock_progress%</code> — Current mining progress (PlaceholderAPI).</li>
+        <li><code>%mmoblock_max_progress%</code> — Maximum mining progress (PlaceholderAPI).</li>
+        <li><code>%mmoblock_respawn_time%</code> — Remaining respawn time (PlaceholderAPI).</li>
+      </ul>
+
+      <p><strong>Animation tags:</strong></p>
+      <ul>
+        <li><code>&lt;anim:wave:color1;color2&gt;text&lt;/anim&gt;</code> — Smooth gradient wave animation.</li>
+        <li><code>&lt;anim:typewriter:color1;color2&gt;text&lt;/anim&gt;</code> — Typewriter reveal effect.</li>
+        <li><code>&lt;anim:burn:primary;secondary&gt;text&lt;/anim&gt;</code> — Burning/unburning effect.</li>
+        <li><code>&lt;anim:colors:color1;color2;...&gt;text&lt;/anim&gt;</code> — Cycling through multiple colors.</li>
+      </ul>
+
+      <h2 id="tools">8. Allowed Tools <a class="anchor-link" href="#tools">#</a></h2>
+
+      <p>The <code style="font-family:'Pixel Operator Mono',monospace;">allowedTools</code> list references tool definition IDs from the <code style="font-family:'Pixel Operator Mono',monospace;">tools/</code> folder. These determine which items can mine this block, how many clicks are needed, and which drop tables are used.</p>
+
+      <div class="code-block" data-filename="blocks/example.yml"><span class="yaml-key">allowedTools</span>:
+  - <span class="yaml-val">exampleTools</span>
+  - <span class="yaml-val">exampleToolsAxe</span></div>
+
+      <p>See the <a href="#/config/tools">Tools</a> documentation for how to define tool behaviors.</p>
+
+      <h2 id="conditions">9. Conditions <a class="anchor-link" href="#conditions">#</a></h2>
+
+      <p>Conditions restrict who can mine a block. Each condition checks a PlaceholderAPI placeholder value against a comparator. If the condition is not met, the player cannot interact with the block.</p>
+
+      <div class="code-block" data-filename="blocks/example.yml"><span class="yaml-key">conditions</span>:
+  - <span class="yaml-key">condition</span>: <span class="yaml-val">1</span>
+    <span class="yaml-key">type</span>: <span class="yaml-val">placeholder</span>
+    <span class="yaml-key">value</span>: <span class="yaml-val">"%player_health%"</span>
+    <span class="yaml-key">operator</span>: <span class="yaml-val">"&gt;"</span>
+    <span class="yaml-key">compareTo</span>: <span class="yaml-val">"10"</span>
+    <span class="yaml-key">placeholderText</span>:
+      <span class="yaml-key">require</span>: <span class="yaml-val">"&lt;anim:colors:#999bff;#148a87;...&gt;Require HP 10&lt;/anim&gt; &amp;a✔"</span>
+      <span class="yaml-key">notMet</span>: <span class="yaml-val">"&lt;anim:colors:#999bff;#148a87;...&gt;Require HP 10&lt;/anim&gt; &amp;c❌"</span>
+    <span class="yaml-key">sendTitle</span>: <span class="yaml-val">"&amp;cYou are too weak to mine this block!"</span>
+    <span class="yaml-key">sendSubtitle</span>: <span class="yaml-val">"&amp;7You need at least 10 health to mine this block."</span></div>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>condition</code></td>
+            <td>Integer</td>
+            <td>Condition ID (referenced in display as <span class="def">{condition_&lt;id&gt;}</span>).</td>
+          </tr>
+          <tr>
+            <td><code>type</code></td>
+            <td>String</td>
+            <td>Condition type. Currently only <span class="def">placeholder</span>.</td>
+          </tr>
+          <tr>
+            <td><code>value</code></td>
+            <td>String</td>
+            <td>PlaceholderAPI placeholder to check (e.g., <span class="def">%player_health%</span>).</td>
+          </tr>
+          <tr>
+            <td><code>operator</code></td>
+            <td>String</td>
+            <td>Comparison operator: <span class="def">&gt;</span>, <span class="def">&lt;</span>, <span class="def">&gt;=</span>, <span class="def">&lt;=</span>, <span class="def">==</span>, <span class="def">!=</span>.</td>
+          </tr>
+          <tr>
+            <td><code>compareTo</code></td>
+            <td>String</td>
+            <td>Value to compare against.</td>
+          </tr>
+          <tr>
+            <td><code>placeholderText.require</code></td>
+            <td>String</td>
+            <td>Text shown when condition <strong>is met</strong>.</td>
+          </tr>
+          <tr>
+            <td><code>placeholderText.notMet</code></td>
+            <td>String</td>
+            <td>Text shown when condition <strong>is not met</strong>.</td>
+          </tr>
+          <tr>
+            <td><code>sendTitle</code></td>
+            <td>String</td>
+            <td>Title sent to player when condition fails (optional).</td>
+          </tr>
+          <tr>
+            <td><code>sendSubtitle</code></td>
+            <td>String</td>
+            <td>Subtitle sent to player when condition fails (optional).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="full-example">10. Full Example <a class="anchor-link" href="#full-example">#</a></h2>
+
+      <p>Here is a complete block definition combining all features:</p>
+
+      <div class="code-block" data-filename="blocks/exampleEntity.yml"><span class="yaml-comment"># blocks/exampleEntity.yml</span>
+<span class="yaml-key">exampleEntity</span>:
+  <span class="yaml-key">item</span>:
+    <span class="yaml-key">name</span>: <span class="yaml-val">"Example Entity"</span>
+    <span class="yaml-key">material</span>: <span class="yaml-val">diamond_ore</span>
+  <span class="yaml-key">respawnTime</span>: <span class="yaml-val">1</span>
+  <span class="yaml-key">deadDelay</span>: <span class="yaml-val">5</span>
+  <span class="yaml-key">randomLocation</span>:
+    <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span>
+    <span class="yaml-key">radius</span>: <span class="yaml-val">5</span>
+  <span class="yaml-key">particleBreak</span>:
+    <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span>
+    <span class="yaml-key">source</span>:
+      <span class="yaml-key">type</span>: <span class="yaml-val">VANILLA</span>
+      <span class="yaml-key">value</span>: <span class="yaml-val">"minecraft:lava"</span>
+    <span class="yaml-key">fallback</span>:
+      <span class="yaml-key">type</span>: <span class="yaml-val">VANILLA</span>
+      <span class="yaml-key">value</span>: <span class="yaml-val">"minecraft:stone"</span>
+  <span class="yaml-key">sound</span>:
+    <span class="yaml-key">onClick</span>: <span class="yaml-val">block.stone.hit</span>
+    <span class="yaml-key">onDead</span>: <span class="yaml-val">block.stone.break</span>
+    <span class="yaml-key">onRespawn</span>: <span class="yaml-val">block.stone.place</span>
+  <span class="yaml-key">breakAnimation</span>: <span class="yaml-val">true</span>
+  <span class="yaml-key">hitbox</span>:
+    <span class="yaml-key">width</span>: <span class="yaml-val">1.2</span>
+    <span class="yaml-key">height</span>: <span class="yaml-val">1.2</span>
+  <span class="yaml-key">modelType</span>:
+    <span class="yaml-key">block</span>:
+      <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span>
+      <span class="yaml-key">block</span>: <span class="yaml-val">minecraft:diamond_ore</span>
+    <span class="yaml-key">bdengine</span>:
+      <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span>
+      <span class="yaml-key">model</span>: <span class="yaml-val">iron_ore</span>
+      <span class="yaml-key">collision</span>:
+        <span class="yaml-key">type</span>: <span class="yaml-val">block</span>
+        <span class="yaml-key">block</span>: <span class="yaml-val">minecraft:barrier</span>
+        <span class="yaml-key">position</span>:
+          - <span class="yaml-val">"0, 0, 0"</span>
+      <span class="yaml-key">size</span>: <span class="yaml-val">2.0</span>
+      <span class="yaml-key">onSpawn</span>:
+        <span class="yaml-key">name</span>: <span class="yaml-val">spawn</span>
+        <span class="yaml-key">timeline_length</span>: <span class="yaml-val">0.5</span>
+        <span class="yaml-key">mode</span>: <span class="yaml-val">once</span>
+      <span class="yaml-key">onClick</span>:
+        <span class="yaml-key">name</span>: <span class="yaml-val">click</span>
+        <span class="yaml-key">timeline_length</span>: <span class="yaml-val">0.5</span>
+        <span class="yaml-key">mode</span>: <span class="yaml-val">once</span>
+  <span class="yaml-key">allowedTools</span>:
+    - <span class="yaml-val">exampleTools</span>
+  <span class="yaml-key">conditions</span>:
+    - <span class="yaml-key">condition</span>: <span class="yaml-val">1</span>
+      <span class="yaml-key">type</span>: <span class="yaml-val">placeholder</span>
+      <span class="yaml-key">value</span>: <span class="yaml-val">"%player_health%"</span>
+      <span class="yaml-key">operator</span>: <span class="yaml-val">"&gt;"</span>
+      <span class="yaml-key">compareTo</span>: <span class="yaml-val">"10"</span>
+      <span class="yaml-key">placeholderText</span>:
+        <span class="yaml-key">require</span>: <span class="yaml-val">"&lt;anim:colors:#999bff;#148a87;...&gt;Require HP 10&lt;/anim&gt; &amp;a✔"</span>
+        <span class="yaml-key">notMet</span>: <span class="yaml-val">"&lt;anim:colors:#999bff;#148a87;...&gt;Require HP 10&lt;/anim&gt; &amp;c❌"</span>
+      <span class="yaml-key">sendTitle</span>: <span class="yaml-val">"&amp;cYou are too weak to mine this block!"</span>
+      <span class="yaml-key">sendSubtitle</span>: <span class="yaml-val">"&amp;7You need at least 10 health to mine this block."</span>
+  <span class="yaml-key">display</span>:
+    <span class="yaml-key">displayHeight</span>: <span class="yaml-val">2.1</span>
+    <span class="yaml-key">displayFacing</span>:
+      <span class="yaml-key">facing</span>: <span class="yaml-val">cardinal</span>
+      <span class="yaml-key">distance</span>: <span class="yaml-val">0</span>
+      <span class="yaml-key">detectRange</span>: <span class="yaml-val">16</span>
+    <span class="yaml-key">lines</span>:
+      - <span class="yaml-key">line</span>: <span class="yaml-val">1</span>
+        <span class="yaml-key">contents</span>:
+          <span class="yaml-key">item</span>: <span class="yaml-val">minecraft:diamond</span>
+          <span class="yaml-key">click</span>: <span class="yaml-val">hide</span>
+      - <span class="yaml-key">line</span>: <span class="yaml-val">2</span>
+        <span class="yaml-key">contents</span>:
+          <span class="yaml-key">text</span>: <span class="yaml-val">"&lt;anim:wave:&amp;1;&amp;b&gt;Example Entity&lt;/anim&gt;"</span>
+          <span class="yaml-key">click</span>: <span class="yaml-val">hide</span>
+      - <span class="yaml-key">line</span>: <span class="yaml-val">3</span>
+        <span class="yaml-key">contents</span>:
+          <span class="yaml-key">text</span>: <span class="yaml-val">"{condition_1}"</span>
+          <span class="yaml-key">click</span>: <span class="yaml-val">"&lt;anim:typewriter:&amp;e;&amp;6&gt;Mining......&lt;/anim&gt;"</span>
+      - <span class="yaml-key">line</span>: <span class="yaml-val">4</span>
+        <span class="yaml-key">contents</span>:
+          <span class="yaml-key">text</span>: <span class="yaml-val">"&lt;anim:burn:#999bff;#ffe599&gt;Click to Mine!&lt;/anim&gt;"</span>
+          <span class="yaml-key">dead</span>: <span class="yaml-val">"&amp;7Respawns in: &amp;c{respawn_time}s"</span>
+          <span class="yaml-key">click</span>: <span class="yaml-val">"&amp;7[&amp;r{progress_bar}&amp;7] &amp;f(%mmoblock_progress%/%mmoblock_max_progress%)"</span></div>
+
+    </div>

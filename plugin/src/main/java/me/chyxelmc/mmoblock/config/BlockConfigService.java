@@ -1,22 +1,5 @@
 package me.chyxelmc.mmoblock.config;
 
-import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.model.BlockDefinition;
-import me.chyxelmc.mmoblock.model.ConditionDefinition;
-import me.chyxelmc.mmoblock.model.DisplayLine;
-import me.chyxelmc.mmoblock.api.model.DropType;
-import me.chyxelmc.mmoblock.model.DropEntry;
-import me.chyxelmc.mmoblock.model.ToolAction;
-import me.chyxelmc.mmoblock.utils.TextColor;
-import net.kyori.adventure.text.Component;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Registry;
-import org.bukkit.Sound;
-import org.bukkit.configuration.InvalidConfigurationException;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +13,24 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
+import org.bukkit.Sound;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.api.model.DropType;
+import me.chyxelmc.mmoblock.model.BlockDefinition;
+import me.chyxelmc.mmoblock.model.ConditionDefinition;
+import me.chyxelmc.mmoblock.model.DisplayLine;
+import me.chyxelmc.mmoblock.model.DropEntry;
+import me.chyxelmc.mmoblock.model.ToolAction;
+import me.chyxelmc.mmoblock.utils.TextColor;
+import net.kyori.adventure.text.Component;
+
 public final class BlockConfigService {
 
     private final MMOBlock plugin;
@@ -41,6 +42,7 @@ public final class BlockConfigService {
     private ValidationReport lastToolReport = ValidationReport.empty();
     private ValidationReport lastDropReport = ValidationReport.empty();
     private long interactionThrottleMs;
+    private boolean extractDefaultAssets;
 
     public BlockConfigService(final MMOBlock plugin) {
         this.plugin = plugin;
@@ -51,6 +53,8 @@ public final class BlockConfigService {
 
         this.interactionThrottleMs = this.plugin.getConfig()
                 .getLong("interactionThrottleMs", 1000L);
+        this.extractDefaultAssets = this.plugin.getConfig()
+                .getBoolean("extractDefaultAssets", true);
 
         reloadBlocks();
         reloadDrops();
@@ -803,42 +807,45 @@ public final class BlockConfigService {
             folder.mkdirs();
         }
 
+        if (!this.extractDefaultAssets) {
+            return;
+        }
+
         if ("blocks".equals(folderName)) {
-            saveResourceIfMissing("blocks/exampleEntity.yml");
-            saveResourceIfMissing("blocks/exampleEntityNodes.yml");
-            saveResourceIfMissing("blocks/exampleEntitySchematics.yml");
+            saveResourceWithReplace("blocks/exampleEntity.yml");
+            saveResourceWithReplace("blocks/exampleEntityNodes.yml");
+            saveResourceWithReplace("blocks/exampleEntitySchematics.yml");
+            saveResourceWithReplace("blocks/exampleEntityBDEngine.yml");
         }
         if ("drops".equals(folderName)) {
-            saveResourceIfMissing("drops/exampleDrops.yml");
-            saveResourceIfMissing("drops/exampleDropsWood.yml");
+            saveResourceWithReplace("drops/exampleDrops.yml");
+            saveResourceWithReplace("drops/exampleDropsWood.yml");
         }
         if ("tools".equals(folderName)) {
-            saveResourceIfMissing("tools/exampleTools.yml");
-            saveResourceIfMissing("tools/exampleToolsAxe.yml");
+            saveResourceWithReplace("tools/exampleTools.yml");
+            saveResourceWithReplace("tools/exampleToolsAxe.yml");
         }
         if ("lang".equals(folderName)) {
-            saveResourceIfMissing("lang/en-us.yml");
-            saveResourceIfMissing("lang/id-id.yml");
-            saveResourceIfMissing("lang/ja-jp.yml");
-            saveResourceIfMissing("lang/zh-cn.yml");
-            saveResourceIfMissing("lang/zh-tw.yml");
+            saveResourceWithReplace("lang/en-us.yml");
+            saveResourceWithReplace("lang/id-id.yml");
+            saveResourceWithReplace("lang/ja-jp.yml");
+            saveResourceWithReplace("lang/zh-cn.yml");
+            saveResourceWithReplace("lang/zh-tw.yml");
         }
         if ("nodes".equals(folderName)) {
-            saveResourceIfMissing("nodes/exampleNodes.yml");
+            saveResourceWithReplace("nodes/exampleNodes.yml");
         }
         if ("models".equals(folderName)) {
-            saveResourceIfMissing("models/bdengine/iron_ore.bdengine");
-            saveResourceIfMissing("models/bdengine/tree.bdengine");
-            saveResourceIfMissing("models/schematics/tree.schem");
-            saveResourceIfMissing("models/schematics/dead/dead_tree.schem");
+            saveResourceWithReplace("models/bdengine/iron_ore.bdengine");
+            saveResourceWithReplace("models/bdengine/tree.bdengine");
+            saveResourceWithReplace("models/schematics/tree.schem");
+            saveResourceWithReplace("models/schematics/dead/dead_tree.schem");
         }
     }
 
-    private void saveResourceIfMissing(final String resourcePath) {
-        final File outFile = new File(this.plugin.getDataFolder(), resourcePath);
-        if (!outFile.exists()) {
-            this.plugin.saveResource(resourcePath, false);
-        }
+    private void saveResourceWithReplace(final String resourcePath) {
+        // extractDefaultAssets is true, so overwrite existing files per config comment
+        this.plugin.saveResource(resourcePath, true);
     }
 
     public long interactionThrottleMs() {

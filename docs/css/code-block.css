@@ -1,0 +1,123 @@
+/* ===== CODE BLOCK ===== */
+.code-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 16px 0;
+  overflow: hidden;
+  position: relative;
+}
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #06090c;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.code-block-filename {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Pixel Operator Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.code-block-filename svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+.code-block-body {
+  display: flex;
+  position: relative;
+}
+.code-block-lines {
+  padding: 14px 0;
+  width: 42px;
+  min-width: 42px;
+  text-align: right;
+  color: rgba(255,255,255,0.12);
+  font-family: 'Pixel Operator Mono', monospace;
+  font-size: 12px;
+  line-height: 23.4px;
+  user-select: none;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.code-block-lines span {
+  display: block;
+  padding: 0 10px 0 0;
+}
+.code-block-content {
+  padding: 14px 18px;
+  font-family: 'Pixel Operator Mono', monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  flex: 1;
+  margin: 0;
+  background: transparent;
+  border: none;
+  tab-size: 2;
+}
+.code-block .copy-btn {
+  position: static;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-family: 'Minecraftia', sans-serif;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.code-block .copy-btn:hover { color: var(--text); border-color: var(--border2); }
+.kw { color: #ff7b72; }
+.fn { color: var(--blue); }
+.str { color: var(--green); }
+.cm { color: var(--muted); }
+
+/* Java syntax highlighting */
+.java-annotation { color: var(--amber); }
+.java-keyword { color: var(--purple); font-weight: 600; }
+.java-type { color: var(--green); }
+.java-method { color: var(--blue); }
+.java-string { color: var(--green); }
+.java-comment { color: var(--muted); font-style: italic; }
+.java-number { color: var(--amber); }
+
+/* Kotlin / KTS syntax highlighting */
+.kts-keyword { color: var(--purple); font-weight: 600; }
+.kts-string { color: var(--green); }
+.kts-comment { color: var(--muted); font-style: italic; }
+.kts-annotation { color: var(--amber); }
+.kts-number { color: var(--amber); }
+.kts-function { color: var(--blue); }
+.kts-bracket { color: #c9d1d9; }
+
+/* XML / Maven POM syntax highlighting */
+.xml-tag { color: var(--purple); }
+.xml-attr { color: var(--amber); }
+.xml-string { color: var(--green); }
+.xml-comment { color: var(--muted); font-style: italic; }
+.xml-content { color: #c9d1d9; }
+
+/* Gradle / Groovy syntax highlighting */
+.gradle-keyword { color: var(--purple); font-weight: 600; }
+.gradle-string { color: var(--green); }
+.gradle-comment { color: var(--muted); font-style: italic; }
+.gradle-method { color: var(--blue); }
+
+/* Shell / Bash syntax highlighting */
+.sh-comment { color: var(--muted); font-style: italic; }
+.sh-command { color: var(--blue); }
+.sh-string { color: var(--green); }
+.sh-flag { color: var(--amber); }

@@ -1,0 +1,226 @@
+<title>Drops — MMOBlock Docs</title>
+
+
+    <div class="top-nav">
+      <div class="top-nav-breadcrumb">
+        <a href="#/">Home</a>
+        <span class="sep">/</span>
+        <a href="#/overview">Documentation</a>
+        <span class="sep">/</span>
+        <span class="current">Drops</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1>Drop <span class="accent">Tables</span></h1>
+      <p class="lead">Configure drop tables with items, experience, commands, and random distributions for your custom blocks.</p>
+
+      <p>Drop tables define what happens when a player mines a block. Each entry specifies either an item, experience points, or a console command with individual chances and quantities. Drop tables are stored in the <code style="font-family:'Pixel Operator Mono',monospace;">drops/</code> folder and referenced by tool definitions.</p>
+
+      <div class="info-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div>Drops are resolved through tools: a block's <code style="font-family:'Pixel Operator Mono',monospace;">allowedTools</code> references tool groups, and each tool action lists <code style="font-family:'Pixel Operator Mono',monospace;">allowedDrops</code> which reference drop table IDs.</div>
+      </div>
+
+      <div class="toc-card">
+        <div class="toc-title">On this page</div>
+        <ol>
+          <li><a href="#structure">File Structure</a></li>
+          <li><a href="#item-drops">Item Drops</a></li>
+          <li><a href="#experience-drops">Experience Drops</a></li>
+          <li><a href="#command-drops">Command Drops</a></li>
+          <li><a href="#drop-types">Drop Location Types</a></li>
+          <li><a href="#full-example">Full Example</a></li>
+        </ol>
+      </div>
+
+      <h2 id="structure">1. File Structure <a class="anchor-link" href="#structure">#</a></h2>
+
+      <p>Each file in <code style="font-family:'Pixel Operator Mono',monospace;">plugins/MMOBlock/drops/</code> contains a single drop table — a list of drop entries. The file name (without <code style="font-family:'Pixel Operator Mono',monospace;">.yml</code>) is the drop table ID used in tool definitions.</p>
+
+      <div class="code-block" data-filename="drops/exampleDrops.yml"><span class="yaml-comment"># drops/exampleDrops.yml</span>
+<span class="yaml-key">exampleDrops</span>:
+  - <span class="yaml-key">material</span>: <span class="yaml-val">iron_ingot</span>
+    <span class="yaml-key">total</span>: [ <span class="yaml-val">1-2</span> ]
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.4</span>
+    <span class="yaml-key">drop_type</span>: <span class="yaml-val">inventory</span>
+  - <span class="yaml-key">experience</span>: [ <span class="yaml-val">10-20</span> ]
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.5</span>
+    <span class="yaml-key">drop_type</span>: <span class="yaml-val">front_ground</span>
+  - <span class="yaml-key">command</span>: <span class="yaml-val">"give %player% minecraft:diamond 5"</span>
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.1</span></div>
+
+      <h2 id="item-drops">2. Item Drops <a class="anchor-link" href="#item-drops">#</a></h2>
+
+      <p>Item drops give the player a specific Minecraft item. You can define a quantity range and probability.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>material</code></td>
+            <td>Material</td>
+            <td>Bukkit material to drop (e.g., <span class="def">iron_ingot</span>, <span class="def">diamond</span>).</td>
+          </tr>
+          <tr>
+            <td><code>total</code></td>
+            <td>Range</td>
+            <td>Quantity range as <span class="def">[min-max]</span>. A random value in this range is selected per drop.</td>
+          </tr>
+          <tr>
+            <td><code>chances</code></td>
+            <td>Double</td>
+            <td>Probability of this drop occurring, from <span class="def">0.0</span> (0%) to <span class="def">1.0</span> (100%).</td>
+          </tr>
+          <tr>
+            <td><code>drop_type</code></td>
+            <td>String</td>
+            <td>Where the item appears. See <a href="#drop-types">Drop Location Types</a>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="code-block" data-filename="drops/exampleDrops.yml"><span class="yaml-key">exampleDrops</span>:
+  - <span class="yaml-key">material</span>: <span class="yaml-val">iron_ingot</span>
+    <span class="yaml-key">total</span>: [ <span class="yaml-val">1-2</span> ]
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.4</span>
+    <span class="yaml-key">drop_type</span>: <span class="yaml-val">inventory</span>
+  - <span class="yaml-key">material</span>: <span class="yaml-val">diamond</span>
+    <span class="yaml-key">total</span>: [ <span class="yaml-val">1-1</span> ]
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.05</span>
+    <span class="yaml-key">drop_type</span>: <span class="yaml-val">front_ground</span></div>
+
+      <h2 id="experience-drops">3. Experience Drops <a class="anchor-link" href="#experience-drops">#</a></h2>
+
+      <p>Experience drops grant XP orbs directly to the player or spawn them at the block location.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>experience</code></td>
+            <td>Range</td>
+            <td>Experience point range as <span class="def">[min-max]</span>.</td>
+          </tr>
+          <tr>
+            <td><code>chances</code></td>
+            <td>Double</td>
+            <td>Probability from <span class="def">0.0</span> to <span class="def">1.0</span>.</td>
+          </tr>
+          <tr>
+            <td><code>drop_type</code></td>
+            <td>String</td>
+            <td>Where the XP orbs appear.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="code-block" data-filename="drops/exampleDrops.yml"><span class="yaml-key">exampleDrops</span>:
+  - <span class="yaml-key">experience</span>: [ <span class="yaml-val">10-20</span> ]
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.5</span>
+    <span class="yaml-key">drop_type</span>: <span class="yaml-val">front_ground</span></div>
+
+      <h2 id="command-drops">4. Command Drops <a class="anchor-link" href="#command-drops">#</a></h2>
+
+      <p>Command drops execute a console command when the block is mined. Use <code style="font-family:'Pixel Operator Mono',monospace;">%player%</code> as a placeholder for the mining player's name.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>command</code></td>
+            <td>String</td>
+            <td>Console command to execute. Use <span class="def">%player%</span> for the player name.</td>
+          </tr>
+          <tr>
+            <td><code>chances</code></td>
+            <td>Double</td>
+            <td>Probability from <span class="def">0.0</span> to <span class="def">1.0</span>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="info-box warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>Commands run with console privileges. Avoid giving unsafe commands in drop tables that could be exploited.</div>
+      </div>
+
+      <div class="code-block" data-filename="drops/exampleDrops.yml"><span class="yaml-key">exampleDrops</span>:
+  - <span class="yaml-key">command</span>: <span class="yaml-val">"give %player% minecraft:diamond 5"</span>
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.1</span>
+  - <span class="yaml-key">command</span>: <span class="yaml-val">"eco give %player% 100"</span>
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.05</span></div>
+
+      <h2 id="drop-types">5. Drop Location Types <a class="anchor-link" href="#drop-types">#</a></h2>
+
+      <p>The <code style="font-family:'Pixel Operator Mono',monospace;">drop_type</code> field controls where dropped items or XP orbs appear:</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Value</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="def">inventory</span></td>
+            <td>Items/XP are added directly to the player's inventory. If the inventory is full, items drop on the ground at the player's location.</td>
+          </tr>
+          <tr>
+            <td><span class="def">front_ground</span></td>
+            <td>Items/XP spawn on the ground in front of the block.</td>
+          </tr>
+          <tr>
+            <td><span class="def">center_ground</span></td>
+            <td>Items/XP spawn on the ground at the center of the block.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="full-example">6. Full Example <a class="anchor-link" href="#full-example">#</a></h2>
+
+      <p>A complete drop table combining all entry types:</p>
+
+      <div class="code-block" data-filename="drops/exampleDrops.yml"><span class="yaml-comment"># drops/exampleDrops.yml — mixed drop table</span>
+<span class="yaml-key">exampleDrops</span>:
+  <span class="yaml-comment"># Common item drop (40% chance, 1-2 iron ingots)</span>
+  - <span class="yaml-key">material</span>: <span class="yaml-val">iron_ingot</span>
+    <span class="yaml-key">total</span>: [ <span class="yaml-val">1-2</span> ]
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.4</span>
+    <span class="yaml-key">drop_type</span>: <span class="yaml-val">inventory</span>
+
+  <span class="yaml-comment"># Rare item (5% chance, single diamond)</span>
+  - <span class="yaml-key">material</span>: <span class="yaml-val">diamond</span>
+    <span class="yaml-key">total</span>: [ <span class="yaml-val">1-1</span> ]
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.05</span>
+    <span class="yaml-key">drop_type</span>: <span class="yaml-val">front_ground</span>
+
+  <span class="yaml-comment"># Experience drop (50% chance, 10-20 XP)</span>
+  - <span class="yaml-key">experience</span>: [ <span class="yaml-val">10-20</span> ]
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.5</span>
+    <span class="yaml-key">drop_type</span>: <span class="yaml-val">front_ground</span>
+
+  <span class="yaml-comment"># Command drop (10% chance, gives 5 diamonds via command)</span>
+  - <span class="yaml-key">command</span>: <span class="yaml-val">"give %player% minecraft:diamond 5"</span>
+    <span class="yaml-key">chances</span>: <span class="yaml-val">0.1</span></div>
+
+    </div>

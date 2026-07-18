@@ -1,9 +1,5 @@
 package me.chyxelmc.mmoblock.persistence;
 
-import me.chyxelmc.mmoblock.model.PlacedBlock;
-import me.chyxelmc.mmoblock.persistence.cache.DataCache;
-import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,6 +7,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import me.chyxelmc.mmoblock.model.PlacedBlock;
+import me.chyxelmc.mmoblock.persistence.cache.DataCache;
+import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
 
 public final class BlockRepository {
 
@@ -25,10 +25,27 @@ public final class BlockRepository {
     }
 
     public void upsert(final PlacedBlock block) {
-        final String sql = """
-            MERGE INTO mmoblock_block (unique_id, type, world, origin_x, origin_y, origin_z, x, y, z, facing, status)
-            KEY(unique_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """;
+        final boolean mysql = this.databaseManager.isMySQL();
+        final String sql = mysql
+            ? """
+                INSERT INTO mmoblock_block (unique_id, type, world, origin_x, origin_y, origin_z, x, y, z, facing, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    type = VALUES(type),
+                    world = VALUES(world),
+                    origin_x = VALUES(origin_x),
+                    origin_y = VALUES(origin_y),
+                    origin_z = VALUES(origin_z),
+                    x = VALUES(x),
+                    y = VALUES(y),
+                    z = VALUES(z),
+                    facing = VALUES(facing),
+                    status = VALUES(status)
+                """
+            : """
+                MERGE INTO mmoblock_block (unique_id, type, world, origin_x, origin_y, origin_z, x, y, z, facing, status)
+                KEY(unique_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
         try (Connection connection = this.databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, block.uniqueId().toString());

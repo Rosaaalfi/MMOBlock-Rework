@@ -1,0 +1,152 @@
+/* HERO */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 40px 80px;
+  text-align: center;
+  overflow: hidden;
+}
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 30%, transparent 100%);
+}
+.hero-glow {
+  position: absolute;
+  width: 600px; height: 400px;
+  background: radial-gradient(ellipse, rgba(126,231,135,0.08) 0%, transparent 70%);
+  top: 30%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.hero-content { position: relative; z-index: 2; max-width: 760px; }
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  background: var(--green-dim);
+  border: 1px solid var(--green-border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Minecraftia', sans-serif;
+  color: var(--green);
+  letter-spacing: 0.5px;
+  margin-bottom: 28px;
+  animation: fadeUp 0.6s ease both;
+}
+.hero-eyebrow span { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+
+.hero-title {
+  font-family: 'Minecraft', sans-serif;
+  font-size: clamp(52px, 8vw, 88px);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -3px;
+  margin-bottom: 24px;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+.hero-title .accent { color: var(--green); }
+
+.hero-sub {
+  font-family: 'Minecraftia', sans-serif;
+  font-size: 17px;
+  color: var(--muted);
+  font-style: italic;
+  margin-bottom: 40px;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  margin-bottom: 40px;
+  animation: fadeUp 0.6s 0.3s ease both;
+}
+.stat { text-align: center; }
+.stat-num {
+  font-family: 'Minecraft', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+}
+.stat-label { font-size: 12px; font-family: 'Minecraftia', sans-serif; color: var(--muted); margin: 7px; }
+
+.hero-badges {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: fadeUp 0.6s 0.35s ease both;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Minecraftia', sans-serif;
+  border: 1px solid;
+  transition: transform 0.15s;
+}
+.badge .pixel-icon { width: 13px; height: 13px; }
+.badge:hover { transform: translateY(-1px); }
+.badge.green { background: var(--green-dim); border-color: var(--green-border); color: var(--green); }
+.badge.blue  { background: var(--blue-dim); border-color: rgba(121,192,255,0.25); color: var(--blue); }
+.badge.purple{ background: var(--purple-dim); border-color: rgba(210,168,255,0.25); color: var(--purple); }
+.badge.amber { background: var(--amber-dim); border-color: rgba(210,153,34,0.25); color: var(--amber); }
+.badge a { color: inherit; text-decoration: none; }
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  background: var(--green);
+  color: var(--bg) !important;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Minecraft', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.hero-cta:hover {
+  background: #6bd67b;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(126,231,135,0.25);
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 32px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-family: 'Minecraftia', sans-serif;
+  animation: fadeUp 0.6s 0.6s ease both;
+}
+.scroll-line {
+  width: 1px; height: 40px;
+  background: linear-gradient(to bottom, var(--green), transparent);
+  animation: scrollLine 2s ease infinite;
+}

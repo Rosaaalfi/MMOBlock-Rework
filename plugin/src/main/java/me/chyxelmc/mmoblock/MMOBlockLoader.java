@@ -49,6 +49,12 @@ public final class MMOBlockLoader implements PluginLoader {
                     "com/google/code/gson/gson/2.10.1/gson-2.10.1.jar",
                     "gson-2.10.1.jar",
                     "4241c14a7727c34feea6507ec801318a3d4a90f070e4525681079fb94ee4c593"
+            ),
+            new ExternalLibrary(
+                    "com.mysql:mysql-connector-j:9.2.0",
+                    "com/mysql/mysql-connector-j/9.2.0/mysql-connector-j-9.2.0.jar",
+                    "mysql-connector-j-9.2.0.jar",
+                    "7e9941bbdcca244d878ea95bfff788fd9ba6a65af757f24be6c632930d61c7ed"
             )
     );
 

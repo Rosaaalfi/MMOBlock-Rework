@@ -1,12 +1,5 @@
 package me.chyxelmc.mmoblock.config;
 
-import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.model.DisplayLine;
-import me.chyxelmc.mmoblock.model.NodeDefinition;
-import org.bukkit.Material;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.YamlConfiguration;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,6 +8,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+
+import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.model.DisplayLine;
+import me.chyxelmc.mmoblock.model.NodeDefinition;
 
 public final class NodeConfigService {
 
@@ -212,16 +213,17 @@ public final class NodeConfigService {
             folder.mkdirs();
         }
 
+        if (!this.plugin.getConfig().getBoolean("extractDefaultAssets", true)) {
+            return;
+        }
+
         if ("nodes".equals(folderName)) {
-            saveResourceIfMissing("nodes/exampleNodes.yml");
+            saveResourceWithReplace("nodes/exampleNodes.yml");
         }
     }
 
-    private void saveResourceIfMissing(final String resourcePath) {
-        final File outFile = new File(this.plugin.getDataFolder(), resourcePath);
-        if (!outFile.exists()) {
-            this.plugin.saveResource(resourcePath, false);
-        }
+    private void saveResourceWithReplace(final String resourcePath) {
+        this.plugin.saveResource(resourcePath, true);
     }
 
     private Material parseMaterial(final String raw) {

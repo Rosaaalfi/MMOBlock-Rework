@@ -1,16 +1,22 @@
 package me.chyxelmc.mmoblock.persistence.database;
 
-import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.utils.DatabaseUtils;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.utils.DatabaseUtils;
+
 public final class DatabaseManager {
+
+    public enum Dialect {
+        H2,
+        MYSQL
+    }
 
     private final MMOBlock plugin;
     private final DatabaseUtils databaseUtils;
+    private Dialect dialect;
 
     public DatabaseManager(final MMOBlock plugin, final DatabaseUtils databaseUtils) {
         this.plugin = plugin;
@@ -24,8 +30,10 @@ public final class DatabaseManager {
         final boolean mysqlEnabled = this.plugin.getConfig().getBoolean("databases.mysql.enabled", false);
         if (mysqlEnabled) {
             this.databaseUtils.initializeMySQL(this.plugin);
+            this.dialect = Dialect.MYSQL;
         } else {
             this.databaseUtils.initializeH2(this.plugin);
+            this.dialect = Dialect.H2;
         }
 
         try (Connection connection = getConnection(); Statement statement = connection.createStatement()) {
@@ -44,9 +52,7 @@ public final class DatabaseManager {
                     status VARCHAR(16) NOT NULL
                 )
                 """);
-            statement.execute("ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS origin_x DOUBLE");
-            statement.execute("ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS origin_y DOUBLE");
-            statement.execute("ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS origin_z DOUBLE");
+            migrateBlockColumns(statement);
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS mmoblock_respawn (
                     unique_id VARCHAR(36) PRIMARY KEY,
@@ -68,6 +74,28 @@ public final class DatabaseManager {
         } catch (final SQLException exception) {
             throw new IllegalStateException("Failed to initialize database", exception);
         }
+    }
+
+    private void migrateBlockColumns(final Statement statement) throws SQLException {
+        for (final String column : new String[]{"origin_x", "origin_y", "origin_z"}) {
+            if (this.dialect == Dialect.H2) {
+                statement.execute("ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS " + column + " DOUBLE");
+            } else {
+                try {
+                    statement.execute("ALTER TABLE mmoblock_block ADD COLUMN " + column + " DOUBLE");
+                } catch (final SQLException ignored) {
+                    // Column likely already exists; ignore Duplicate column errors
+                }
+            }
+        }
+    }
+
+    public Dialect getDialect() {
+        return this.dialect;
+    }
+
+    public boolean isMySQL() {
+        return this.dialect == Dialect.MYSQL;
     }
 
     public Connection getConnection() throws SQLException {

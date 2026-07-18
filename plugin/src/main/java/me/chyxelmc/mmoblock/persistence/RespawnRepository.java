@@ -1,8 +1,5 @@
 package me.chyxelmc.mmoblock.persistence;
 
-import me.chyxelmc.mmoblock.persistence.cache.DataCache;
-import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,6 +7,9 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
+import me.chyxelmc.mmoblock.persistence.cache.DataCache;
+import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
 
 public final class RespawnRepository {
 
@@ -22,10 +22,18 @@ public final class RespawnRepository {
     }
 
     public void upsert(final UUID uniqueId, final long lastRespawn) {
-        final String sql = """
-            MERGE INTO mmoblock_respawn (unique_id, last_respawn)
-            KEY(unique_id) VALUES (?, ?)
-            """;
+        final boolean mysql = this.databaseManager.isMySQL();
+        final String sql = mysql
+            ? """
+                INSERT INTO mmoblock_respawn (unique_id, last_respawn)
+                VALUES (?, ?)
+                ON DUPLICATE KEY UPDATE
+                    last_respawn = VALUES(last_respawn)
+                """
+            : """
+                MERGE INTO mmoblock_respawn (unique_id, last_respawn)
+                KEY(unique_id) VALUES (?, ?)
+                """;
         try (Connection connection = this.databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, uniqueId.toString());

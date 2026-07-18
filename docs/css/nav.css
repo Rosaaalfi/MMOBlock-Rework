@@ -1,0 +1,55 @@
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  height: 56px;
+  background: rgba(8,12,16,0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo {
+  font-family: 'Minecraft', sans-serif;
+  font-size: 18px;
+  color: var(--green);
+  text-decoration: none;
+  top: -6px;
+  position: relative;
+}
+.nav-logo .pixel-icon { width: 18px; height: 18px; }
+.nav-links {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+}
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Minecraftia', sans-serif;
+  transition: color 0.2s;
+  position: relative;
+  top: 3px;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: var(--green-dim);
+  border: 1px solid var(--green-border);
+  border-radius: 6px;
+  color: var(--green) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  transition: background 0.2s !important;
+  top: -1px !important;
+  align-content: center;
+}
+.nav-cta:hover { background: rgba(126,231,135,0.2) !important; color: var(--green) !important; }

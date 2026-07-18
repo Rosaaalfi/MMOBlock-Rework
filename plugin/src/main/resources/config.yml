@@ -2,6 +2,7 @@ debug: false #logging debug info to console
 bStats: true #send anonymous stats to bStats
 updateChecker: true #check for updates on https://voxel.shop/
 lang: en-us
+extractDefaultAssets: true #extract default assets(blocks(yml), tools(yml), nodes(yml), drops(yml), models(schem, bdengine)) from the plugin jar to the plugin data folder. This will overwrite any existing files with the same name.
 interactionThrottleMs: 1000 #throttle interactions with blocks and entities to prevent spamming. Time in milliseconds.
 databases:
   mysql:
@@ -11,12 +12,6 @@ databases:
     database: voxelshop
     username: root
     password: password
-  redis:
-    enabled: false
-    host: localhost
-    port: 6379
-    password: password
-    database: 0
   h2:
     enabled: true
     file: .caches/data

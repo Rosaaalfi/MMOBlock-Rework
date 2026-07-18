@@ -1,0 +1,323 @@
+<title>Holograms — MMOBlock Docs</title>
+
+
+    <div class="top-nav">
+      <div class="top-nav-breadcrumb">
+        <a href="#/">Home</a>
+        <span class="sep">/</span>
+        <a href="#/overview">Documentation</a>
+        <span class="sep">/</span>
+        <span class="current">Holograms</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1>Hologram <span class="accent">System</span></h1>
+      <p class="lead">Packet-based hologram system with text, items, blocks, animations, and proximity-aware facing — built into every block and node display.</p>
+
+      <p>MMOBlock uses holograms as the primary visual interface above blocks and nodes. They render floating lines of text, items, and blocks using packets, with state-aware content that changes when the block is idle, being mined, or respawning.</p>
+
+      <div class="info-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div>Holograms are rendered entirely via packets — no actual entities exist in the world. This makes them invisible to antigrief plugins and immune to entity limits, while being visible only to players who should see them.</div>
+      </div>
+
+      <div class="toc-card">
+        <div class="toc-title">On this page</div>
+        <ol>
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="#line-types">Line Types</a></li>
+          <li><a href="#states">Hologram States</a></li>
+          <li><a href="#animations">Text Animations</a></li>
+          <li><a href="#placeholders">Placeholders</a></li>
+          <li><a href="#facing">Facing &amp; Proximity</a></li>
+          <li><a href="#config">Configuration</a></li>
+        </ol>
+      </div>
+
+      <h2 id="architecture">1. Architecture <a class="anchor-link" href="#architecture">#</a></h2>
+
+      <p>MMOBlock uses a dual-backend hologram system:</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Backend</th>
+            <th>When Used</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="def">ECS Component</span></td>
+            <td>Static holograms (no animation tags, no PAPI tokens)</td>
+            <td>Uses an ECS <code style="font-family:'Pixel Operator Mono',monospace;">HologramComponent</code> that is synced via the <code style="font-family:'Pixel Operator Mono',monospace;">HologramSystem.tick()</code> loop. Most efficient for simple text.</td>
+          </tr>
+          <tr>
+            <td><span class="def">Packet Backend</span></td>
+            <td>Animated holograms (animation tags or PAPI placeholders)</td>
+            <td>Per-tick text recomposition with packet updates. Used when holograms contain <code style="font-family:'Pixel Operator Mono',monospace;">&lt;anim:...&gt;</code> tags or PlaceholderAPI tokens.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>The <code style="font-family:'Pixel Operator Mono',monospace;">HologramRuntimeService</code> manages the lifecycle: <code style="font-family:'Pixel Operator Mono',monospace;">showActive()</code>, <code style="font-family:'Pixel Operator Mono',monospace;">showProgress()</code>, <code style="font-family:'Pixel Operator Mono',monospace;">showDead()</code>, <code style="font-family:'Pixel Operator Mono',monospace;">remove()</code>, and <code style="font-family:'Pixel Operator Mono',monospace;">clearAll()</code>.</p>
+
+      <h2 id="line-types">2. Line Types <a class="anchor-link" href="#line-types">#</a></h2>
+
+      <p>Each line in a hologram can be one of three content types:</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Config Key</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="def">Text</span></td>
+            <td><code>text</code></td>
+            <td>Display text with MiniMessage format, <span class="def">&amp;</span> color codes, placeholders, and animation tags.</td>
+          </tr>
+          <tr>
+            <td><span class="def">Item</span></td>
+            <td><code>item</code></td>
+            <td>Shows a floating item model (e.g., <span class="def">minecraft:diamond</span>).</td>
+          </tr>
+          <tr>
+            <td><span class="def">Block</span></td>
+            <td><code>block</code></td>
+            <td>Shows a floating block model (e.g., <span class="def">minecraft:stone</span>).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>Line spacing and vertical offset can be tuned in <code style="font-family:'Pixel Operator Mono',monospace;">config.yml</code> (see <a href="#config">Configuration</a>).</p>
+
+      <h2 id="states">3. Hologram States <a class="anchor-link" href="#states">#</a></h2>
+
+      <p>Each display line can show different content depending on the block's state. This is configured in the block definition's <code style="font-family:'Pixel Operator Mono',monospace;">display.lines</code> section.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>State</th>
+            <th>Field</th>
+            <th>When Shown</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="def">ACTIVE</span></td>
+            <td><code>text</code></td>
+            <td>Block is idle, waiting to be mined.</td>
+          </tr>
+          <tr>
+            <td><span class="def">PROGRESS</span></td>
+            <td><code>click</code></td>
+            <td>Block is being mined (shows progress). Falls back to <code>text</code> if not set.</td>
+          </tr>
+          <tr>
+            <td><span class="def">DEAD</span></td>
+            <td><code>dead</code></td>
+            <td>Block is destroyed, waiting to respawn. Falls back to <code>text</code> if not set.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>Set any state field to <span class="def">hide</span> to completely hide that line during that state.</p>
+
+      <div class="code-block" data-filename="blocks/example.yml"><span class="yaml-key">lines</span>:
+  - <span class="yaml-key">line</span>: <span class="yaml-val">1</span>
+    <span class="yaml-key">contents</span>:
+      <span class="yaml-key">text</span>: <span class="yaml-val">"&lt;anim:wave:&amp;1;&amp;b&gt;Block Name&lt;/anim&gt;"</span>  <span class="yaml-comment"># shown when ACTIVE</span>
+      <span class="yaml-key">click</span>: <span class="yaml-val">hide</span>                            <span class="yaml-comment"># hidden during mining</span>
+      <span class="yaml-key">dead</span>: <span class="yaml-val">"&amp;cRespawning..."</span>                 <span class="yaml-comment"># shown when DEAD</span></div>
+
+      <h2 id="animations">4. Text Animations <a class="anchor-link" href="#animations">#</a></h2>
+
+      <p>MMOBlock supports rich inline text animations within hologram text. These are processed by <code style="font-family:'Pixel Operator Mono',monospace;">HologramAnimationUtil</code> and <code style="font-family:'Pixel Operator Mono',monospace;">HologramColorUtil</code>.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Tag</th>
+            <th>Example</th>
+            <th>Effect</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="def">wave</span></td>
+            <td><code>&lt;anim:wave:&amp;1;&amp;b&gt;text&lt;/anim&gt;</code></td>
+            <td>Smooth gradient wave animation across the text.</td>
+          </tr>
+          <tr>
+            <td><span class="def">typewriter</span></td>
+            <td><code>&lt;anim:typewriter:&amp;e;&amp;6&gt;text&lt;/anim&gt;</code></td>
+            <td>Typewriter reveal effect, character by character.</td>
+          </tr>
+          <tr>
+            <td><span class="def">burn</span></td>
+            <td><code>&lt;anim:burn:#999bff;#ffe599&gt;text&lt;/anim&gt;</code></td>
+            <td>Burning/unburning color sweep effect.</td>
+          </tr>
+          <tr>
+            <td><span class="def">colors</span></td>
+            <td><code>&lt;anim:colors:#999bff;#148a87;...&gt;text&lt;/anim&gt;</code></td>
+            <td>Cycles through the listed colors.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>MMOBlock also supports legacy <span class="def">[#]ANIM:</span> pattern from DecentHolograms for backward compatibility.</p>
+
+      <h2 id="placeholders">5. Placeholders <a class="anchor-link" href="#placeholders">#</a></h2>
+
+      <p>Hologram text supports several built-in placeholders:</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Placeholder</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>{condition_&lt;id&gt;}</code></td>
+            <td>Shows the condition requirement text or met text for the condition with the given ID.</td>
+          </tr>
+          <tr>
+            <td><code>{progress_bar}</code></td>
+            <td>Renders the progress bar defined in <code style="font-family:'Pixel Operator Mono',monospace;">config.yml</code> (<code style="font-family:'Pixel Operator Mono',monospace;">progressbar</code> section).</td>
+          </tr>
+          <tr>
+            <td><code>{respawn_time}</code></td>
+            <td>Countdown of remaining seconds until the block respawns.</td>
+          </tr>
+          <tr>
+            <td><code>{block_lists}</code></td>
+            <td>Auto-populated block list for nodes (shows active/dead child blocks).</td>
+          </tr>
+          <tr>
+            <td><code>{block_name}</code></td>
+            <td>Display name of a child block (used within node block list templates).</td>
+          </tr>
+          <tr>
+            <td><code>{respawn_times}</code></td>
+            <td>Remaining respawn time for a child block (used within node block list templates).</td>
+          </tr>
+          <tr>
+            <td><code>%mmoblock_progress%</code></td>
+            <td>PlaceholderAPI — current mining progress.</td>
+          </tr>
+          <tr>
+            <td><code>%mmoblock_max_progress%</code></td>
+            <td>PlaceholderAPI — maximum mining progress.</td>
+          </tr>
+          <tr>
+            <td><code>%mmoblock_respawn_time%</code></td>
+            <td>PlaceholderAPI — remaining respawn time.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="info-box warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>PlaceholderAPI placeholders require the PlaceholderAPI plugin to be installed on your server. Without it, PAPI tokens will show as-is.</div>
+      </div>
+
+      <h2 id="facing">6. Facing &amp; Proximity <a class="anchor-link" href="#facing">#</a></h2>
+
+      <p>Holograms can optionally face the nearest player within a detection range. This creates a "billboard" effect where the hologram always faces the viewer.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>facing</code></td>
+            <td>String</td>
+            <td><span class="def">cardinal</span> (N/S/E/W), <span class="def">intercardinal</span> (NE/NW/SE/SW), or empty for always facing.</td>
+          </tr>
+          <tr>
+            <td><code>distance</code></td>
+            <td>Double</td>
+            <td>Distance from the block center to offset the hologram's facing pivot.</td>
+          </tr>
+          <tr>
+            <td><code>detectRange</code></td>
+            <td>Integer</td>
+            <td>Radius in blocks to search for the nearest player (default <span class="def">16</span>).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="config">7. Configuration <a class="anchor-link" href="#config">#</a></h2>
+
+      <p>Hologram spacing and performance settings are configured in <code style="font-family:'Pixel Operator Mono',monospace;">config.yml</code>:</p>
+
+      <div class="code-block" data-filename="config.yml"><span class="yaml-key">hologram</span>:
+  <span class="yaml-key">packet</span>:
+    <span class="yaml-key">maxUpdatesPerTick</span>: <span class="yaml-val">200</span>
+    <span class="yaml-key">spacing</span>:
+      <span class="yaml-key">text</span>: <span class="yaml-val">0.25</span>
+      <span class="yaml-key">item</span>: <span class="yaml-val">0.30</span>
+      <span class="yaml-key">block</span>: <span class="yaml-val">0.30</span>
+    <span class="yaml-key">offset</span>:
+      <span class="yaml-key">text</span>: <span class="yaml-val">0.00</span>
+      <span class="yaml-key">item</span>: <span class="yaml-val">0.00</span>
+      <span class="yaml-key">block</span>: <span class="yaml-val">0.00</span></div>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>maxUpdatesPerTick</code></td>
+            <td>Integer</td>
+            <td><span class="def">200</span></td>
+            <td>Maximum hologram packet updates per tick (performance cap).</td>
+          </tr>
+          <tr>
+            <td><code>spacing.text</code></td>
+            <td>Double</td>
+            <td><span class="def">0.25</span></td>
+            <td>Vertical spacing between text lines (blocks).</td>
+          </tr>
+          <tr>
+            <td><code>spacing.item</code></td>
+            <td>Double</td>
+            <td><span class="def">0.30</span></td>
+            <td>Vertical spacing for item display lines.</td>
+          </tr>
+          <tr>
+            <td><code>spacing.block</code></td>
+            <td>Double</td>
+            <td><span class="def">0.30</span></td>
+            <td>Vertical spacing for block display lines.</td>
+          </tr>
+          <tr>
+            <td><code>offset.*</code></td>
+            <td>Double</td>
+            <td><span class="def">0.00</span></td>
+            <td>Additional vertical offset for each line type.</td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>

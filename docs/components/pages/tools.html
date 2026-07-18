@@ -1,0 +1,168 @@
+<title>Tools — MMOBlock Docs</title>
+
+
+    <div class="top-nav">
+      <div class="top-nav-breadcrumb">
+        <a href="#/">Home</a>
+        <span class="sep">/</span>
+        <a href="#/overview">Documentation</a>
+        <span class="sep">/</span>
+        <span class="current">Tools</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <h1>Tool <span class="accent">Definitions</span></h1>
+      <p class="lead">Create tool definitions with mining levels, click requirements, durability costs, and linked drop tables.</p>
+
+      <p>Tools bridge blocks and drops. Each tool action maps a specific item material and click type to a number of clicks needed, durability cost, and which drop tables are used. Tool files are stored in the <code style="font-family:'Pixel Operator Mono',monospace;">tools/</code> folder and referenced by block definitions.</p>
+
+      <div class="info-box warn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>Tool resolution happens at runtime: MMOBlock checks the player's held item material, finds the matching tool action, and applies the corresponding click requirement, durability, and drops.</div>
+      </div>
+
+      <div class="toc-card">
+        <div class="toc-title">On this page</div>
+        <ol>
+          <li><a href="#structure">File Structure</a></li>
+          <li><a href="#click-types">Click Types</a></li>
+          <li><a href="#options">Tool Action Options</a></li>
+          <li><a href="#resolution">Tool Resolution Logic</a></li>
+          <li><a href="#full-example">Full Example</a></li>
+        </ol>
+      </div>
+
+      <h2 id="structure">1. File Structure <a class="anchor-link" href="#structure">#</a></h2>
+
+      <p>Each file in <code style="font-family:'Pixel Operator Mono',monospace;">plugins/MMOBlock/tools/</code> defines a tool group. A tool group is a list of tool actions that share a logical purpose (e.g., "pickaxes" or "axes"). The file name is the tool group ID used in block definitions.</p>
+
+      <div class="code-block" data-filename="tools/exampleTools.yml"><span class="yaml-comment"># tools/exampleTools.yml</span>
+<span class="yaml-key">exampleTools</span>:
+  - <span class="yaml-key">material</span>: <span class="yaml-val">DIAMOND_PICKAXE</span>
+    <span class="yaml-key">both_click</span>:
+      <span class="yaml-key">decreaseDurability</span>: <span class="yaml-val">15</span>
+      <span class="yaml-key">clickNeeded</span>: <span class="yaml-val">4</span>
+    <span class="yaml-key">allowedDrops</span>:
+      - <span class="yaml-val">exampleDrops</span>
+  - <span class="yaml-key">material</span>: <span class="yaml-val">NETHERITE_PICKAXE</span>
+    <span class="yaml-key">left_click</span>:
+      <span class="yaml-key">decreaseDurability</span>: <span class="yaml-val">10</span>
+      <span class="yaml-key">clickNeeded</span>: <span class="yaml-val">3</span>
+    <span class="yaml-key">allowedDrops</span>:
+      - <span class="yaml-val">exampleDrops</span>
+  - <span class="yaml-key">material</span>: <span class="yaml-val">NETHERITE_PICKAXE</span>
+    <span class="yaml-key">right_click</span>:
+      <span class="yaml-key">decreaseDurability</span>: <span class="yaml-val">10</span>
+      <span class="yaml-key">clickNeeded</span>: <span class="yaml-val">3</span>
+    <span class="yaml-key">allowedDrops</span>: []</div>
+
+      <h2 id="click-types">2. Click Types <a class="anchor-link" href="#click-types">#</a></h2>
+
+      <p>Each tool action defines the click type it responds to. This allows different behaviors for left-click vs. right-click with the same item.</p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Click Type</th>
+            <th>Key</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="def">Both</span></td>
+            <td><code>both_click</code></td>
+            <td>Matches both left and right clicks. Use for simple mining tools.</td>
+          </tr>
+          <tr>
+            <td><span class="def">Left Click</span></td>
+            <td><code>left_click</code></td>
+            <td>Matches only left-click interactions.</td>
+          </tr>
+          <tr>
+            <td><span class="def">Right Click</span></td>
+            <td><code>right_click</code></td>
+            <td>Matches only right-click interactions.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>You can define multiple tool actions for the same material but different click types, as shown in the example above. A single tool group entry can have only one click type key.</p>
+
+      <h2 id="options">3. Tool Action Options <a class="anchor-link" href="#options">#</a></h2>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>material</code></td>
+            <td>Material</td>
+            <td>The Bukkit material the player must be holding (e.g., <span class="def">DIAMOND_PICKAXE</span>, <span class="def">NETHERITE_PICKAXE</span>).</td>
+          </tr>
+          <tr>
+            <td><code>clickNeeded</code></td>
+            <td>Integer</td>
+            <td>Number of clicks required to break the block with this tool.</td>
+          </tr>
+          <tr>
+            <td><code>decreaseDurability</code></td>
+            <td>Integer</td>
+            <td>Durability damage applied to the tool per click.</td>
+          </tr>
+          <tr>
+            <td><code>allowedDrops</code></td>
+            <td>List</td>
+            <td>List of drop table IDs that apply when this tool is used. Can be empty for no drops.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="resolution">4. Tool Resolution Logic <a class="anchor-link" href="#resolution">#</a></h2>
+
+      <p>When a player clicks a block, MMOBlock resolves the correct tool action using this logic:</p>
+
+      <ol style="margin:12px 0 20px;padding-left:24px;">
+        <li style="margin-bottom:8px;color:#c9d1d9;">MMOBlock reads the block's <code style="font-family:'Pixel Operator Mono',monospace;">allowedTools</code> list to find matching tool group IDs.</li>
+        <li style="margin-bottom:8px;color:#c9d1d9;">For each tool group, it iterates the tool actions looking for the first entry where <strong>material matches</strong> the held item and <strong>click type matches</strong> the interaction (left click, right click, or both).</li>
+        <li style="margin-bottom:8px;color:#c9d1d9;">The first matching tool action is used. Its <code style="font-family:'Pixel Operator Mono',monospace;">allowedDrops</code> determine the drop table, and <code style="font-family:'Pixel Operator Mono',monospace;">clickNeeded</code> / <code style="font-family:'Pixel Operator Mono',monospace;">decreaseDurability</code> control the mining experience.</li>
+      </ol>
+
+      <p>This design means you can create different mining experiences for different tiers of tools without duplicating drop tables.</p>
+
+      <h2 id="full-example">5. Full Example <a class="anchor-link" href="#full-example">#</a></h2>
+
+      <p>A complete tool group with multiple materials and click types:</p>
+
+      <div class="code-block" data-filename="tools/exampleTools.yml"><span class="yaml-comment"># tools/exampleTools.yml — Pickaxe tool group</span>
+<span class="yaml-key">exampleTools</span>:
+  <span class="yaml-comment"># Diamond pickaxe: 4 clicks, both left and right work, 15 durability per click</span>
+  - <span class="yaml-key">material</span>: <span class="yaml-val">DIAMOND_PICKAXE</span>
+    <span class="yaml-key">both_click</span>:
+      <span class="yaml-key">decreaseDurability</span>: <span class="yaml-val">15</span>
+      <span class="yaml-key">clickNeeded</span>: <span class="yaml-val">4</span>
+    <span class="yaml-key">allowedDrops</span>:
+      - <span class="yaml-val">exampleDrops</span>
+
+  <span class="yaml-comment"># Netherite pickaxe: 3 clicks left-click only, 10 durability per click</span>
+  - <span class="yaml-key">material</span>: <span class="yaml-val">NETHERITE_PICKAXE</span>
+    <span class="yaml-key">left_click</span>:
+      <span class="yaml-key">decreaseDurability</span>: <span class="yaml-val">10</span>
+      <span class="yaml-key">clickNeeded</span>: <span class="yaml-val">3</span>
+    <span class="yaml-key">allowedDrops</span>:
+      - <span class="yaml-val">exampleDrops</span>
+
+  <span class="yaml-comment"># Netherite pickaxe right-click: same material, different click type, no drops</span>
+  - <span class="yaml-key">material</span>: <span class="yaml-val">NETHERITE_PICKAXE</span>
+    <span class="yaml-key">right_click</span>:
+      <span class="yaml-key">decreaseDurability</span>: <span class="yaml-val">10</span>
+      <span class="yaml-key">clickNeeded</span>: <span class="yaml-val">3</span>
+    <span class="yaml-key">allowedDrops</span>: []</div>
+
+    </div>

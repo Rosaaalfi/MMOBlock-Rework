@@ -3,7 +3,7 @@ exampleNodes:
     name: "&7Example Nodes"
     material: iron_ore
   listBlocks:
-    - exampleEntity
+    - exampleEntityNodes
     #- exampleEntity1
   maxBlocks: 4 # The maximum number of entities that can be spawned at the same time. If the number of entities exceeds this limit, the oldest entity will be removed to make room for the new one.
   randomLocation:

@@ -1,9 +1,5 @@
 package me.chyxelmc.mmoblock.persistence;
 
-import me.chyxelmc.mmoblock.model.PlacedNode;
-import me.chyxelmc.mmoblock.persistence.cache.DataCache;
-import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,6 +7,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import me.chyxelmc.mmoblock.model.PlacedNode;
+import me.chyxelmc.mmoblock.persistence.cache.DataCache;
+import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
 
 public final class NodeRepository {
 
@@ -25,10 +25,22 @@ public final class NodeRepository {
     }
 
     public void upsert(final PlacedNode node) {
-        final String sql = """
-            MERGE INTO mmoblock_node (unique_id, node_id, world, x, y, z)
-            KEY(unique_id) VALUES (?, ?, ?, ?, ?, ?)
-            """;
+        final boolean mysql = this.databaseManager.isMySQL();
+        final String sql = mysql
+            ? """
+                INSERT INTO mmoblock_node (unique_id, node_id, world, x, y, z)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    node_id = VALUES(node_id),
+                    world = VALUES(world),
+                    x = VALUES(x),
+                    y = VALUES(y),
+                    z = VALUES(z)
+                """
+            : """
+                MERGE INTO mmoblock_node (unique_id, node_id, world, x, y, z)
+                KEY(unique_id) VALUES (?, ?, ?, ?, ?, ?)
+                """;
         try (Connection connection = this.databaseManager.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, node.uniqueId().toString());
