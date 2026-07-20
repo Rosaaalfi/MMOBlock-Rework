@@ -1,16 +1,16 @@
 /**
- * router.js — Hash-based SPA router
+ * router.js — Path-based SPA router
  * Routes:
- *   #/              → Home
- *   #/overview      → Docs Overview
- *   #/config        → Configuration
- *   #/config/blocks → Blocks
- *   #/config/drops  → Drops
- *   #/config/tools  → Tools
- *   #/config/nodes  → Nodes
- *   #/models        → Models / BDEngine
- *   #/holograms     → Holograms
- *   #/api           → API Reference
+ *   /              → Home
+ *   /overview      → Docs Overview
+ *   /config        → Configuration
+ *   /config/blocks → Blocks
+ *   /config/drops  → Drops
+ *   /config/tools  → Tools
+ *   /config/nodes  → Nodes
+ *   /models        → Models / BDEngine
+ *   /holograms     → Holograms
+ *   /api           → API Reference
  */
 const Router = {
   routes: {},
@@ -27,7 +27,7 @@ const Router = {
 
   /**
    * Register a callback called after every page load.
-   * @param {Function} fn - Receives the hash path
+   * @param {Function} fn - Receives the path
    */
   onAfterResolve(fn) {
     this.onPageLoad = fn;
@@ -35,7 +35,7 @@ const Router = {
 
   /**
    * Define routes.
-   * @param {Object} routes - Map of hash path to page component path
+   * @param {Object} routes - Map of path to page component path
    */
   define(routes) {
     this.routes = routes;
@@ -49,36 +49,38 @@ const Router = {
   },
 
   /**
-   * Get the current hash path (normalized).
+   * Get the current path (normalized).
    */
   getHash() {
-    const hash = window.location.hash.replace(/^#/, '') || '/';
-    return hash;
+    let path = window.location.pathname;
+    // Remove trailing slash (except for root)
+    if (path !== '/' && path.endsWith('/')) path = path.slice(0, -1);
+    return path || '/';
   },
 
   /**
-   * Navigate to a hash route.
+   * Navigate to a route using history.pushState.
    */
-  navigate(hash) {
-    window.location.hash = hash;
+  navigate(path) {
+    window.history.pushState(null, '', path);
+    this.resolve();
   },
 
   /**
-   * Check if a hash is a docs route (not home).
+   * Check if a path is a docs route (not home).
    */
-  _isDocsRoute(hash) {
-    return hash !== '/' && hash !== '' && !this.sectionAnchors.includes(hash);
+  _isDocsRoute(path) {
+    return path !== '/' && path !== '' && !this.sectionAnchors.includes(path);
   },
 
   /**
-   * Handle route change — called when hash changes.
+   * Handle route change — called when popstate fires or navigate is called.
    */
   async resolve() {
     const hash = this.getHash();
     if (hash === this.currentRoute) return;
 
     // Check if hash targets an existing element on the current page (TOC intra-page anchor)
-    // This prevents unknown hashes from falling through to the home page fallback
     if (hash && hash !== '/' && hash !== '' && !this.routes[hash] && !this.sectionAnchors.includes(hash)) {
       const targetEl = document.getElementById(hash);
       if (targetEl) {
@@ -125,7 +127,7 @@ const Router = {
       const sidebarEl = document.getElementById(this.sidebarId);
       if (sidebarEl && !sidebarEl.hasChildNodes()) {
         try {
-          const sidebarRes = await fetch('components/sidebar.html');
+          const sidebarRes = await fetch('/components/sidebar.html');
           if (sidebarRes.ok) {
             sidebarEl.innerHTML = await sidebarRes.text();
           }
@@ -236,7 +238,7 @@ const Router = {
     const footerContainer = document.getElementById(this.footerId);
     if (!footerContainer) return;
     try {
-      const res = await fetch('components/footer.html');
+      const res = await fetch('/components/footer.html');
       if (res.ok) {
         footerContainer.innerHTML = await res.text();
         footerContainer.style.display = 'block';
@@ -262,13 +264,13 @@ const Router = {
   },
 
   /**
-   * Update sidebar active link based on current hash.
+   * Update sidebar active link based on current path.
    */
-  _updateSidebar(hash) {
+  _updateSidebar(path) {
     document.querySelectorAll('.sidebar-link').forEach(link => {
       link.classList.remove('active');
       const href = link.getAttribute('href');
-      if (href === `#${hash}` || href === hash) {
+      if (href === path) {
         link.classList.add('active');
       }
     });
@@ -278,44 +280,60 @@ const Router = {
    * Start the router.
    */
   start() {
-    window.addEventListener('hashchange', () => this.resolve());
+    // Listen for browser back/forward
+    window.addEventListener('popstate', () => this.resolve());
 
-    // Intercept regular link clicks that point to # routes
+    // Intercept link clicks to SPA routes
     document.addEventListener('click', e => {
-      const link = e.target.closest('a[href^="#"]');
-      if (link) {
-        const href = link.getAttribute('href');
-        if (href && href.startsWith('#')) {
-          const hash = href.substring(1);
-          if (hash.startsWith('/')) {
-            // SPA route (e.g., #/overview, #/config/blocks)
-            e.preventDefault();
-            this.navigate(hash);
-          } else if (this.sectionAnchors.includes(hash)) {
-            // Home page section anchor (e.g., #about, #features)
-            e.preventDefault();
-            if (this.currentRoute === '/' || this.currentRoute === '') {
-              // Already on home page, scroll directly to section
-              setTimeout(() => {
-                const el = document.getElementById(hash);
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }, 100);
-            } else {
-              this.pendingScrollTarget = hash;
-              this.navigate('/');
-            }
+      const link = e.target.closest('a[href]');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      if (!href) return;
+
+      // Skip external links, mailto, etc.
+      if (href.startsWith('http') || href.startsWith('//') || href.startsWith('mailto:')) return;
+
+      // Handle section anchors (#about, #features, etc.)
+      if (href.startsWith('#')) {
+        const hash = href.substring(1);
+        if (this.sectionAnchors.includes(hash)) {
+          e.preventDefault();
+          if (this.currentRoute === '/' || this.currentRoute === '') {
+            // Already on home page, scroll directly
+            setTimeout(() => {
+              const el = document.getElementById(hash);
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          } else {
+            this.pendingScrollTarget = hash;
+            this.navigate('/');
           }
-          // Otherwise (TOC intra-page anchors like #overview on docs),
-          // let the browser handle it natively
+          return;
+        }
+        // Otherwise (TOC intra-page anchors), let the browser handle natively
+        return;
+      }
+
+      // Resolve the target path
+      const path = href.startsWith('/') ? href : '/' + href;
+
+      // Check if it matches a registered SPA route (exact or prefix)
+      if (this.routes[path]) {
+        e.preventDefault();
+        this.navigate(path);
+        return;
+      }
+      for (const [pattern] of Object.entries(this.routes)) {
+        if (path.startsWith(pattern + '/') || path === pattern) {
+          e.preventDefault();
+          this.navigate(path);
+          return;
         }
       }
+      // Not a known SPA route — let the browser navigate normally
     });
 
     // Resolve initial route
-    if (!window.location.hash) {
-      this.navigate('/');
-    } else {
-      this.resolve();
-    }
+    this.resolve();
   }
 };

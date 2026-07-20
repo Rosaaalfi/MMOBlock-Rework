@@ -15,16 +15,16 @@ const App = {
 
     // 3. Define routes
     Router.define({
-      '/': 'components/pages/home.html',
-      '/overview': 'components/pages/overview.html',
-      '/config': 'components/pages/configuration.html',
-      '/config/blocks': 'components/pages/blocks.html',
-      '/config/drops': 'components/pages/drops.html',
-      '/config/tools': 'components/pages/tools.html',
-      '/config/nodes': 'components/pages/nodes.html',
-      '/models': 'components/pages/models.html',
-      '/holograms': 'components/pages/holograms.html',
-      '/api': 'components/pages/api.html'
+      '/': '/components/pages/home.html',
+      '/overview': '/components/pages/overview.html',
+      '/config': '/components/pages/configuration.html',
+      '/config/blocks': '/components/pages/blocks.html',
+      '/config/drops': '/components/pages/drops.html',
+      '/config/tools': '/components/pages/tools.html',
+      '/config/nodes': '/components/pages/nodes.html',
+      '/models': '/components/pages/models.html',
+      '/holograms': '/components/pages/holograms.html',
+      '/api': '/components/pages/api.html'
     });
 
     // 4. Set the outlet for page content
