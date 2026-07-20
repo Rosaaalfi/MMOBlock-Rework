@@ -61,6 +61,11 @@ public final class MMOBlock extends JavaPlugin{
     private MMOBlockPlaceholderExpansion placeholderExpansion;
     private Method placeholderApiSetMethod;
     private MMOBlockApiImpl apiImpl;
+    private volatile boolean ready;
+
+    public boolean isReady() {
+        return this.ready;
+    }
 
     @Override
     public void onEnable() {
@@ -240,6 +245,8 @@ public final class MMOBlock extends JavaPlugin{
             }
             syncPlayerVisualsNowAndDelayed(player);
         }
+
+        this.ready = true;
     }
 
     /**

@@ -453,6 +453,10 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleReload(final CommandSender sender, final String[] args) {
+        if (!this.plugin.isReady()) {
+            send(sender, Component.text("§cCannot reload while plugin is still starting up. Please wait."));
+            return true;
+        }
         if (args.length == 1) {
             this.configService.reloadAll();
             if (this.nodeRuntimeService != null) {

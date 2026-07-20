@@ -49,7 +49,7 @@ exampleEntitySchematic:
     displayHeight: 2.1 # height of the all hologram lines above the entity's location. This will be the height of the first line of the hologram. The second line will be 0.25 blocks below the first line, the third line will be 0.25 blocks below the second line, and the fourth line will be 0.25 blocks below the third line.
     displayFacing: # hologram can teleport to the near player, display Per Player Facing, if player the player out of range unload/remove hologram
       facing: intercardinal # cardinal only nwse and intercardinal include NW, NE, SE, SW
-      distance: 5 # distance hologram can teleport to the near player from center
+      distance: 3 # distance hologram can teleport to the near player from center
       detectRange: 16 # 16x16 1 chunk range to detect player
     lines:
       - line: 1 #top line of the hologram

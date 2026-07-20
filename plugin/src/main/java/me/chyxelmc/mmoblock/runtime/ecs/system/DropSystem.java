@@ -147,36 +147,46 @@ public final class DropSystem implements Listener {
                 item.setVelocity(velocity);
             }
 
-            // Colored glow effect via NMS
+            // Colored glow effect — per-player or broadcast
             if (entry.effectGlow() != null) {
                 final String colorName = entry.effectGlow().color();
+                final Player glowTarget = entry.perPlayer() ? player : null;
                 if ("rainbow".equalsIgnoreCase(colorName)) {
                     final List<String> colors = randomizedRainbowColors();
-                    applyEntityGlow(item, player, colors.get(0));
-                    scheduleRainbowGlow(item, player, 1, colors);
+                    applyEntityGlow(item, glowTarget, colors.get(0));
+                    scheduleRainbowGlow(item, glowTarget, 1, colors);
                 } else {
-                    applyEntityGlow(item, player, colorName);
+                    applyEntityGlow(item, glowTarget, colorName);
                 }
             }
 
-            // Colored particle beam effect via NMS (client-side only)
+            // Colored particle beam effect — per-player or broadcast
             if (entry.effectBeam() != null) {
                 final String colorName = entry.effectBeam().color();
                 final String particleName = entry.effectBeam().particle();
+                final Player beamTarget = entry.perPlayer() ? player : null;
                 if ("rainbow".equalsIgnoreCase(colorName)) {
                     final List<String> colors = randomizedRainbowColors();
-                    applyItemBeam(item, player, colors.get(0), particleName);
-                    scheduleRainbowBeam(item, player, 1, colors, particleName);
+                    applyItemBeam(item, beamTarget, colors.get(0), particleName);
+                    scheduleRainbowBeam(item, beamTarget, 1, colors, particleName);
                 } else {
-                    applyItemBeam(item, player, colorName, particleName);
-                    scheduleContinuousBeam(item, player, colorName, particleName);
+                    applyItemBeam(item, beamTarget, colorName, particleName);
+                    scheduleContinuousBeam(item, beamTarget, colorName, particleName);
                 }
             }
         }
     }
 
     private void applyEntityGlow(final Item item, final Player player, final String colorName) {
-        this.scheduler.runForEntity(item, () -> this.nmsAdapter.applyEntityGlow(player, item, colorName), null);
+        this.scheduler.runForEntity(item, () -> {
+            if (player != null) {
+                this.nmsAdapter.applyEntityGlow(player, item, colorName);
+            } else {
+                for (final Player online : Bukkit.getOnlinePlayers()) {
+                    this.nmsAdapter.applyEntityGlow(online, item, colorName);
+                }
+            }
+        }, null);
     }
 
     /**
@@ -191,17 +201,23 @@ public final class DropSystem implements Listener {
         final String color = cycle.get(colorIndex);
         final int nextIndex = colorIndex + 1;
         this.scheduler.runForEntityLater(item, () -> {
-            if (!player.isOnline() || !item.isValid()) {
+            if (!item.isValid() || (player != null && !player.isOnline())) {
                 return;
             }
-            this.nmsAdapter.applyEntityGlow(player, item, color);
+            if (player != null) {
+                this.nmsAdapter.applyEntityGlow(player, item, color);
+            } else {
+                for (final Player online : Bukkit.getOnlinePlayers()) {
+                    this.nmsAdapter.applyEntityGlow(online, item, color);
+                }
+            }
             scheduleRainbowGlow(item, player, nextIndex, cycle);
         }, null, RAINBOW_INTERVAL_TICKS);
     }
 
     private void applyItemBeam(final Item item, final Player player, final String colorName, final String particleName) {
         this.scheduler.runForEntity(item, () -> {
-            if (!player.isOnline() || !item.isValid()) {
+            if (!item.isValid() || (player != null && !player.isOnline())) {
                 return;
             }
             spawnItemBeam(player, item.getLocation(), colorName, particleName);
@@ -220,7 +236,7 @@ public final class DropSystem implements Listener {
         final String color = cycle.get(colorIndex);
         final int nextIndex = colorIndex + 1;
         this.scheduler.runForEntityLater(item, () -> {
-            if (!player.isOnline() || !item.isValid()) {
+            if (!item.isValid() || (player != null && !player.isOnline())) {
                 return;
             }
             spawnItemBeam(player, item.getLocation(), color, particleName);
@@ -234,7 +250,7 @@ public final class DropSystem implements Listener {
      */
     private void scheduleContinuousBeam(final Item item, final Player player, final String colorName, final String particleName) {
         this.scheduler.runForEntityLater(item, () -> {
-            if (!player.isOnline() || !item.isValid()) {
+            if (!item.isValid() || (player != null && !player.isOnline())) {
                 return;
             }
             spawnItemBeam(player, item.getLocation(), colorName, particleName);
@@ -252,12 +268,22 @@ public final class DropSystem implements Listener {
             final Location loc = location.clone();
             final double startY = loc.getY() + 0.7D;
             final double endY = startY + 0.7D;
+            final boolean broadcast = player == null;
             for (double y = startY; y <= endY; y += 0.25D) {
                 loc.setY(y);
                 if (isDustParticle(particle)) {
-                    player.spawnParticle(particle, loc, 1, 0.0D, 0.0D, 0.0D, 0.0D, new Particle.DustOptions(color, 1.0f));
+                    final Particle.DustOptions dustOptions = new Particle.DustOptions(color, 1.0f);
+                    if (broadcast) {
+                        location.getWorld().spawnParticle(particle, loc, 1, 0.0D, 0.0D, 0.0D, 0.0D, dustOptions);
+                    } else {
+                        player.spawnParticle(particle, loc, 1, 0.0D, 0.0D, 0.0D, 0.0D, dustOptions);
+                    }
                 } else {
-                    player.spawnParticle(particle, loc, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+                    if (broadcast) {
+                        location.getWorld().spawnParticle(particle, loc, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+                    } else {
+                        player.spawnParticle(particle, loc, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+                    }
                 }
             }
         } catch (final Exception e) {
