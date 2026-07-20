@@ -12,6 +12,7 @@ softdepend:
   - ViaRewind
   - Geyser-Spigot
   - PlaceholderAPI
+  - ModelEngine
 
 permissions:
   mmoblock.admin:

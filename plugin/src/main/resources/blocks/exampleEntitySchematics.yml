@@ -8,7 +8,7 @@ exampleEntitySchematic:
     enabled: true
     source:
       type: VANILLA
-      value: "minecraft:oak_wood"
+      value: "minecraft:oak_log"
     fallback:
       type: VANILLA
       value: "minecraft:stone"

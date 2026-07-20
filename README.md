@@ -81,7 +81,6 @@ MMOBlock-Rework/
 <table><tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="72" height="22"/></td><td>Multi-thread safe support</td></tr>
 <tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="72" height="22"/></td><td>Single-thread support</td></tr>
 <tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Full Folia compatibility</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Full Bukkit compatibility</td></tr>
 <tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Full Paper compatibility</td></tr></table>
 
 ---

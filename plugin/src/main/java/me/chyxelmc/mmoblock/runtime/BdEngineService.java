@@ -332,13 +332,6 @@ public final class BdEngineService {
             final double y,
             final double z
     ) {
-        if (!"block".equalsIgnoreCase(definition.bdengineCollisionType())) {
-            return;
-        }
-        final Material material = definition.bdengineCollisionBlock();
-        if (material == null || !material.isBlock()) {
-            return;
-        }
         final List<String> positions = definition.bdengineCollisionPositions();
         if (positions == null || positions.isEmpty()) {
             return;
@@ -354,8 +347,8 @@ public final class BdEngineService {
             final int worldY = (int) Math.floor(y) + offset[1];
             final int worldZ = (int) Math.floor(z) + offset[2];
             final Location location = new Location(world, worldX, worldY, worldZ);
-            this.nmsAdapter.showFakeBlock(world, location, material);
-            entries.add(new BdEngineCollisionEntry(world.getName(), worldX, worldY, worldZ, material));
+            this.nmsAdapter.showFakeBlock(world, location, Material.BARRIER);
+            entries.add(new BdEngineCollisionEntry(world.getName(), worldX, worldY, worldZ, Material.BARRIER));
         }
         if (!entries.isEmpty()) {
             this.activeCollisions.put(blockUniqueId, entries);

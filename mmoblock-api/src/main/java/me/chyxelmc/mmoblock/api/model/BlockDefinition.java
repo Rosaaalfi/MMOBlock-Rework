@@ -39,9 +39,20 @@ public interface BlockDefinition {
     double bdengineSize();
     String bdengineOnSpawnAnimation();
     String bdengineOnClickAnimation();
-    String bdengineCollisionType();
-    Material bdengineCollisionBlock();
     List<String> bdengineCollisionPositions();
+    // modelEngine
+    boolean modelEngineEnabled();
+    String modelEngineModelId();
+    double modelEngineModelSize();
+    String modelEngineOnClickName();
+    double modelEngineOnClickLerpIn();
+    double modelEngineOnClickLerpOut();
+    double modelEngineOnClickSpeed();
+    String modelEngineOnDeadName();
+    double modelEngineOnDeadLerpIn();
+    double modelEngineOnDeadLerpOut();
+    double modelEngineOnDeadSpeed();
+    List<String> modelEngineCollisionPositions();
     String itemName();
     Material itemMaterial();
 }

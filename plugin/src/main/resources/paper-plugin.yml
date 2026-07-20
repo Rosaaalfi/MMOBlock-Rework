@@ -18,6 +18,9 @@ dependencies:
   - name: Geyser-Spigot
     load: BEFORE
     required: false
+  - name: ModelEngine
+    load: BEFORE
+    required: false
 
 main: me.chyxelmc.mmoblock.MMOBlock
 loader: me.chyxelmc.mmoblock.MMOBlockLoader

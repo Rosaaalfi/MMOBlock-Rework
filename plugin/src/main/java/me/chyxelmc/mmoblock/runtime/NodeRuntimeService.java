@@ -1,5 +1,19 @@
 package me.chyxelmc.mmoblock.runtime;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
+
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.entity.Player;
+
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigService;
 import me.chyxelmc.mmoblock.config.NodeConfigService;
@@ -14,19 +28,6 @@ import me.chyxelmc.mmoblock.persistence.cache.DataCache;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.ecs.system.LifecycleSystem;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
-import org.bukkit.entity.Player;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 
 public final class NodeRuntimeService {
 
@@ -377,7 +378,8 @@ public final class NodeRuntimeService {
                 List.of(),
                 "", 0.0D, 0.0D,
                 false, "", "", "north", List.of(), List.of(),
-                false, "", 1.0D, "", "", 0.0D, 0.0D, "once", "once", "none", Material.BARRIER, List.of(),
+                false, "", 1.0D, "", "", 0.0D, 0.0D, "once", "once", List.of(),
+                false, "", 1.0D, "", 0.1D, 0.1D, 1.0D, "", 0.1D, 0.1D, 1.0D, List.of(),
                 null,
                 null
         );

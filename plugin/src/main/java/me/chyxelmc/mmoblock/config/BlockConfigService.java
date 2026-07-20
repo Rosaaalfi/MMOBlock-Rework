@@ -189,24 +189,48 @@ public final class BlockConfigService {
                 final String bdengineOnClickAnimationMode = bdengineSection != null
                         ? bdengineAnimationMode(bdengineSection, "onClick", "onCLick")
                         : "once";
-                final ConfigurationSection bdengineCollision = bdengineSection != null
-                        ? bdengineSection.getConfigurationSection("collision")
-                        : null;
-                final String bdengineCollisionType = bdengineCollision != null
-                        ? bdengineCollision.getString("type", "none")
-                        : "none";
-                final Material bdengineCollisionBlock = bdengineCollision != null
-                        ? parseMaterial(bdengineCollision.getString("block", "minecraft:barrier"))
-                        : Material.BARRIER;
-                final List<String> bdengineCollisionPositions = bdengineCollision != null
-                        ? bdengineCollision.getStringList("position")
+                final List<String> bdengineCollisionPositions = bdengineSection != null
+                        ? bdengineSection.getStringList("collision")
                         : List.of();
                 if (bdengineEnabled && (bdengineModel == null || bdengineModel.isBlank())) {
                     report.error("Block '" + key + "' enables modelType.bdengine but has no model configured.");
                 }
-                if (bdengineEnabled && bdengineCollisionBlock == null) {
-                    report.warn("Block '" + key + "' has invalid modelType.bdengine.collision.block.");
-                }
+                // modelType.modelEngine config
+                final ConfigurationSection modelEngineSection = section.getConfigurationSection("modelType.modelEngine");
+                final boolean modelEngineEnabled = modelEngineSection != null && modelEngineSection.getBoolean("enabled", false);
+                final String modelEngineModelId = modelEngineSection != null
+                        ? modelEngineSection.getString("model", "")
+                        : "";
+                final double modelEngineModelSize = modelEngineSection != null
+                        ? Math.max(0.01D, modelEngineSection.getDouble("size", 1.0D))
+                        : 1.0D;
+                final List<String> modelEngineCollisionPositions = modelEngineSection != null
+                        ? modelEngineSection.getStringList("collision")
+                        : List.of();
+                final String modelEngineOnClickName = modelEngineSection != null
+                        ? modelEngineSection.getString("onClick.name", "")
+                        : "";
+                final double modelEngineOnClickLerpIn = modelEngineSection != null
+                        ? modelEngineSection.getDouble("onClick.lerpin", 0.1D)
+                        : 0.1D;
+                final double modelEngineOnClickLerpOut = modelEngineSection != null
+                        ? modelEngineSection.getDouble("onClick.lerpout", 0.1D)
+                        : 0.1D;
+                final double modelEngineOnClickSpeed = modelEngineSection != null
+                        ? modelEngineSection.getDouble("onClick.speed", 1.0D)
+                        : 1.0D;
+                final String modelEngineOnDeadName = modelEngineSection != null
+                        ? modelEngineSection.getString("onDead.name", "")
+                        : "";
+                final double modelEngineOnDeadLerpIn = modelEngineSection != null
+                        ? modelEngineSection.getDouble("onDead.lerpin", 0.1D)
+                        : 0.1D;
+                final double modelEngineOnDeadLerpOut = modelEngineSection != null
+                        ? modelEngineSection.getDouble("onDead.lerpout", 0.1D)
+                        : 0.1D;
+                final double modelEngineOnDeadSpeed = modelEngineSection != null
+                        ? modelEngineSection.getDouble("onDead.speed", 1.0D)
+                        : 1.0D;
                 final ConfigurationSection itemSection = section.getConfigurationSection("item");
                 final String itemName = itemSection != null ? itemSection.getString("name") : null;
                 final Material itemMaterial = itemSection != null ? parseMaterial(itemSection.getString("material")) : null;
@@ -254,9 +278,19 @@ public final class BlockConfigService {
                                 bdengineOnClickTimelineLength,
                                 bdengineOnSpawnAnimationMode,
                                 bdengineOnClickAnimationMode,
-                                bdengineCollisionType,
-                                bdengineCollisionBlock == null ? Material.BARRIER : bdengineCollisionBlock,
                                 bdengineCollisionPositions,
+                                modelEngineEnabled,
+                                modelEngineModelId,
+                                modelEngineModelSize,
+                                modelEngineOnClickName,
+                                modelEngineOnClickLerpIn,
+                                modelEngineOnClickLerpOut,
+                                modelEngineOnClickSpeed,
+                                modelEngineOnDeadName,
+                                modelEngineOnDeadLerpIn,
+                                modelEngineOnDeadLerpOut,
+                                modelEngineOnDeadSpeed,
+                                modelEngineCollisionPositions,
                                 itemName,
                                 itemMaterial
                         )
@@ -742,6 +776,16 @@ public final class BlockConfigService {
             return Double.parseDouble(String.valueOf(raw).trim());
         } catch (final NumberFormatException exception) {
             return fallback;
+        }
+    }
+
+    private static boolean isNumeric(final String str) {
+        if (str == null || str.isBlank()) return false;
+        try {
+            Double.parseDouble(str);
+            return true;
+        } catch (final NumberFormatException ignored) {
+            return false;
         }
     }
 

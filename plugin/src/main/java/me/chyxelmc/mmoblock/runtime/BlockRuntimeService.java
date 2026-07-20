@@ -73,6 +73,31 @@ public final class BlockRuntimeService {
 
     private static final java.util.Set<Material> VEGETATION_MATERIALS;
 
+    /**
+     * Particle used for block-break dust effects. Resolved at class load time to
+     * handle the particle rename across Minecraft versions.
+     * <ul>
+     *   <li>1.21.2+  → {@code BLOCK_CRUMBLE}
+     *   <li>1.20.5–1.21.1 → {@code BLOCK}
+     *   <li>1.19.4–1.20.4 → {@code BLOCK_DUST}
+     * </ul>
+     */
+    private static final Particle BREAK_PARTICLE;
+
+    static {
+        Particle particle;
+        try {
+            particle = Particle.valueOf("BLOCK_CRUMBLE"); // 1.21.2+
+        } catch (final IllegalArgumentException ex) {
+            try {
+                particle = Particle.valueOf("BLOCK");      // 1.20.5–1.21.1
+            } catch (final IllegalArgumentException ex2) {
+                particle = Particle.valueOf("BLOCK_DUST"); // 1.19.4–1.20.4
+            }
+        }
+        BREAK_PARTICLE = particle;
+    }
+
     static {
         // Build a materials set in a multi-version-safe way. Use Material.matchMaterial
         // so missing enum constants on older server versions don't cause NoSuchFieldError.
@@ -193,6 +218,8 @@ public final class BlockRuntimeService {
                     this.visualSyncSystem.applyRealBlockModel(block, def, world);
                     applySchematicModel(block, def, world, false);
                     applyBdEngineModel(block, def, world);
+                    applyModelEngineModel(block, def, world);
+                    applyModelEngineCollision(block, def, world);
                 }
                 } catch (final Throwable ignored) {
                 }
@@ -379,6 +406,8 @@ public final class BlockRuntimeService {
                 this.visualSyncSystem.clearRealBlockModel(placedBlock, definition, blockWorld);
                 clearSchematicModel(placedBlock, blockWorld);
                 clearBdEngineModel(placedBlock, blockWorld);
+                clearModelEngineModel(placedBlock, blockWorld);
+                clearModelEngineCollision(placedBlock, blockWorld);
             }
         }
         despawnInteraction(placedBlock);
@@ -724,6 +753,14 @@ public final class BlockRuntimeService {
                 definition.bdengineOnClickTimelineLength(),
                 definition.bdengineOnClickAnimationMode()
         );
+        playModelEngineAnimation(
+                block,
+                definition,
+                definition.modelEngineOnClickName(),
+                definition.modelEngineOnClickLerpIn(),
+                definition.modelEngineOnClickLerpOut(),
+                definition.modelEngineOnClickSpeed()
+        );
 
         applyDurability(item, action.decreaseDurability());
         final int progress = this.miningSystem.incrementProgress(block.uniqueId(), player.getUniqueId(), System.currentTimeMillis());
@@ -805,6 +842,14 @@ public final class BlockRuntimeService {
             this.visualSyncSystem.sendBreakAnimation(block, action, action.clickNeeded(), true);
         }
         playConfiguredSound(player.getWorld(), block, definition.soundOnDead());
+        playModelEngineAnimation(
+                block,
+                definition,
+                definition.modelEngineOnDeadName(),
+                definition.modelEngineOnDeadLerpIn(),
+                definition.modelEngineOnDeadLerpOut(),
+                definition.modelEngineOnDeadSpeed()
+        );
         spawnBreakParticles(block, definition);
 
         this.lifecycleSystem.markRespawning(block);
@@ -817,6 +862,8 @@ public final class BlockRuntimeService {
             this.visualSyncSystem.clearRealBlockModel(block, definition, world);
             clearSchematicModel(block, world);
             clearBdEngineModel(block, world);
+            clearModelEngineModel(block, world);
+            clearModelEngineCollision(block, world);
         }
         despawnInteraction(block);
         if (world != null && definition.schematicsEnabled() && definition.schematicsDeadFile() != null && !definition.schematicsDeadFile().isBlank()) {
@@ -976,6 +1023,8 @@ public final class BlockRuntimeService {
                     }
                     applySchematicModel(placedBlock, definition, world, false);
                     applyBdEngineModel(placedBlock, definition, world);
+                    // ModelEngine model is deferred to onInteractionSpawned()
+                    // because the NMS entity does not exist yet.
                     return true;
                 }
             }
@@ -1021,6 +1070,8 @@ public final class BlockRuntimeService {
             this.visualSyncSystem.applyRealBlockModel(placedBlock, definition, world);
             applySchematicModel(placedBlock, definition, world, false);
             applyBdEngineModel(placedBlock, definition, world);
+            applyModelEngineModel(placedBlock, definition, world);
+            applyModelEngineCollision(placedBlock, definition, world);
             // logging removed: spawned interaction info
             return true;
         } catch (final RuntimeException exception) {
@@ -1093,6 +1144,125 @@ public final class BlockRuntimeService {
         }
     }
 
+    // -------------------------------------------------------------
+    // ModelEngine integration
+    // -------------------------------------------------------------
+
+    private void applyModelEngineModel(final PlacedBlock block, final BlockDefinition definition, final World world) {
+        if (definition == null || !definition.modelEngineEnabled()) return;
+        if (!me.chyxelmc.mmoblock.api.compat.ModelEngineCompat.isAvailable()) return;
+        final Entity entity = world.getEntity(block.interactionEntityId());
+        if (entity == null) {
+            this.plugin.getLogger().warning("[ModelEngine] Entity not found for block " + block.uniqueId()
+                    + " (id=" + block.interactionEntityId() + ")");
+            return;
+        }
+        if (!(entity instanceof org.bukkit.entity.Interaction)) {
+            this.plugin.getLogger().warning("[ModelEngine] Entity " + block.interactionEntityId()
+                    + " is not an Interaction: " + entity.getType());
+            return;
+        }
+        try {
+            me.chyxelmc.mmoblock.api.compat.ModelEngineCompat.showModel(
+                    entity,
+                    definition.modelEngineModelId(),
+                    definition.modelEngineModelSize()
+            );
+        } catch (final Throwable ex) {
+            this.plugin.getLogger().warning("[ModelEngine] Failed to show model '" + definition.modelEngineModelId()
+                    + "' on " + block.interactionEntityId() + ": " + ex.getMessage());
+        }
+    }
+
+    private void clearModelEngineModel(final PlacedBlock block, final World world) {
+        if (block == null || block.interactionEntityId() == null) return;
+        if (!me.chyxelmc.mmoblock.api.compat.ModelEngineCompat.isAvailable()) return;
+        final Entity entity = world.getEntity(block.interactionEntityId());
+        if (entity == null) return;
+        try {
+            me.chyxelmc.mmoblock.api.compat.ModelEngineCompat.removeModel(entity);
+        } catch (final Throwable ex) {
+            this.plugin.getLogger().warning("[ModelEngine] Failed to remove model from "
+                    + block.interactionEntityId() + ": " + ex.getMessage());
+        }
+    }
+
+    private void playModelEngineAnimation(final PlacedBlock block, final BlockDefinition definition, final String animationName, final double lerpIn, final double lerpOut, final double speed) {
+        if (block == null || animationName == null || animationName.isBlank()) return;
+        if (definition == null || !definition.modelEngineEnabled()) return;
+        if (!me.chyxelmc.mmoblock.api.compat.ModelEngineCompat.isAvailable()) return;
+        final World world = this.plugin.getServer().getWorld(block.world());
+        if (world == null) return;
+        final Entity entity = world.getEntity(block.interactionEntityId());
+        if (entity == null) return;
+        try {
+            me.chyxelmc.mmoblock.api.compat.ModelEngineCompat.playAnimation(entity, definition.modelEngineModelId(), animationName, lerpIn, lerpOut, speed);
+        } catch (final Throwable ex) {
+            this.plugin.getLogger().warning("[ModelEngine] Failed to play animation '" + animationName
+                    + "' on " + block.interactionEntityId() + ": " + ex.getMessage());
+        }
+    }
+
+    private void applyModelEngineCollision(final PlacedBlock block, final BlockDefinition definition, final World world) {
+        if (block == null || definition == null) return;
+        final List<String> positions = definition.modelEngineCollisionPositions();
+        if (positions == null || positions.isEmpty()) return;
+        final double x = block.x();
+        final double y = block.y();
+        final double z = block.z();
+        final java.util.List<me.chyxelmc.mmoblock.runtime.BlockRuntimeService.CollisionEntry> entries = new java.util.ArrayList<>();
+        for (final String rawPosition : positions) {
+            final int[] offset = parseBlockOffset(rawPosition);
+            if (offset == null) continue;
+            final int worldX = (int) Math.floor(x) + offset[0];
+            final int worldY = (int) Math.floor(y) + offset[1];
+            final int worldZ = (int) Math.floor(z) + offset[2];
+            final Location location = new Location(world, worldX, worldY, worldZ);
+            this.nmsAdapter.showFakeBlock(world, location, org.bukkit.Material.BARRIER);
+            entries.add(new CollisionEntry(block.uniqueId(), world.getName(), worldX, worldY, worldZ));
+        }
+        if (!entries.isEmpty()) {
+            this.modelEngineCollisions.put(block.uniqueId(), entries);
+        }
+    }
+
+    private void clearModelEngineCollision(final PlacedBlock block, final World world) {
+        if (block == null) return;
+        final java.util.List<CollisionEntry> entries = this.modelEngineCollisions.remove(block.uniqueId());
+        if (entries == null) return;
+        for (final CollisionEntry entry : entries) {
+            final World entryWorld = world != null && world.getName().equals(entry.worldName())
+                    ? world
+                    : this.plugin.getServer().getWorld(entry.worldName());
+            if (entryWorld != null) {
+                this.nmsAdapter.clearFakeBlock(entryWorld, new Location(entryWorld, entry.x(), entry.y(), entry.z()));
+            }
+        }
+    }
+
+    private static int[] parseBlockOffset(final String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        final String[] parts = raw.split(",");
+        if (parts.length < 3) return null;
+        try {
+            return new int[]{
+                    (int) Math.round(Double.parseDouble(parts[0].trim())),
+                    (int) Math.round(Double.parseDouble(parts[1].trim())),
+                    (int) Math.round(Double.parseDouble(parts[2].trim()))
+            };
+        } catch (final NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    // -------------------------------------------------------------
+    // ModelEngine collision tracking
+    // -------------------------------------------------------------
+    private final java.util.Map<java.util.UUID, java.util.List<CollisionEntry>> modelEngineCollisions = new java.util.HashMap<>();
+
+    private record CollisionEntry(java.util.UUID blockUniqueId, String worldName, int x, int y, int z) {
+    }
+
     private void despawnInteraction(final PlacedBlock block) {
         if (block.interactionEntityId() == null) {
             return;
@@ -1143,6 +1313,8 @@ public final class BlockRuntimeService {
             }
             clearSchematicModel(block, world);
             clearBdEngineModel(block, world);
+            clearModelEngineModel(block, world);
+            clearModelEngineCollision(block, world);
         }
         despawnInteraction(block);
         this.ecsState.removeBlock(block.uniqueId());
@@ -1264,6 +1436,9 @@ public final class BlockRuntimeService {
         if (!definition.particleBreak()) {
             return;
         }
+        if (BREAK_PARTICLE == null) {
+            return;
+        }
         final World world = this.plugin.getServer().getWorld(block.world());
         if (world == null) {
             return;
@@ -1278,7 +1453,7 @@ public final class BlockRuntimeService {
         if (material.isBlock()) {
             try {
                 world.spawnParticle(
-                        Particle.BLOCK_DUST,
+                        BREAK_PARTICLE,
                         loc,
                         24,
                         0.35D,

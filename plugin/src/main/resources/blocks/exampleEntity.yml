@@ -11,7 +11,7 @@ exampleEntity:
     enabled: true
     source:
       type: VANILLA
-      value: "minecraft:lava"
+      value: "minecraft:diamond_ore"
     fallback:
       type: VANILLA
       value: "minecraft:stone"
@@ -30,11 +30,8 @@ exampleEntity:
     bdengine:
       enabled: false # Enable BDEngine for this entity. If false.
       model: iron_ore # get model from models dir
-      collision:
-        type: block # The type of collision to use for the entity. Supported types are: block and none. If block is used, the entity will have a collision box that matches the shape of the block. If none is used, the entity will not have a collision box.
-        block: minecraft:barrier # The block to use for the hitbox. This block will be used to determine the entity's hitbox size and shape. You can use any block that has a collision box, such as barrier, stone, dirt, etc.
-        position:
-          - "0, 0, 0" # The position of the hitbox relative to the entity's location. This is a list of x, y, z coordinates. The hitbox will be centered on the entity's location, so you can use negative values to offset the hitbox in any direction.
+      collision: # always use barrier block for collision, because BDEngine model can be any shape, so we need to use barrier block to make sure the player can't walk through the model.
+        - "0, 0, 0" # The position of the hitbox relative to the entity's location. This is a list of x, y, z coordinates. The hitbox will be centered on the entity's location, so you can use negative values to offset the hitbox in any direction.
       size: 2.0 # The size of the BDEngine model.
       onSpawn: # Custom animation to play when the BDEngine model is spawned.
         name: spawn
@@ -57,7 +54,10 @@ exampleEntity:
           - "-14, 0, -15" # only x y z
     modelEngine:
       enabled: false # Enable ModelEngine for this entity. If false, the plugin will use the default Minecraft model.
-      model: iron_crystal:1.0 # Custom models from ModelEngine can be defined in the model section.
+      model: iron_crystal # Custom models from ModelEngine can be defined in the model section.
+      size: 1.0 # The size of the ModelEngine model.
+      collision: # always use barrier block for collision, because ModelEngine model can be any shape, so we need to use barrier block to make sure the player can't walk through the model.
+        - "0, 0, 0" # The position of the hitbox relative to the entity's location. This is a list of x, y, z coordinates. The hitbox will be centered on the entity's location, so you can use negative values to offset the hitbox in any direction.
       onClick:
         name: example_onClick_animation  # Custom animations from ModelEngine can be defined in the animations section.
         lerpin: 0.1
@@ -68,7 +68,22 @@ exampleEntity:
         lerpin: 0.1
         lerpout: 0.1
         speed: 1.0
-      #model: exampleEntity:<modelsize>
+    betterModel:
+      enabled: false # Enable BetterModel for this entity. If false, the plugin will use the default Minecraft model.
+      model: exampleEntity # Custom models from BetterModel can be defined in the model section.
+      size: 1.0 # The size of the BetterModel model.
+      collision: # always use barrier block for collision, because BetterModel model can be any shape, so we need to use barrier block to make sure the player can't walk through the model.
+        - "0, 0, 0" # The position of the hitbox relative to the entity's location. This is a list of x, y, z coordinates. The hitbox will be centered on the entity's location, so you can use negative values to offset the hitbox in any direction.
+      onClick:
+        name: example_onClick_animation  # Custom animations from BetterModel can be defined in the animations section.
+        lerpin: 0.1
+        lerpout: 0.1
+        speed: 1.0
+      onDead: # Example of a death animation from BetterModel.
+        name: example_onDead_animation
+        lerpin: 0.1
+        lerpout: 0.1
+        speed: 1.0
   allowedTools:
     - exampleTools
   conditions:

@@ -1,9 +1,9 @@
 package me.chyxelmc.mmoblock.model;
 
+import java.util.List;
+
 import org.bukkit.Material;
 import org.bukkit.Sound;
-
-import java.util.List;
 
 public record BlockDefinition(
     String id,
@@ -46,9 +46,20 @@ public record BlockDefinition(
     double bdengineOnClickTimelineLength,
     String bdengineOnSpawnAnimationMode,
     String bdengineOnClickAnimationMode,
-    String bdengineCollisionType,
-    Material bdengineCollisionBlock,
     List<String> bdengineCollisionPositions,
+    // modelEngine
+    boolean modelEngineEnabled,
+    String modelEngineModelId,
+    double modelEngineModelSize,
+    String modelEngineOnClickName,
+    double modelEngineOnClickLerpIn,
+    double modelEngineOnClickLerpOut,
+    double modelEngineOnClickSpeed,
+    String modelEngineOnDeadName,
+    double modelEngineOnDeadLerpIn,
+    double modelEngineOnDeadLerpOut,
+    double modelEngineOnDeadSpeed,
+    List<String> modelEngineCollisionPositions,
     // item
     String itemName,
     Material itemMaterial
