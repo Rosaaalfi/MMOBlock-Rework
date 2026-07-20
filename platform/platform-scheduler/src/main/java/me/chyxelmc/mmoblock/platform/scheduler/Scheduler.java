@@ -57,4 +57,11 @@ public interface Scheduler {
      * The retired callback (Folia only) runs if the entity is removed before the task executes.
      */
     SchedulerTask runForEntity(Entity entity, Runnable task, Runnable retired);
+
+    /**
+     * Runs the task on the region/thread that owns the given entity after the given delay.
+     * On Paper this is equivalent to {@link #runLater(Runnable, long)}.
+     * The retired callback (Folia only) runs if the entity is removed before the task executes.
+     */
+    SchedulerTask runForEntityLater(Entity entity, Runnable task, Runnable retired, long delayTicks);
 }

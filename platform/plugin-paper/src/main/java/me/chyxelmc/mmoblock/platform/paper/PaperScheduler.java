@@ -67,6 +67,20 @@ public final class PaperScheduler implements Scheduler {
         return run(task);
     }
 
+    @Override
+    public SchedulerTask runForEntityLater(final Entity entity, final Runnable task, final Runnable retired, final long delayTicks) {
+        if (entity == null || !entity.isValid()) {
+            if (retired != null) {
+                try {
+                    retired.run();
+                } catch (final Throwable ignored) {
+                }
+            }
+            return new NoopTask();
+        }
+        return runLater(task, delayTicks);
+    }
+
     private static SchedulerTask wrap(final BukkitTask task) {
         return new PaperSchedulerTask(task);
     }

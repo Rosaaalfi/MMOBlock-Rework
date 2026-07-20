@@ -1,5 +1,17 @@
 package me.chyxelmc.mmoblock;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.Locale;
+
+import org.bukkit.Bukkit;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import me.chyxelmc.mmoblock.api.ApiProvider;
+import me.chyxelmc.mmoblock.api.MMOBlockApiImpl;
 import me.chyxelmc.mmoblock.command.MMOBlockCommand;
 import me.chyxelmc.mmoblock.config.BlockConfigService;
 import me.chyxelmc.mmoblock.listener.ChunkLifecycleListener;
@@ -11,32 +23,21 @@ import me.chyxelmc.mmoblock.nmsloader.NmsAdapterRegistry;
 import me.chyxelmc.mmoblock.nmsloader.ecs.EcsIntegrationExample;
 import me.chyxelmc.mmoblock.nmsloader.ecs.EntityManager;
 import me.chyxelmc.mmoblock.nmsloader.ecs.SystemManager;
+import me.chyxelmc.mmoblock.persistence.BlockRepository;
+import me.chyxelmc.mmoblock.persistence.RespawnRepository;
+import me.chyxelmc.mmoblock.persistence.cache.DataCache;
+import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
 import me.chyxelmc.mmoblock.placeholder.HologramPlaceholderContextStore;
 import me.chyxelmc.mmoblock.placeholder.MMOBlockPlaceholderExpansion;
 import me.chyxelmc.mmoblock.platform.PlatformSchedulerProvider;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
-import me.chyxelmc.mmoblock.persistence.BlockRepository;
-import me.chyxelmc.mmoblock.persistence.cache.DataCache;
-import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
-import me.chyxelmc.mmoblock.persistence.RespawnRepository;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
 import me.chyxelmc.mmoblock.runtime.RuntimeCoordinator;
 import me.chyxelmc.mmoblock.runtime.ecs.system.PersistenceReadSystem;
 import me.chyxelmc.mmoblock.runtime.ecs.system.PersistenceSystem;
-import me.chyxelmc.mmoblock.api.ApiProvider;
-import me.chyxelmc.mmoblock.api.MMOBlockApiImpl;
 import me.chyxelmc.mmoblock.utils.DatabaseUtils;
 import me.chyxelmc.mmoblock.utils.analytics.Metrics;
-import org.bukkit.Bukkit;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.util.Locale;
 
 public final class MMOBlock extends JavaPlugin{
 

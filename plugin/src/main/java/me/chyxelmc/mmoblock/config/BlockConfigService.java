@@ -22,6 +22,8 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.api.model.DropBeam;
+import me.chyxelmc.mmoblock.api.model.DropGlow;
 import me.chyxelmc.mmoblock.api.model.DropType;
 import me.chyxelmc.mmoblock.model.BlockDefinition;
 import me.chyxelmc.mmoblock.model.ConditionDefinition;
@@ -498,8 +500,15 @@ public final class BlockConfigService {
 
     private DropEntry parseDropEntry(final Map<?, ?> raw, final String dropId, final ValidationReport report) {
         final double chance = parseDouble(raw.get("chances"), 1.0D);
-        final Object dropTypeRaw = raw.containsKey("drop_type") ? raw.get("drop_type") : "inventory";
+        // Use camelCase key "dropType", fall back to legacy "drop_type"
+        final Object dropTypeRaw = raw.containsKey("dropType") ? raw.get("dropType")
+                : raw.containsKey("drop_type") ? raw.get("drop_type") : "inventory";
         final String dropType = String.valueOf(dropTypeRaw);
+
+        final boolean perPlayer = parseBoolean(raw.get("perPlayer"), false);
+        final boolean effectExplosion = parseBoolean(raw.get("effectExplosion"), false);
+        final DropGlow effectGlow = parseDropGlow(raw);
+        final DropBeam effectBeam = parseDropBeam(raw);
 
         if (raw.containsKey("material")) {
             final Material material = Material.matchMaterial(String.valueOf(raw.get("material")));
@@ -508,17 +517,51 @@ public final class BlockConfigService {
                 return null;
             }
             final int[] range = parseRange(raw.get("total"), 1, 1);
-            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType);
+            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam);
         }
         if (raw.containsKey("experience")) {
             final int[] range = parseRange(raw.get("experience"), 1, 1);
-            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType);
+            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null);
         }
         if (raw.containsKey("command")) {
-            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType);
+            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null);
         }
         report.warn("Drop group '" + dropId + "' contains unsupported drop entry: " + raw);
         return null;
+    }
+
+    private DropGlow parseDropGlow(final Map<?, ?> raw) {
+        final Object glowRaw = raw.get("effectGlow");
+        if (!(glowRaw instanceof Map<?, ?> glowMap)) {
+            return null;
+        }
+        final boolean enabled = parseBoolean(glowMap.get("enabled"), false);
+        final String color = glowMap.get("color") != null ? String.valueOf(glowMap.get("color")) : "white";
+        return enabled ? new DropGlow(true, color) : null;
+    }
+
+    private DropBeam parseDropBeam(final Map<?, ?> raw) {
+        final Object beamRaw = raw.get("effectBeam");
+        if (!(beamRaw instanceof Map<?, ?> beamMap)) {
+            return null;
+        }
+        final boolean enabled = parseBoolean(beamMap.get("enabled"), false);
+        final String color = beamMap.get("color") != null ? String.valueOf(beamMap.get("color")) : "white";
+        // Leave blank when unset so DropSystem picks a particle name valid
+        // for the running server's API version (REDSTONE was renamed to
+        // DUST in 1.20.5+) instead of us hardcoding one that may not exist.
+        final String particle = beamMap.get("particle") != null ? String.valueOf(beamMap.get("particle")) : null;
+        return enabled ? new DropBeam(true, color, particle) : null;
+    }
+
+    private boolean parseBoolean(final Object raw, final boolean fallback) {
+        if (raw instanceof Boolean bool) {
+            return bool;
+        }
+        if (raw instanceof String str) {
+            return Boolean.parseBoolean(str);
+        }
+        return fallback;
     }
 
     private List<DisplayLine> parseDisplayLines(
@@ -886,4 +929,3 @@ public final class BlockConfigService {
         }
     }
 }
-

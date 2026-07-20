@@ -165,7 +165,7 @@ public final class BlockRuntimeService {
         this.miningSystem = new MiningSystem(this.ecsState);
         this.respawnSystem = new RespawnSystem(plugin, scheduler, this.ecsState);
         this.visualSyncSystem = new VisualSyncSystem(plugin, nmsAdapter);
-        this.dropSystem = new DropSystem(plugin, blockConfigService, scheduler);
+        this.dropSystem = new DropSystem(plugin, blockConfigService, scheduler, nmsAdapter);
         this.lifecycleSystem = new LifecycleSystem();
         this.reconcileSystem = new ReconcileSystem();
         startMiningProgressResetTask();

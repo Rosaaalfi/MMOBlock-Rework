@@ -3,6 +3,7 @@ package me.chyxelmc.mmoblock.nms.mojang.v1_19_4;
 import me.chyxelmc.mmoblock.nmsloader.NmsAdapter;
 import me.chyxelmc.mmoblock.nmsloader.utils.ClientProtocolUtils;
 import com.mojang.math.Transformation;
+import org.joml.Matrix4f;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -11,8 +12,10 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundRemoveEntitiesPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
+import net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.ChatFormatting;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -20,11 +23,17 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.Team;
 import net.minecraft.util.Brightness;
+import org.bukkit.ChatColor;
+import org.bukkit.entity.Entity;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.craftbukkit.v1_19_R3.entity.CraftEntity;
 import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.v1_19_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_19_R3.entity.CraftPlayer;
@@ -35,7 +44,6 @@ import org.bukkit.craftbukkit.v1_19_R3.util.CraftMagicNumbers;
 import net.minecraft.world.phys.Vec3;
 import io.papermc.paper.adventure.PaperAdventure;
 import me.chyxelmc.mmoblock.nmsloader.utils.HologramColorUtil;
-import org.joml.Matrix4f;
 
 import me.chyxelmc.mmoblock.nmsloader.SchematicData;
 import me.chyxelmc.mmoblock.nmsloader.SchematicData.SchematicBlock;
@@ -44,6 +52,7 @@ import net.minecraft.nbt.NbtIo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -80,6 +89,37 @@ public final class NmsAdapter_v1_19_4 implements NmsAdapter {
             player.sendMessage(message);
         }
     }
+
+    @Override
+    public void applyEntityGlow(final Player player, final Entity entity, final String colorName) {
+        if (!(player instanceof CraftPlayer craftPlayer) || !(entity instanceof CraftEntity craftEntity)) {
+            NmsAdapter.super.applyEntityGlow(player, entity, colorName);
+            return;
+        }
+        final ChatColor chatColor = NmsAdapter.resolveGlowChatColor(colorName);
+        if (chatColor == null) {
+            return;
+        }
+        try {
+            final net.minecraft.world.entity.Entity handle = craftEntity.getHandle();
+            handle.setGlowingTag(true);
+
+            final String teamName = "mmbg" + Integer.toString(Math.max(0, entity.getEntityId()), 36);
+            final PlayerTeam team = new PlayerTeam(new Scoreboard(), teamName);
+            team.setColor(ChatFormatting.getByCode(chatColor.getChar()));
+            team.setCollisionRule(Team.CollisionRule.NEVER);
+            craftPlayer.getHandle().connection.send(ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(team, true));
+            craftPlayer.getHandle().connection.send(ClientboundSetPlayerTeamPacket.createPlayerPacket(
+                    team,
+                    entity.getUniqueId().toString(),
+                    ClientboundSetPlayerTeamPacket.Action.ADD
+            ));
+        } catch (final RuntimeException exception) {
+            NmsAdapter.super.applyEntityGlow(player, entity, colorName);
+        }
+    }
+
+
 
     @Override
     public SpawnResult spawnInteraction(

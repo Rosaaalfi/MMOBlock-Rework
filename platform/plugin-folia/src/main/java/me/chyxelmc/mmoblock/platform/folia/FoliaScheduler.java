@@ -95,6 +95,29 @@ public final class FoliaScheduler implements Scheduler {
         return wrap(scheduled);
     }
 
+    @Override
+    public SchedulerTask runForEntityLater(final Entity entity, final Runnable task, final Runnable retired, final long delayTicks) {
+        if (entity == null) {
+            return runLater(task, delayTicks);
+        }
+        final ScheduledTask scheduled = entity.getScheduler().runDelayed(
+                plugin,
+                t -> task.run(),
+                retired == null ? null : retired,
+                Math.max(1L, delayTicks)
+        );
+        if (scheduled == null) {
+            if (retired != null) {
+                try {
+                    retired.run();
+                } catch (final Throwable ignored) {
+                }
+            }
+            return new NoopTask();
+        }
+        return wrap(scheduled);
+    }
+
     private static SchedulerTask wrap(final ScheduledTask task) {
         return new FoliaSchedulerTask(task);
     }
