@@ -1,5 +1,6 @@
 package me.chyxelmc.mmoblock.nmsloader;
 
+import me.chyxelmc.mmoblock.nmsloader.utils.ReflectionUtil;
 import org.bukkit.Bukkit;
 
 import java.security.ProtectionDomain;
@@ -174,10 +175,10 @@ public final class NmsAdapterRegistry {
                 // Fallback for non-URLClassLoader (Java 9+ module loaders). getURLs() is the public API
                 // but only available on URLClassLoader; for other class loaders we must use internal fields.
                 final java.lang.reflect.Field f = java.net.URLClassLoader.class.getDeclaredField("ucp");
-                f.setAccessible(true);
+                ReflectionUtil.safeSetAccessible(f, "URLClassLoader ucp field for non-URLClassLoader fallback");
                 final Object ucp = f.get(cl);
                 final java.lang.reflect.Field urlF = ucp.getClass().getDeclaredField("urls");
-                urlF.setAccessible(true);
+                ReflectionUtil.safeSetAccessible(urlF, "URLClassLoader ucp.urls field for non-URLClassLoader fallback");
                 urls = (java.net.URL[]) urlF.get(ucp);
             }
             if (urls != null) {

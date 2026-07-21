@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
+import me.chyxelmc.mmoblock.nmsloader.utils.ReflectionUtil;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -150,7 +151,7 @@ public interface NmsAdapter {
 
         final java.lang.reflect.Field sharedFlagsField = nmsEntityClass.getDeclaredField("DATA_SHARED_FLAGS_ID");
         // NMS internal field — no public API to read entity data accessors; reflection required for cross-version compatibility
-        sharedFlagsField.setAccessible(true);
+        ReflectionUtil.safeSetAccessible(sharedFlagsField, "NMS DATA_SHARED_FLAGS_ID field");
         final Object sharedFlags = sharedFlagsField.get(null);
         final Object entityData = nmsEntityClass.getMethod("getEntityData").invoke(nmsEntity);
         final byte currentFlags = (byte) synchedEntityDataClass.getMethod("get", entityDataAccessorClass).invoke(entityData, sharedFlags);
@@ -158,7 +159,7 @@ public interface NmsAdapter {
         final Object dataValue = dataValueClass.getMethod("create", entityDataAccessorClass, Object.class).invoke(null, sharedFlags, glowingFlags);
         final java.lang.reflect.Constructor<?> metadataConstructor = metadataPacketClass.getDeclaredConstructor(int.class, List.class);
         // NMS packet constructor is package-private; no public API for constructing ClientboundSetEntityDataPacket with custom data
-        metadataConstructor.setAccessible(true);
+        ReflectionUtil.safeSetAccessible(metadataConstructor, "NMS ClientboundSetEntityDataPacket constructor");
         sendPacket(connection, metadataConstructor.newInstance(entity.getEntityId(), List.of(dataValue)));
     }
 
@@ -174,7 +175,7 @@ public interface NmsAdapter {
             final Object scoreboard = scoreboardClass.getConstructor().newInstance();
             final java.lang.reflect.Constructor<?> playerTeamConstructor = playerTeamClass.getDeclaredConstructor(scoreboardClass, String.class);
             // NMS PlayerTeam constructor is package-private; no public API for constructing team packets with custom data
-            playerTeamConstructor.setAccessible(true);
+            ReflectionUtil.safeSetAccessible(playerTeamConstructor, "NMS PlayerTeam constructor");
             final Object playerTeam = playerTeamConstructor.newInstance(scoreboard, teamName);
             final Object formatting = chatFormattingClass.getMethod("getByCode", char.class).invoke(null, chatColor.getChar());
             playerTeamClass.getMethod("setColor", chatFormattingClass).invoke(playerTeam, formatting);

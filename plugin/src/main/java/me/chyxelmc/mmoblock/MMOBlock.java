@@ -72,6 +72,7 @@ public final class MMOBlock extends JavaPlugin{
 
         saveDefaultConfig();
         this.scheduler = PlatformSchedulerProvider.createScheduler(this);
+        me.chyxelmc.mmoblock.nmsloader.utils.ReflectionUtil.init(getLogger());
         this.nmsAdapter = NmsAdapterRegistry.resolveCurrent(getLogger());
         this.nmsAdapter.validateNms();
 
@@ -118,8 +119,8 @@ public final class MMOBlock extends JavaPlugin{
             final String checkerClassName = handlerPkg + ".FakeBlockPacketHandler$FakeBlockChecker";
             validateFakeHandlerClassName(handlerClassName);
             validateFakeHandlerClassName(checkerClassName);
-            final Class<?> handlerClass = Class.forName(handlerClassName);
-            final Class<?> checkerIface = Class.forName(checkerClassName);
+            final Class<?> handlerClass = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(handlerClassName);
+            final Class<?> checkerIface = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(checkerClassName);
             final Object proxy = java.lang.reflect.Proxy.newProxyInstance(
                     checkerIface.getClassLoader(),
                     new Class[]{checkerIface},
@@ -242,7 +243,7 @@ public final class MMOBlock extends JavaPlugin{
                 final String clsName = fakePacketHandlerClassName();
                 if (clsName != null) {
                     validateFakeHandlerClassName(clsName);
-                    final Class<?> cls = Class.forName(clsName);
+                    final Class<?> cls = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(clsName);
                     final java.lang.reflect.Method inject = cls.getMethod("inject", org.bukkit.entity.Player.class);
                     inject.invoke(null, player);
                 }
@@ -337,7 +338,7 @@ public final class MMOBlock extends JavaPlugin{
             final String clsName = fakePacketHandlerClassName();
             if (clsName != null) {
                 validateFakeHandlerClassName(clsName);
-                final Class<?> cls = Class.forName(clsName);
+                final Class<?> cls = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(clsName);
                 final java.lang.reflect.Method uninject = cls.getMethod("uninject", org.bukkit.entity.Player.class);
                 for (final Player p : Bukkit.getOnlinePlayers()) {
                     try {
@@ -475,7 +476,7 @@ public final class MMOBlock extends JavaPlugin{
             // PluginCommand constructor is package-private; no public API for dynamic command registration.
             // This is a documented Bukkit pattern for plugins that need to register commands at runtime.
             final Constructor<PluginCommand> constructor = PluginCommand.class.getDeclaredConstructor(String.class, Plugin.class);
-            constructor.setAccessible(true);
+            me.chyxelmc.mmoblock.nmsloader.utils.ReflectionUtil.safeSetAccessible(constructor, "PluginCommand constructor for dynamic command registration (documented Bukkit pattern)");
             final PluginCommand dynamic = constructor.newInstance("mmoblock", this);
             dynamic.setDescription("Manage MMOBlock interaction entities");
             dynamic.setUsage("/mmoblock");

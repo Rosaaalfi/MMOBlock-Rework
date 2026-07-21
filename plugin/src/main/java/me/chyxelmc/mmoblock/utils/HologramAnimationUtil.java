@@ -214,13 +214,18 @@ public final class HologramAnimationUtil {
         // so they can be re-applied around the fragments.
         String working = text;
         final StringBuilder special = new StringBuilder();
-        // Extract and remove simple MiniMessage tags (e.g. <bold>, <#rrggbb>, <red>)
-        final Matcher mini = MINI_TAG_PATTERN.matcher(working);
-        while (mini.find()) {
-            final String tok = mini.group();
-            special.append(tok);
-            working = working.replace(tok, "");
+        // Apply all mutations to `working` BEFORE creating the Matcher to avoid
+        // regex-then-mutate inconsistency (the validated string must be the same
+        // string that gets processed).
+        {
+            // First pass: collect all MiniMessage tags from the unmodified working string.
+            final java.util.regex.Matcher collect = MINI_TAG_PATTERN.matcher(working);
+            while (collect.find()) {
+                special.append(collect.group());
+            }
         }
+        // Then strip all tags from working (all mutations applied before subsequent matchers)
+        working = MINI_TAG_PATTERN.matcher(working).replaceAll("");
 
         // Remove legacy color/format codes from the working copy and build stripped text
         final String stripped = LEGACY_COLOR_PATTERN.matcher(working).replaceAll("");
