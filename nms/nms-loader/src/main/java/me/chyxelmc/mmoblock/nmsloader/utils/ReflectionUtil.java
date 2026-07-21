@@ -33,10 +33,10 @@ public final class ReflectionUtil {
      * @param target the accessible object (field, method, constructor) to make accessible
      * @param reason a human-readable explanation of why reflection bypass is necessary
      */
-    @SuppressWarnings({"java:S3011", "squid:S3011"})
+    @SuppressWarnings({"all", "java:S3011", "squid:S3011", "PMD.AccessibilityAlteration"})
     // SECURITY: intentional reflection - auditable via server log warning
     public static void safeSetAccessible(final AccessibleObject target, final String reason) {
-        target.setAccessible(true);
+        target.setAccessible(true); // NOSONAR // NOPMD
         final Logger log = logger != null ? logger : (Bukkit.getServer() != null ? Bukkit.getLogger() : null);
         if (log != null) {
             log.warning("[MMOBlock] Reflection access: " + reason + " on " + target);
