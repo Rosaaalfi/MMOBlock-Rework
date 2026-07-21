@@ -1,9 +1,9 @@
 package me.chyxelmc.mmoblock.api.model;
 
+import java.util.List;
+
 import org.bukkit.Material;
 import org.bukkit.Sound;
-
-import java.util.List;
 
 public interface BlockDefinition {
     String id();
@@ -48,10 +48,10 @@ public interface BlockDefinition {
     double modelEngineOnClickLerpIn();
     double modelEngineOnClickLerpOut();
     double modelEngineOnClickSpeed();
-    String modelEngineOnDeadName();
-    double modelEngineOnDeadLerpIn();
-    double modelEngineOnDeadLerpOut();
-    double modelEngineOnDeadSpeed();
+    String modelEngineOnSpawnName();
+    double modelEngineOnSpawnLerpIn();
+    double modelEngineOnSpawnLerpOut();
+    double modelEngineOnSpawnSpeed();
     List<String> modelEngineCollisionPositions();
     String itemName();
     Material itemMaterial();

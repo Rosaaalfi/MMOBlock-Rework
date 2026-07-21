@@ -59,12 +59,12 @@ exampleEntity:
       collision: # always use barrier block for collision, because ModelEngine model can be any shape, so we need to use barrier block to make sure the player can't walk through the model.
         - "0, 0, 0" # The position of the hitbox relative to the entity's location. This is a list of x, y, z coordinates. The hitbox will be centered on the entity's location, so you can use negative values to offset the hitbox in any direction.
       onClick:
-        name: example_onClick_animation  # Custom animations from ModelEngine can be defined in the animations section.
+        name: hit  # Custom animations from ModelEngine can be defined in the animations section.
         lerpin: 0.1
         lerpout: 0.1
         speed: 1.0
-      onDead: # Example of a death animation from ModelEngine.
-        name: example_onDead_animation
+      onSpawn: # Example of a spawn animation from ModelEngine.
+        name: spawn
         lerpin: 0.1
         lerpout: 0.1
         speed: 1.0
@@ -74,16 +74,10 @@ exampleEntity:
       size: 1.0 # The size of the BetterModel model.
       collision: # always use barrier block for collision, because BetterModel model can be any shape, so we need to use barrier block to make sure the player can't walk through the model.
         - "0, 0, 0" # The position of the hitbox relative to the entity's location. This is a list of x, y, z coordinates. The hitbox will be centered on the entity's location, so you can use negative values to offset the hitbox in any direction.
+      onSpawn:
+        name: spawn # Spawn animation from BetterModel.
       onClick:
-        name: example_onClick_animation  # Custom animations from BetterModel can be defined in the animations section.
-        lerpin: 0.1
-        lerpout: 0.1
-        speed: 1.0
-      onDead: # Example of a death animation from BetterModel.
-        name: example_onDead_animation
-        lerpin: 0.1
-        lerpout: 0.1
-        speed: 1.0
+        name: hit # Custom animation from BetterModel played on click.
   allowedTools:
     - exampleTools
   conditions:

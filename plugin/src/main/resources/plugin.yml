@@ -13,6 +13,7 @@ softdepend:
   - Geyser-Spigot
   - PlaceholderAPI
   - ModelEngine
+  - BetterModel
 
 permissions:
   mmoblock.admin:

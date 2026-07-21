@@ -24,6 +24,7 @@ foliaApi = { module= "io.canvasmc.canvas:canvas-api", version.ref = "folia-api" 
 ## Compability with other Plugins
 modelEngineApi= { module= "com.ticxo.modelengine:ModelEngine", version.ref = "modelEngine" }
 betterModelApi= { module= "io.github.toxicity188:bettermodel-api", version.ref = "betterModel" }
+betterModelBukkitApi= { module= "io.github.toxicity188:bettermodel-bukkit-api", version.ref = "betterModel" }
 
 [plugins]
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }

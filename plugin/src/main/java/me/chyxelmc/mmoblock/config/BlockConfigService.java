@@ -219,18 +219,36 @@ public final class BlockConfigService {
                 final double modelEngineOnClickSpeed = modelEngineSection != null
                         ? modelEngineSection.getDouble("onClick.speed", 1.0D)
                         : 1.0D;
-                final String modelEngineOnDeadName = modelEngineSection != null
-                        ? modelEngineSection.getString("onDead.name", "")
+                final String modelEngineOnSpawnName = modelEngineSection != null
+                        ? modelEngineSection.getString("onSpawn.name", "")
                         : "";
-                final double modelEngineOnDeadLerpIn = modelEngineSection != null
-                        ? modelEngineSection.getDouble("onDead.lerpin", 0.1D)
+                final double modelEngineOnSpawnLerpIn = modelEngineSection != null
+                        ? modelEngineSection.getDouble("onSpawn.lerpin", 0.1D)
                         : 0.1D;
-                final double modelEngineOnDeadLerpOut = modelEngineSection != null
-                        ? modelEngineSection.getDouble("onDead.lerpout", 0.1D)
+                final double modelEngineOnSpawnLerpOut = modelEngineSection != null
+                        ? modelEngineSection.getDouble("onSpawn.lerpout", 0.1D)
                         : 0.1D;
-                final double modelEngineOnDeadSpeed = modelEngineSection != null
-                        ? modelEngineSection.getDouble("onDead.speed", 1.0D)
+                final double modelEngineOnSpawnSpeed = modelEngineSection != null
+                        ? modelEngineSection.getDouble("onSpawn.speed", 1.0D)
                         : 1.0D;
+                // modelType.betterModel config
+                final ConfigurationSection betterModelSection = section.getConfigurationSection("modelType.betterModel");
+                final boolean betterModelEnabled = betterModelSection != null && betterModelSection.getBoolean("enabled", false);
+                final String betterModelModelId = betterModelSection != null
+                        ? betterModelSection.getString("model", "")
+                        : "";
+                final double betterModelModelSize = betterModelSection != null
+                        ? Math.max(0.01D, betterModelSection.getDouble("size", 1.0D))
+                        : 1.0D;
+                final List<String> betterModelCollisionPositions = betterModelSection != null
+                        ? betterModelSection.getStringList("collision")
+                        : List.of();
+                final String betterModelOnSpawnName = betterModelSection != null
+                        ? bdengineAnimationName(betterModelSection, "onSpawn")
+                        : "";
+                final String betterModelOnClickName = betterModelSection != null
+                        ? bdengineAnimationName(betterModelSection, "onClick", "onCLick")
+                        : "";
                 final ConfigurationSection itemSection = section.getConfigurationSection("item");
                 final String itemName = itemSection != null ? itemSection.getString("name") : null;
                 final Material itemMaterial = itemSection != null ? parseMaterial(itemSection.getString("material")) : null;
@@ -286,11 +304,17 @@ public final class BlockConfigService {
                                 modelEngineOnClickLerpIn,
                                 modelEngineOnClickLerpOut,
                                 modelEngineOnClickSpeed,
-                                modelEngineOnDeadName,
-                                modelEngineOnDeadLerpIn,
-                                modelEngineOnDeadLerpOut,
-                                modelEngineOnDeadSpeed,
+                                modelEngineOnSpawnName,
+                                modelEngineOnSpawnLerpIn,
+                                modelEngineOnSpawnLerpOut,
+                                modelEngineOnSpawnSpeed,
                                 modelEngineCollisionPositions,
+                                betterModelEnabled,
+                                betterModelModelId,
+                                betterModelModelSize,
+                                betterModelOnSpawnName,
+                                betterModelOnClickName,
+                                betterModelCollisionPositions,
                                 itemName,
                                 itemMaterial
                         )

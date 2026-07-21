@@ -21,6 +21,9 @@ dependencies:
   - name: ModelEngine
     load: BEFORE
     required: false
+  - name: BetterModel
+    load: BEFORE
+    required: false
 
 main: me.chyxelmc.mmoblock.MMOBlock
 loader: me.chyxelmc.mmoblock.MMOBlockLoader

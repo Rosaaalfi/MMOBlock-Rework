@@ -220,6 +220,8 @@ public final class BlockRuntimeService {
                     applyBdEngineModel(block, def, world);
                     applyModelEngineModel(block, def, world);
                     applyModelEngineCollision(block, def, world);
+                    applyBetterModelModel(block, def, world);
+                    applyBetterModelCollision(block, def, world);
                 }
                 } catch (final Throwable ignored) {
                 }
@@ -408,6 +410,8 @@ public final class BlockRuntimeService {
                 clearBdEngineModel(placedBlock, blockWorld);
                 clearModelEngineModel(placedBlock, blockWorld);
                 clearModelEngineCollision(placedBlock, blockWorld);
+                clearBetterModelModel(placedBlock, blockWorld);
+                clearBetterModelCollision(placedBlock, blockWorld);
             }
         }
         despawnInteraction(placedBlock);
@@ -596,12 +600,17 @@ public final class BlockRuntimeService {
                 this.visualSyncSystem.clearRealBlockModel(block, definition, world);
                 clearSchematicModel(block, world);
                 clearBdEngineModel(block, world);
+                clearModelEngineModel(block, world);
+                clearModelEngineCollision(block, world);
+                clearBetterModelModel(block, world);
+                clearBetterModelCollision(block, world);
             }
             despawnInteraction(block);
         }
         this.hologramRuntimeService.shutdown();
         this.schematicService.clearAll();
         this.bdEngineService.clearAll();
+        me.chyxelmc.mmoblock.api.compat.BetterModelCompat.removeAll();
         this.ecsState.clear();
         this.transientBlocks.clear();
         this.suppressDeadHologram.clear();
@@ -715,6 +724,8 @@ public final class BlockRuntimeService {
             this.visualSyncSystem.clearBreakAnimation(world, block);
             clearSchematicModel(block, world);
             clearBdEngineModel(block, world);
+            clearBetterModelModel(block, world);
+            clearBetterModelCollision(block, world);
         }
     }
 
@@ -760,6 +771,11 @@ public final class BlockRuntimeService {
                 definition.modelEngineOnClickLerpIn(),
                 definition.modelEngineOnClickLerpOut(),
                 definition.modelEngineOnClickSpeed()
+        );
+        playBetterModelAnimation(
+                block,
+                definition,
+                definition.betterModelOnClickName()
         );
 
         applyDurability(item, action.decreaseDurability());
@@ -845,10 +861,15 @@ public final class BlockRuntimeService {
         playModelEngineAnimation(
                 block,
                 definition,
-                definition.modelEngineOnDeadName(),
-                definition.modelEngineOnDeadLerpIn(),
-                definition.modelEngineOnDeadLerpOut(),
-                definition.modelEngineOnDeadSpeed()
+                definition.modelEngineOnSpawnName(),
+                definition.modelEngineOnSpawnLerpIn(),
+                definition.modelEngineOnSpawnLerpOut(),
+                definition.modelEngineOnSpawnSpeed()
+        );
+        playBetterModelAnimation(
+                block,
+                definition,
+                definition.betterModelOnSpawnName()
         );
         spawnBreakParticles(block, definition);
 
@@ -864,6 +885,8 @@ public final class BlockRuntimeService {
             clearBdEngineModel(block, world);
             clearModelEngineModel(block, world);
             clearModelEngineCollision(block, world);
+            clearBetterModelModel(block, world);
+            clearBetterModelCollision(block, world);
         }
         despawnInteraction(block);
         if (world != null && definition.schematicsEnabled() && definition.schematicsDeadFile() != null && !definition.schematicsDeadFile().isBlank()) {
@@ -1072,6 +1095,8 @@ public final class BlockRuntimeService {
             applyBdEngineModel(placedBlock, definition, world);
             applyModelEngineModel(placedBlock, definition, world);
             applyModelEngineCollision(placedBlock, definition, world);
+            applyBetterModelModel(placedBlock, definition, world);
+            applyBetterModelCollision(placedBlock, definition, world);
             // logging removed: spawned interaction info
             return true;
         } catch (final RuntimeException exception) {
@@ -1168,6 +1193,14 @@ public final class BlockRuntimeService {
                     definition.modelEngineModelId(),
                     definition.modelEngineModelSize()
             );
+            playModelEngineAnimation(
+                    block,
+                    definition,
+                    definition.modelEngineOnSpawnName(),
+                    definition.modelEngineOnSpawnLerpIn(),
+                    definition.modelEngineOnSpawnLerpOut(),
+                    definition.modelEngineOnSpawnSpeed()
+            );
         } catch (final Throwable ex) {
             this.plugin.getLogger().warning("[ModelEngine] Failed to show model '" + definition.modelEngineModelId()
                     + "' on " + block.interactionEntityId() + ": " + ex.getMessage());
@@ -1256,9 +1289,122 @@ public final class BlockRuntimeService {
     }
 
     // -------------------------------------------------------------
+    // BetterModel integration
+    // -------------------------------------------------------------
+
+    private void applyBetterModelModel(final PlacedBlock block, final BlockDefinition definition, final World world) {
+        if (definition == null || !definition.betterModelEnabled()) {
+            // this.plugin.getLogger().info("[BetterModel] SKIP — betterModelEnabled=false for block " + (block != null ? block.uniqueId() : "?"));
+            return;
+        }
+        if (!me.chyxelmc.mmoblock.api.compat.BetterModelCompat.isAvailable()) {
+            // this.plugin.getLogger().info("[BetterModel] SKIP — BetterModel not available for block " + block.uniqueId());
+            return;
+        }
+        final Entity entity = world.getEntity(block.interactionEntityId());
+        // Use the same centered position as the interaction entity (x+0.5, z+0.5)
+        final Location location = new Location(world, block.x() + 0.5D, block.y(), block.z() + 0.5D);
+        // this.plugin.getLogger().info("[BetterModel] Attempting showModel id=" + definition.betterModelModelId()
+        //         + " block=" + block.uniqueId() + " entity=" + (entity != null ? entity.getUniqueId() : "null")
+        //         + " loc=" + location.getBlockX() + "," + location.getBlockY() + "," + location.getBlockZ());
+        try {
+            final boolean applied = me.chyxelmc.mmoblock.api.compat.BetterModelCompat.showModel(
+                    entity,
+                    location,
+                    definition.betterModelModelId(),
+                    block.uniqueId(),
+                    definition.betterModelModelSize()
+            );
+            if (!applied) {
+                // this.plugin.getLogger().warning("[BetterModel] Model '" + definition.betterModelModelId()
+                //         + "' not found in BetterModel registry for block " + block.uniqueId()
+                //         + " — verify the model exists in BetterModel/models/");
+            } else {
+                // this.plugin.getLogger().info("[BetterModel] SUCCESS — model attached for block " + block.uniqueId());
+            }
+        } catch (final Throwable ex) {
+            this.plugin.getLogger().warning("[BetterModel] Failed to show model '" + definition.betterModelModelId()
+                    + "' for block " + block.uniqueId() + ": " + ex.getMessage());
+        }
+    }
+
+    private void clearBetterModelModel(final PlacedBlock block, final World world) {
+        if (block == null) return;
+        if (!me.chyxelmc.mmoblock.api.compat.BetterModelCompat.isAvailable()) return;
+        try {
+            me.chyxelmc.mmoblock.api.compat.BetterModelCompat.removeModel(block.uniqueId());
+        } catch (final Throwable ex) {
+            this.plugin.getLogger().warning("[BetterModel] Failed to remove model for block "
+                    + block.uniqueId() + ": " + ex.getMessage());
+        }
+    }
+
+    private void playBetterModelAnimation(final PlacedBlock block, final BlockDefinition definition, final String animationName) {
+        if (block == null || animationName == null || animationName.isBlank()) return;
+        if (definition == null || !definition.betterModelEnabled()) return;
+        if (!me.chyxelmc.mmoblock.api.compat.BetterModelCompat.isAvailable()) return;
+        try {
+            final boolean played = me.chyxelmc.mmoblock.api.compat.BetterModelCompat.playAnimation(
+                    block.uniqueId(), animationName
+            );
+            if (!played) {
+                this.plugin.getLogger().warning("[BetterModel] Could not play animation '"
+                        + animationName + "' for block " + block.uniqueId()
+                        + " — model '" + definition.betterModelModelId() + "' may not be attached");
+            }
+        } catch (final Throwable ex) {
+            this.plugin.getLogger().warning("[BetterModel] Failed to play animation '" + animationName
+                    + "' for block " + block.uniqueId() + ": " + ex.getMessage());
+        }
+    }
+
+    private void applyBetterModelCollision(final PlacedBlock block, final BlockDefinition definition, final World world) {
+        if (block == null || definition == null) return;
+        if (!definition.betterModelEnabled()) return;
+        final List<String> positions = definition.betterModelCollisionPositions();
+        if (positions == null || positions.isEmpty()) return;
+        final double x = block.x();
+        final double y = block.y();
+        final double z = block.z();
+        final java.util.List<me.chyxelmc.mmoblock.runtime.BlockRuntimeService.CollisionEntry> entries = new java.util.ArrayList<>();
+        for (final String rawPosition : positions) {
+            final int[] offset = parseBlockOffset(rawPosition);
+            if (offset == null) continue;
+            final int worldX = (int) Math.floor(x) + offset[0];
+            final int worldY = (int) Math.floor(y) + offset[1];
+            final int worldZ = (int) Math.floor(z) + offset[2];
+            final Location location = new Location(world, worldX, worldY, worldZ);
+            this.nmsAdapter.showFakeBlock(world, location, org.bukkit.Material.BARRIER);
+            entries.add(new CollisionEntry(block.uniqueId(), world.getName(), worldX, worldY, worldZ));
+        }
+        if (!entries.isEmpty()) {
+            this.betterModelCollisions.put(block.uniqueId(), entries);
+        }
+    }
+
+    private void clearBetterModelCollision(final PlacedBlock block, final World world) {
+        if (block == null) return;
+        final java.util.List<CollisionEntry> entries = this.betterModelCollisions.remove(block.uniqueId());
+        if (entries == null) return;
+        for (final CollisionEntry entry : entries) {
+            final World entryWorld = world != null && world.getName().equals(entry.worldName())
+                    ? world
+                    : this.plugin.getServer().getWorld(entry.worldName());
+            if (entryWorld != null) {
+                this.nmsAdapter.clearFakeBlock(entryWorld, new Location(entryWorld, entry.x(), entry.y(), entry.z()));
+            }
+        }
+    }
+
+    // -------------------------------------------------------------
     // ModelEngine collision tracking
     // -------------------------------------------------------------
     private final java.util.Map<java.util.UUID, java.util.List<CollisionEntry>> modelEngineCollisions = new java.util.HashMap<>();
+
+    // -------------------------------------------------------------
+    // BetterModel collision tracking
+    // -------------------------------------------------------------
+    private final java.util.Map<java.util.UUID, java.util.List<CollisionEntry>> betterModelCollisions = new java.util.HashMap<>();
 
     private record CollisionEntry(java.util.UUID blockUniqueId, String worldName, int x, int y, int z) {
     }
@@ -1315,6 +1461,8 @@ public final class BlockRuntimeService {
             clearBdEngineModel(block, world);
             clearModelEngineModel(block, world);
             clearModelEngineCollision(block, world);
+            clearBetterModelModel(block, world);
+            clearBetterModelCollision(block, world);
         }
         despawnInteraction(block);
         this.ecsState.removeBlock(block.uniqueId());

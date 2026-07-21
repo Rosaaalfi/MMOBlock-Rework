@@ -55,11 +55,18 @@ public record BlockDefinition(
     double modelEngineOnClickLerpIn,
     double modelEngineOnClickLerpOut,
     double modelEngineOnClickSpeed,
-    String modelEngineOnDeadName,
-    double modelEngineOnDeadLerpIn,
-    double modelEngineOnDeadLerpOut,
-    double modelEngineOnDeadSpeed,
+    String modelEngineOnSpawnName,
+    double modelEngineOnSpawnLerpIn,
+    double modelEngineOnSpawnLerpOut,
+    double modelEngineOnSpawnSpeed,
     List<String> modelEngineCollisionPositions,
+    // betterModel
+    boolean betterModelEnabled,
+    String betterModelModelId,
+    double betterModelModelSize,
+    String betterModelOnSpawnName,
+    String betterModelOnClickName,
+    List<String> betterModelCollisionPositions,
     // item
     String itemName,
     Material itemMaterial
