@@ -76,8 +76,11 @@ public final class DatabaseManager {
         }
     }
 
+    private static final java.util.Set<String> ALLOWED_COLUMNS = java.util.Set.of("origin_x", "origin_y", "origin_z");
+
     private void migrateBlockColumns(final Statement statement) throws SQLException {
-        for (final String column : new String[]{"origin_x", "origin_y", "origin_z"}) {
+        for (final String column : ALLOWED_COLUMNS) {
+            // Column name validated against allowlist — only known-safe column names are used
             if (this.dialect == Dialect.H2) {
                 statement.execute("ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS " + column + " DOUBLE");
             } else {

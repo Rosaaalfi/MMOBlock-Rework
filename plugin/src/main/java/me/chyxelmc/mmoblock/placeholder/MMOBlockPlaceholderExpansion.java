@@ -119,19 +119,14 @@ public final class MMOBlockPlaceholderExpansion extends PlaceholderExpansion {
         return null;
     }
 
-    // Reflection-backed helpers -------------------------------------------------
+    // Internal helpers -------------------------------------------------
 
     private me.chyxelmc.mmoblock.model.PlacedBlock findPlacedBlockByUuid(final java.util.UUID uid) {
         try {
-            final java.lang.reflect.Field svcField = this.plugin.getClass().getDeclaredField("blockRuntimeService");
-            svcField.setAccessible(true);
-            final Object brs = svcField.get(this.plugin);
+            final var brs = this.plugin.blockRuntimeService();
             if (brs == null) return null;
-            final java.util.List<?> blocks = (java.util.List<?>) brs.getClass().getMethod("placedBlocks").invoke(brs);
-            for (final Object o : blocks) {
-                if (o instanceof me.chyxelmc.mmoblock.model.PlacedBlock pb) {
-                    if (pb.uniqueId().equals(uid)) return pb;
-                }
+            for (final var pb : brs.placedBlocks()) {
+                if (pb.uniqueId().equals(uid)) return pb;
             }
         } catch (final Throwable ignored) {
         }
@@ -140,17 +135,9 @@ public final class MMOBlockPlaceholderExpansion extends PlaceholderExpansion {
 
     private me.chyxelmc.mmoblock.model.PlacedBlock findPlacedBlockByPosition(final String world, final double x, final double y, final double z) {
         try {
-            final java.lang.reflect.Field svcField = this.plugin.getClass().getDeclaredField("blockRuntimeService");
-            svcField.setAccessible(true);
-            final Object brs = svcField.get(this.plugin);
+            final var brs = this.plugin.blockRuntimeService();
             if (brs == null) return null;
-            final java.lang.reflect.Field ecsField = brs.getClass().getDeclaredField("ecsState");
-            ecsField.setAccessible(true);
-            final Object ecs = ecsField.get(brs);
-            if (ecs == null) return null;
-            final java.lang.reflect.Method m = ecs.getClass().getMethod("blockAt", String.class, double.class, double.class, double.class);
-            final Object result = m.invoke(ecs, world, x, y, z);
-            if (result instanceof me.chyxelmc.mmoblock.model.PlacedBlock pb) return pb;
+            return brs.ecsState().blockAt(world, x, y, z);
         } catch (final Throwable ignored) {
         }
         return null;
@@ -158,28 +145,20 @@ public final class MMOBlockPlaceholderExpansion extends PlaceholderExpansion {
 
     private int computeMaxProgressForBlock(final me.chyxelmc.mmoblock.model.PlacedBlock block) {
         try {
-            final java.lang.reflect.Field cfgField = this.plugin.getClass().getDeclaredField("blockConfigService");
-            cfgField.setAccessible(true);
-            final Object cfg = cfgField.get(this.plugin);
+            final var cfg = this.plugin.blockConfigService();
             if (cfg == null) return 0;
-            final java.lang.reflect.Method findBlock = cfg.getClass().getMethod("findBlock", String.class);
-            final Object def = findBlock.invoke(cfg, block.type());
+            final var def = cfg.findBlock(block.type());
             if (def == null) return 0;
-            // Access tools map to compute max clickNeeded across allowed tool groups
-            final java.lang.reflect.Field toolsField = cfg.getClass().getDeclaredField("tools");
-            toolsField.setAccessible(true);
-            final java.util.Map<?, ?> tools = (java.util.Map<?, ?>) toolsField.get(cfg);
+            final var tools = cfg.tools();
             int max = 1;
-            // def has method allowedTools()
-            final java.lang.reflect.Method allowedTools = def.getClass().getMethod("allowedTools");
-            final java.util.List<?> groups = (java.util.List<?>) allowedTools.invoke(def);
+            final var groups = def.allowedTools();
             if (groups == null || groups.isEmpty()) return max;
-            for (final Object group : groups) {
-                final Object actions = tools.get(String.valueOf(group).toLowerCase(java.util.Locale.ROOT));
-                if (!(actions instanceof java.util.List<?> list)) continue;
-                for (final Object a : list) {
+            for (final String group : groups) {
+                final var actions = tools.get(group.toLowerCase(java.util.Locale.ROOT));
+                if (actions == null) continue;
+                for (final var a : actions) {
                     try {
-                        final int needed = (int) a.getClass().getMethod("clickNeeded").invoke(a);
+                        final int needed = a.clickNeeded();
                         max = Math.max(max, needed);
                     } catch (final Throwable ignored) {}
                 }
@@ -192,20 +171,12 @@ public final class MMOBlockPlaceholderExpansion extends PlaceholderExpansion {
 
     private int computeCurrentProgressForBlock(final me.chyxelmc.mmoblock.model.PlacedBlock block) {
         try {
-            final java.lang.reflect.Field svcField = this.plugin.getClass().getDeclaredField("blockRuntimeService");
-            svcField.setAccessible(true);
-            final Object brs = svcField.get(this.plugin);
+            final var brs = this.plugin.blockRuntimeService();
             if (brs == null) return 0;
-            final java.lang.reflect.Field ecsField = brs.getClass().getDeclaredField("ecsState");
-            ecsField.setAccessible(true);
-            final Object ecs = ecsField.get(brs);
-            if (ecs == null) return 0;
-            final java.lang.reflect.Method miningMethod = ecs.getClass().getMethod("mining", java.util.UUID.class);
-            final Object miningComp = miningMethod.invoke(ecs, block.uniqueId());
+            final var ecs = brs.ecsState();
+            final var miningComp = ecs.mining(block.uniqueId());
             if (miningComp == null) return 0;
-            final java.lang.reflect.Field perPlayer = miningComp.getClass().getDeclaredField("perPlayerProgress");
-            perPlayer.setAccessible(true);
-            final java.util.Map<?, Integer> map = (java.util.Map<?, Integer>) perPlayer.get(miningComp);
+            final var map = miningComp.perPlayerProgress();
             if (map == null || map.isEmpty()) return 0;
             int max = 0;
             for (final Integer v : map.values()) {

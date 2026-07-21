@@ -171,6 +171,8 @@ public final class NmsAdapterRegistry {
             if (cl instanceof java.net.URLClassLoader ucl) {
                 urls = ucl.getURLs();
             } else {
+                // Fallback for non-URLClassLoader (Java 9+ module loaders). getURLs() is the public API
+                // but only available on URLClassLoader; for other class loaders we must use internal fields.
                 final java.lang.reflect.Field f = java.net.URLClassLoader.class.getDeclaredField("ucp");
                 f.setAccessible(true);
                 final Object ucp = f.get(cl);

@@ -69,6 +69,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             try {
                 final java.lang.reflect.Method mx = packet.getClass().getDeclaredMethod("getChunkX");
                 final java.lang.reflect.Method mz = packet.getClass().getDeclaredMethod("getChunkZ");
+                // NMS packet accessor methods may be non-public across versions; reflection required
                 mx.setAccessible(true);
                 mz.setAccessible(true);
                 final Object ox = mx.invoke(packet);
@@ -81,6 +82,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             Integer cx = null, cz = null;
             for (final Field f : packet.getClass().getDeclaredFields()) {
                 try {
+                    // NMS packet fields are package-private; reflection needed for cross-version chunk coordinate extraction
                     f.setAccessible(true);
                     final String name = f.getName().toLowerCase(Locale.ROOT);
                     final Object val = f.get(packet);
@@ -653,6 +655,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             // Inspect fields of the listener for a Channel or for an object that holds one.
             for (final Field f : packetListener.getClass().getDeclaredFields()) {
                 try {
+                    // Netty pipeline fields are not exposed via public API; reflection required for channel resolution
                     f.setAccessible(true);
                     final Object val = f.get(packetListener);
                     if (val == null) continue;
@@ -660,6 +663,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                     // dive one level deep
                     for (final Field g : val.getClass().getDeclaredFields()) {
                         try {
+                            // Nested connection-manager fields require reflection for the same reason
                             g.setAccessible(true);
                             final Object inner = g.get(val);
                             if (inner instanceof Channel ch2) return ch2;
@@ -681,6 +685,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             // Try common accessor methods first
             try {
                 final java.lang.reflect.Method m = packet.getClass().getDeclaredMethod("getPos");
+                // NMS packet getPos may be non-public on some version mappings
                 m.setAccessible(true);
                 final Object res = m.invoke(packet);
                 if (res instanceof BlockPos bp) return bp;
@@ -689,6 +694,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
 
             for (final Field f : packet.getClass().getDeclaredFields()) {
                 try {
+                    // NMS packet fields for BlockPos are not part of any public API
                     f.setAccessible(true);
                     final Object val = f.get(packet);
                     if (val instanceof BlockPos) return (BlockPos) val;
@@ -712,6 +718,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
         for (final String name : names) {
             try {
                 final Field f = c.getDeclaredField(name);
+                // NMS packet fields are non-public; reflection required for cross-version int coordinate extraction
                 f.setAccessible(true);
                 final Object o = f.get(instance);
                 if (o instanceof Integer) return (Integer) o;
@@ -722,6 +729,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
         for (final Field f : c.getDeclaredFields()) {
             try {
                 if (f.getType() == int.class || f.getType() == Integer.class) {
+                    // NMS packet int fields are not part of any public API
                     f.setAccessible(true);
                     final Object o = f.get(instance);
                     if (o instanceof Integer) return (Integer) o;
@@ -730,5 +738,5 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             }
         }
         return null;
-    }
+    
 }

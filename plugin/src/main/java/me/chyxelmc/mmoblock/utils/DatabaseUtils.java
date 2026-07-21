@@ -34,7 +34,9 @@ public final class DatabaseUtils {
         hikariConfig.setJdbcUrl("jdbc:h2:file:" + dbFile.getAbsolutePath() + ";MODE=MySQL;AUTO_SERVER=TRUE");
         hikariConfig.setDriverClassName("org.h2.Driver");
         hikariConfig.setUsername("sa");
-        hikariConfig.setPassword("");
+        // Read H2 password from environment variable or config; fall back to empty string for local dev.
+        final String h2Password = resolveDatabasePassword(config, "mmoblock_h2_password", "");
+        hikariConfig.setPassword(h2Password);
         hikariConfig.setPoolName("mmoblock-h2");
         hikariConfig.setMaximumPoolSize(8);
         hikariConfig.setMinimumIdle(2);
@@ -94,5 +96,33 @@ public final class DatabaseUtils {
 
     public boolean isInitialized() {
         return this.dataSource != null && !this.dataSource.isClosed();
+    }
+
+    /**
+     * Resolves a database password from, in order of priority:
+     * <ol>
+     *   <li>The environment variable {@code MMOBLOCK_<envSuffix>} (uppercased)
+     *   <li>The corresponding config string under the current section
+     *   <li>The provided fallback value
+     * </ol>
+     * Logs a warning when the resolved value is blank.
+     */
+    private static String resolveDatabasePassword(final org.bukkit.configuration.ConfigurationSection config, final String envSuffix, final String fallback) {
+        final String envName = "MMOBLOCK_" + envSuffix.toUpperCase(java.util.Locale.ROOT);
+        final String envVal = System.getenv(envName);
+        if (envVal != null && !envVal.isEmpty()) {
+            return envVal;
+        }
+        final String cfgVal = config.getString(envSuffix.toLowerCase(java.util.Locale.ROOT));
+        if (cfgVal != null && !cfgVal.isEmpty()) {
+            return cfgVal;
+        }
+        if (fallback.isEmpty()) {
+            java.util.logging.Logger.getLogger("MMOBlock").warning(
+                    "Database password is empty — set " + envName + " environment variable or "
+                    + "the '" + envSuffix.toLowerCase(java.util.Locale.ROOT) + "' config key for a non-blank password in production."
+            );
+        }
+        return fallback;
     }
 }

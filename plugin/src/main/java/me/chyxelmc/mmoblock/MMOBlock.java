@@ -114,8 +114,12 @@ public final class MMOBlock extends JavaPlugin{
         // Register FakeBlockPacketHandler checker if available (best-effort via reflection).
         try {
             final String handlerPkg = this.nmsAdapter.getClass().getPackage().getName();
-            final Class<?> handlerClass = Class.forName(handlerPkg + ".FakeBlockPacketHandler");
-            final Class<?> checkerIface = Class.forName(handlerPkg + ".FakeBlockPacketHandler$FakeBlockChecker");
+            final String handlerClassName = handlerPkg + ".FakeBlockPacketHandler";
+            final String checkerClassName = handlerPkg + ".FakeBlockPacketHandler$FakeBlockChecker";
+            validateFakeHandlerClassName(handlerClassName);
+            validateFakeHandlerClassName(checkerClassName);
+            final Class<?> handlerClass = Class.forName(handlerClassName);
+            final Class<?> checkerIface = Class.forName(checkerClassName);
             final Object proxy = java.lang.reflect.Proxy.newProxyInstance(
                     checkerIface.getClassLoader(),
                     new Class[]{checkerIface},
@@ -237,6 +241,7 @@ public final class MMOBlock extends JavaPlugin{
             try {
                 final String clsName = fakePacketHandlerClassName();
                 if (clsName != null) {
+                    validateFakeHandlerClassName(clsName);
                     final Class<?> cls = Class.forName(clsName);
                     final java.lang.reflect.Method inject = cls.getMethod("inject", org.bukkit.entity.Player.class);
                     inject.invoke(null, player);
@@ -256,6 +261,23 @@ public final class MMOBlock extends JavaPlugin{
     public String fakePacketHandlerClassName() {
         if (this.nmsAdapter == null) return null;
         return this.nmsAdapter.getClass().getPackage().getName() + ".FakeBlockPacketHandler";
+    }
+
+    /**
+     * Validates that a class name is within the allowed NMS handler package before
+     * reflective loading. Throws {@link IllegalArgumentException} if the name is
+     * not on the allowlist.
+     */
+    public static void validateFakeHandlerClassName(final String clsName) {
+        if (clsName == null) {
+            throw new IllegalArgumentException("Class name must not be null");
+        }
+        if (!clsName.startsWith("me.chyxelmc.mmoblock.nms.")) {
+            throw new IllegalArgumentException("Unauthorized class name outside allowed package: " + clsName);
+        }
+        if (!clsName.contains("FakeBlockPacketHandler")) {
+            throw new IllegalArgumentException("Unauthorized class name: " + clsName);
+        }
     }
 
 
@@ -314,6 +336,7 @@ public final class MMOBlock extends JavaPlugin{
         try {
             final String clsName = fakePacketHandlerClassName();
             if (clsName != null) {
+                validateFakeHandlerClassName(clsName);
                 final Class<?> cls = Class.forName(clsName);
                 final java.lang.reflect.Method uninject = cls.getMethod("uninject", org.bukkit.entity.Player.class);
                 for (final Player p : Bukkit.getOnlinePlayers()) {
@@ -449,6 +472,8 @@ public final class MMOBlock extends JavaPlugin{
 
     private PluginCommand registerDynamicMmoBlockCommand() {
         try {
+            // PluginCommand constructor is package-private; no public API for dynamic command registration.
+            // This is a documented Bukkit pattern for plugins that need to register commands at runtime.
             final Constructor<PluginCommand> constructor = PluginCommand.class.getDeclaredConstructor(String.class, Plugin.class);
             constructor.setAccessible(true);
             final PluginCommand dynamic = constructor.newInstance("mmoblock", this);
@@ -483,6 +508,14 @@ public final class MMOBlock extends JavaPlugin{
 
     public Scheduler scheduler() {
         return this.scheduler;
+    }
+
+    public me.chyxelmc.mmoblock.runtime.BlockRuntimeService blockRuntimeService() {
+        return this.blockRuntimeService;
+    }
+
+    public me.chyxelmc.mmoblock.config.BlockConfigService blockConfigService() {
+        return this.blockConfigService;
     }
 
     public HologramPlaceholderContextStore placeholderContextStore() {

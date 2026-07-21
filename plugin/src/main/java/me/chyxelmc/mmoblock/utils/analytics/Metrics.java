@@ -179,6 +179,7 @@ public class Metrics {
         public static final String METRICS_VERSION = "3.2.1";
 
         private static final String REPORT_URL = "https://bStats.org/api/v2/data/%s";
+        private static final java.util.Set<String> ALLOWED_BSTATS_HOSTS = java.util.Set.of("bstats.org", "www.bstats.org");
 
         private final ScheduledExecutorService scheduler;
 
@@ -354,7 +355,12 @@ public class Metrics {
             if (logSentData) {
                 infoLogger.accept("Sent bStats metrics data: " + data.toString());
             }
-            String url = String.format(REPORT_URL, platform);
+            final String url = String.format(REPORT_URL, platform);
+            final java.net.URI uri = new java.net.URI(url);
+            final String host = uri.getHost();
+            if (host == null || ALLOWED_BSTATS_HOSTS.stream().noneMatch(h -> h.equalsIgnoreCase(host))) {
+                throw new java.security.GeneralSecurityException("SSRF blocked: host '" + host + "' is not in the bStats allowlist");
+            }
             HttpsURLConnection connection = (HttpsURLConnection) new URL(url).openConnection();
             // Compress the data to save bandwidth
             byte[] compressedData = compress(data.toString());

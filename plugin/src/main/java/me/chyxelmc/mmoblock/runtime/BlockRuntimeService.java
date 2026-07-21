@@ -526,6 +526,10 @@ public final class BlockRuntimeService {
         return Collections.unmodifiableList(new ArrayList<>(this.ecsState.blocks()));
     }
 
+    public me.chyxelmc.mmoblock.runtime.ecs.BlockEcsState ecsState() {
+        return this.ecsState;
+    }
+
     public void syncFakeBlocksForPlayer(final Player player) {
         this.visualSyncSystem.syncFakeBlocksForPlayer(
                 player,
@@ -835,11 +839,10 @@ public final class BlockRuntimeService {
             if (!"placeholder".equals(type) && !"placholder".equals(type)) {
                 continue;
             }
-            if (ConditionEvaluator.isMet(this.plugin, player, condition)) {
-                continue;
+            if (!ConditionEvaluator.isMet(this.plugin, player, condition)) {
+                sendConditionTitle(player, condition);
+                return false;
             }
-            sendConditionTitle(player, condition);
-            return false;
         }
         return true;
     }
@@ -1849,10 +1852,9 @@ public final class BlockRuntimeService {
             if (isTooCloseToPlacedBlock(world.getName(), blockX, groundedY, blockZ, excludingBlockId)) {
                 continue;
             }
-            if (hasBlockingEntityAt(world, blockX, groundedY, blockZ)) {
-                continue;
+            if (!hasBlockingEntityAt(world, blockX, groundedY, blockZ)) {
+                return new Location(world, blockX, groundedY, blockZ);
             }
-            return new Location(world, blockX, groundedY, blockZ);
         }
         return null;
     }

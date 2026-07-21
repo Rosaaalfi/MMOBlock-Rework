@@ -880,7 +880,7 @@ public final class HologramRuntimeService {
         }
 
         private static boolean linesAreEqual(final List<NmsAdapter.HologramLine> a, final List<NmsAdapter.HologramLine> b) {
-            if (a == null || b == null) return a == b;
+            if (a == null || b == null) return a == null && b == null;
             if (a.size() != b.size()) return false;
             for (int i = 0; i < a.size(); i++) {
                 final NmsAdapter.HologramLine la = a.get(i);

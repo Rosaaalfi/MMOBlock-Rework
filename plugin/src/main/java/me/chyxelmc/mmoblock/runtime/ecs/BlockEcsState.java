@@ -234,6 +234,10 @@ public final class BlockEcsState {
             this.lastInteractionByPlayer.clear();
         }
 
+        public java.util.Map<java.util.UUID, Integer> perPlayerProgress() {
+            return this.perPlayerProgress;
+        }
+
         public boolean hasAnyProgress() {
             return !this.perPlayerProgress.isEmpty();
         }

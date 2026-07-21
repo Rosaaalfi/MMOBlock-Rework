@@ -46,6 +46,10 @@ public final class BlockConfigService {
     private long interactionThrottleMs;
     private boolean extractDefaultAssets;
 
+    public java.util.Map<String, List<ToolAction>> tools() {
+        return this.tools;
+    }
+
     public BlockConfigService(final MMOBlock plugin) {
         this.plugin = plugin;
     }

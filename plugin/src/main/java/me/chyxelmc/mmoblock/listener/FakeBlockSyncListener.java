@@ -42,6 +42,7 @@ public final class FakeBlockSyncListener implements Listener {
             if (this.plugin instanceof me.chyxelmc.mmoblock.MMOBlock mmob) {
                 final String clsName = mmob.fakePacketHandlerClassName();
                 if (clsName != null) {
+                    me.chyxelmc.mmoblock.MMOBlock.validateFakeHandlerClassName(clsName);
                     final Class<?> cls = Class.forName(clsName);
                     final java.lang.reflect.Method inject = cls.getMethod("inject", org.bukkit.entity.Player.class);
                     inject.invoke(null, event.getPlayer());

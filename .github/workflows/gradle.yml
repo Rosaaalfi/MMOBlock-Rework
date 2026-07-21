@@ -9,9 +9,9 @@ name: Build
 
 on:
   push:
-    branches: [ "folia-support" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "folia-support" ]
+    branches: [ "main" ]
 
 jobs:
   build:

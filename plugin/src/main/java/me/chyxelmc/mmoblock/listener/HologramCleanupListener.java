@@ -58,6 +58,7 @@ public final class HologramCleanupListener implements Listener {
             if (this.plugin instanceof MMOBlock mmob) {
                 final String clsName = mmob.fakePacketHandlerClassName();
                 if (clsName != null) {
+                    me.chyxelmc.mmoblock.MMOBlock.validateFakeHandlerClassName(clsName);
                     final Class<?> cls = Class.forName(clsName);
                     final java.lang.reflect.Method uninject = cls.getMethod("uninject", org.bukkit.entity.Player.class);
                     uninject.invoke(null, event.getPlayer());
