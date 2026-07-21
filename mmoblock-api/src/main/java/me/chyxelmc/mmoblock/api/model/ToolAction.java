@@ -10,4 +10,12 @@ public interface ToolAction {
     int decreaseDurability();
     List<String> allowedDrops();
     String clickType();
+
+    /**
+     * ItemsAdder namespaced item ID for this tool, e.g. {@code "itemsadder:iron_pick"}.
+     * When non-null, tool matching is performed via ItemsAdder API instead of Bukkit {@link org.bukkit.Material} comparison.
+     */
+    default String itemsAdderId() {
+        return null;
+    }
 }

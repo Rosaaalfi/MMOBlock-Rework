@@ -42,4 +42,12 @@ public interface DropEntry {
     default DropBeam effectBeam() {
         return null;
     }
+
+    /**
+     * ItemsAdder namespaced item ID for this drop, e.g. {@code "itemsadder:iron_crumble"}.
+     * When non-null, the drop will resolve via ItemsAdder API instead of Bukkit {@link org.bukkit.Material}.
+     */
+    default String itemsAdderId() {
+        return null;
+    }
 }

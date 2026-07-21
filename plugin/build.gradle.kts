@@ -20,6 +20,7 @@ dependencies {
     compileOnly(libs.modelEngineApi)
     compileOnly(libs.betterModelApi)
     compileOnly(libs.betterModelBukkitApi)
+    compileOnly(libs.itemsAdderApi)
 
     //implementation("me.chyxelmc:mmoblock-api:3.0.0-SNAPSHOT")
     implementation(project(":mmoblock-api"))

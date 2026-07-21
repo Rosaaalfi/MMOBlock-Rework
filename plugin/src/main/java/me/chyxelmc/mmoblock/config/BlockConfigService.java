@@ -96,9 +96,18 @@ public final class BlockConfigService {
                     useRealBlockModel = true;
                 }
 
-                final Material realBlockMaterial = parseMaterial(configuredModelBlock == null ? "minecraft:stone" : configuredModelBlock);
-                if (useRealBlockModel && realBlockMaterial == null) {
-                    report.error("Block '" + key + "' has invalid modelType.block.block material.");
+                // Check for ItemsAdder custom block first
+                final String itemsAdderBlockId;
+                final Material realBlockMaterial;
+                if (configuredModelBlock != null && me.chyxelmc.mmoblock.api.compat.ItemsAdderCompat.isItemsAdderId(configuredModelBlock)) {
+                    itemsAdderBlockId = configuredModelBlock;
+                    realBlockMaterial = Material.STONE; // fallback for particle effects
+                } else {
+                    itemsAdderBlockId = null;
+                    realBlockMaterial = parseMaterial(configuredModelBlock == null ? "minecraft:stone" : configuredModelBlock);
+                    if (useRealBlockModel && realBlockMaterial == null) {
+                        report.error("Block '" + key + "' has invalid modelType.block.block material.");
+                    }
                 }
                 final Sound soundOnClick = parseSound(section.getString("sound.onClick"), "sound.onClick", key, report);
                 final Sound soundOnDead = parseSound(section.getString("sound.onDead"), "sound.onDead", key, report);
@@ -316,7 +325,8 @@ public final class BlockConfigService {
                                 betterModelOnClickName,
                                 betterModelCollisionPositions,
                                 itemName,
-                                itemMaterial
+                                itemMaterial,
+                                itemsAdderBlockId
                         )
                 );
                 loaded++;
@@ -398,13 +408,54 @@ public final class BlockConfigService {
         return Collections.unmodifiableSet(this.blockDefinitions.keySet());
     }
 
-    public ToolAction resolveToolAction(final BlockDefinition blockDefinition, final Material material, final String clickType) {
+    public ToolAction resolveToolAction(final BlockDefinition blockDefinition, final org.bukkit.inventory.ItemStack item, final String clickType) {
+        final Material material = item == null ? null : item.getType();
+        final boolean isCustomItem = me.chyxelmc.mmoblock.api.compat.ItemsAdderCompat.isCustomItem(item);
+
         for (final String toolId : blockDefinition.allowedTools()) {
             final List<ToolAction> actions = this.tools.get(toolId.toLowerCase(Locale.ROOT));
             if (actions == null) {
                 continue;
             }
             for (final ToolAction action : actions) {
+                if (action.itemsAdderId() != null) {
+                    // ItemsAdder tool: match by custom item ID
+                    if (!me.chyxelmc.mmoblock.api.compat.ItemsAdderCompat.matchItem(item, action.itemsAdderId())) {
+                        continue;
+                    }
+                } else if (isCustomItem) {
+                    // Held item is a custom item but this tool entry is a vanilla Material —
+                    // custom items must only match ItemsAdder tool entries. Skip.
+                    continue;
+                } else {
+                    // Vanilla tool: match by Material enum
+                    if (action.material() != material) {
+                        continue;
+                    }
+                }
+                if ("both_click".equals(action.clickType()) || clickType.equals(action.clickType())) {
+                    return action;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Resolve a tool action using only the Material (legacy, no ItemsAdder support).
+     * Used by external API consumers that do not have access to the full ItemStack.
+     */
+    public ToolAction resolveToolAction(final BlockDefinition blockDefinition, final Material material, final String clickType) {
+        // ItemsAdder tools cannot be matched by Material alone — fall through to null
+        for (final String toolId : blockDefinition.allowedTools()) {
+            final List<ToolAction> actions = this.tools.get(toolId.toLowerCase(Locale.ROOT));
+            if (actions == null) {
+                continue;
+            }
+            for (final ToolAction action : actions) {
+                if (action.itemsAdderId() != null) {
+                    continue; // cannot match ItemsAdder tools without ItemStack
+                }
                 if (action.material() != material) {
                     continue;
                 }
@@ -519,17 +570,25 @@ public final class BlockConfigService {
             return List.of();
         }
 
-        final Material material = Material.matchMaterial(materialName);
-        if (material == null) {
-            report.error("Tool group '" + groupId + "' contains invalid material: " + materialName);
-            return List.of();
+        final String itemsAdderId;
+        final Material material;
+        if (me.chyxelmc.mmoblock.api.compat.ItemsAdderCompat.isItemsAdderId(materialName)) {
+            itemsAdderId = materialName;
+            material = null;
+        } else {
+            itemsAdderId = null;
+            material = Material.matchMaterial(materialName);
+            if (material == null) {
+                report.error("Tool group '" + groupId + "' contains invalid material: " + materialName);
+                return List.of();
+            }
         }
 
         final List<String> allowedDrops = normalizeStringList(raw.get("allowedDrops"));
         final List<ToolAction> actions = new ArrayList<>();
-        parseToolAction(raw, groupId, "both_click", material, allowedDrops, actions, report);
-        parseToolAction(raw, groupId, "left_click", material, allowedDrops, actions, report);
-        parseToolAction(raw, groupId, "right_click", material, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "both_click", material, itemsAdderId, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "left_click", material, itemsAdderId, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "right_click", material, itemsAdderId, allowedDrops, actions, report);
         return actions;
     }
 
@@ -538,6 +597,7 @@ public final class BlockConfigService {
             final String groupId,
             final String clickType,
             final Material material,
+            final String itemsAdderId,
             final List<String> allowedDrops,
             final List<ToolAction> actions,
             final ValidationReport report
@@ -553,7 +613,7 @@ public final class BlockConfigService {
             report.error("Tool group '" + groupId + "' has invalid clickNeeded <= 0 for " + clickType);
             return;
         }
-        actions.add(new ToolAction(material, clickNeeded, decreaseDurability, allowedDrops, clickType));
+        actions.add(new ToolAction(material, clickNeeded, decreaseDurability, allowedDrops, clickType, itemsAdderId));
     }
 
     private DropEntry parseDropEntry(final Map<?, ?> raw, final String dropId, final ValidationReport report) {
@@ -569,20 +629,29 @@ public final class BlockConfigService {
         final DropBeam effectBeam = parseDropBeam(raw);
 
         if (raw.containsKey("material")) {
-            final Material material = Material.matchMaterial(String.valueOf(raw.get("material")));
-            if (material == null) {
-                report.error("Drop group '" + dropId + "' contains invalid material: " + raw.get("material"));
-                return null;
+            final String materialStr = String.valueOf(raw.get("material"));
+            final String itemsAdderId;
+            final Material material;
+            if (me.chyxelmc.mmoblock.api.compat.ItemsAdderCompat.isItemsAdderId(materialStr)) {
+                itemsAdderId = materialStr;
+                material = null;
+            } else {
+                itemsAdderId = null;
+                material = Material.matchMaterial(materialStr);
+                if (material == null) {
+                    report.error("Drop group '" + dropId + "' contains invalid material: " + materialStr);
+                    return null;
+                }
             }
             final int[] range = parseRange(raw.get("total"), 1, 1);
-            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam);
+            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam, itemsAdderId);
         }
         if (raw.containsKey("experience")) {
             final int[] range = parseRange(raw.get("experience"), 1, 1);
-            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null);
+            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null, null);
         }
         if (raw.containsKey("command")) {
-            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null);
+            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null, null);
         }
         report.warn("Drop group '" + dropId + "' contains unsupported drop entry: " + raw);
         return null;

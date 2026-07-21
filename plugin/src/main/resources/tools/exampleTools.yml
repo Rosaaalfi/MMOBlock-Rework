@@ -17,3 +17,11 @@ exampleTools:
       decreaseDurability: 10
       clickNeeded: 3
     allowedDrops: []
+
+  # Custom item from ItemsAdder plugin, <namespace>:<item_id>. You can use this to define custom tools from ItemsAdder plugin.
+  - material: itemsadder:iron_pick # Reference to the custom item defined in ItemsAdder plugin, <namespace>:<item_id>.
+    both_click:
+      decreaseDurability: 10 #decrease the custom durability from ItemsAdder custom item, this is not the vanilla durability, this is the custom durability from ItemsAdder.
+      clickNeeded: 3
+    allowedDrops:
+        - exampleDropsCustom # Reference to the drops defined in exampleDropsCustom.yml

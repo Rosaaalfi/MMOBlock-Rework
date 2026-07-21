@@ -726,6 +726,15 @@ public final class BlockRuntimeService {
             clearBdEngineModel(block, world);
             clearBetterModelModel(block, world);
             clearBetterModelCollision(block, world);
+
+            // Clear real-block model (ItemsAdder physically placed blocks)
+            // and other model-engine types that need the definition
+            final BlockDefinition definition = this.blockConfigService.findBlock(block.type());
+            if (definition != null) {
+                this.visualSyncSystem.clearRealBlockModel(block, definition, world);
+                clearModelEngineModel(block, world);
+                clearModelEngineCollision(block, world);
+            }
         }
     }
 
@@ -744,7 +753,7 @@ public final class BlockRuntimeService {
         }
 
         final ItemStack item = player.getInventory().getItemInMainHand();
-        final ToolAction action = this.blockConfigService.resolveToolAction(definition, item.getType(), clickType);
+        final ToolAction action = this.blockConfigService.resolveToolAction(definition, item, clickType);
         if (action == null) {
             // If the player's tool is not allowed for this block, do not show the "too_fast" throttling
             // message. Return the explicit tool-not-allowed message first.
@@ -987,7 +996,31 @@ public final class BlockRuntimeService {
 
 
     private void applyDurability(final ItemStack item, final int decreaseDurability) {
-        if (decreaseDurability <= 0 || item.getType().getMaxDurability() <= 0) {
+        if (decreaseDurability <= 0) {
+            return;
+        }
+
+        // Unbreaking enchantment reduces the chance of durability decreasing.
+        // Formula: 1/(level+1) chance of durability decrease
+        //   Level 0: 100% (always decreases)
+        //   Level 1: 50%
+        //   Level 2: 33.3%
+        //   Level 3: 25%
+        // Use NamespacedKey lookup for cross-version compatibility
+        // (1.19.4 uses DURABILITY, 1.21+ uses UNBREAKING)
+        final org.bukkit.enchantments.Enchantment unbreaking = org.bukkit.Registry.ENCHANTMENT.get(org.bukkit.NamespacedKey.minecraft("unbreaking"));
+        final int unbreakingLevel = unbreaking != null ? item.getEnchantmentLevel(unbreaking) : 0;
+        if (unbreakingLevel > 0 && ThreadLocalRandom.current().nextInt(unbreakingLevel + 1) != 0) {
+            return; // Durability saved by Unbreaking
+        }
+
+        // Try ItemsAdder custom durability first
+        if (me.chyxelmc.mmoblock.api.compat.ItemsAdderCompat.applyCustomDurability(item, decreaseDurability)) {
+            return;
+        }
+
+        // Fall back to vanilla Bukkit durability
+        if (item.getType().getMaxDurability() <= 0) {
             return;
         }
 

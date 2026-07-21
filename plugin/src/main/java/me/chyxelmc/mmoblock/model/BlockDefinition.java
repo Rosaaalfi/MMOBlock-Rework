@@ -69,6 +69,8 @@ public record BlockDefinition(
     List<String> betterModelCollisionPositions,
     // item
     String itemName,
-    Material itemMaterial
+    Material itemMaterial,
+    // itemsadder
+    String itemsAdderBlockId
 ) implements me.chyxelmc.mmoblock.api.model.BlockDefinition {
 }

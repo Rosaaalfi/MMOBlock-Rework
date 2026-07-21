@@ -17,7 +17,8 @@ public record DropEntry(
     boolean perPlayer,
     boolean effectExplosion,
     DropGlow effectGlow,
-    DropBeam effectBeam
+    DropBeam effectBeam,
+    String itemsAdderId
 ) implements me.chyxelmc.mmoblock.api.model.DropEntry {
 }
 

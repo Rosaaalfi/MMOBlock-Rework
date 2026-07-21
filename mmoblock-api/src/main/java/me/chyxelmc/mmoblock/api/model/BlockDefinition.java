@@ -55,4 +55,13 @@ public interface BlockDefinition {
     List<String> modelEngineCollisionPositions();
     String itemName();
     Material itemMaterial();
+
+    /**
+     * ItemsAdder namespaced block ID for {@code modelType.block}, e.g. {@code "itemsadder:example_block"}.
+     * When non-null, the block model is placed as a real ItemsAdder custom block instead of
+     * sending a fake block packet with {@link #realBlockMaterial()}.
+     */
+    default String itemsAdderBlockId() {
+        return null;
+    }
 }

@@ -46,6 +46,10 @@ public final class VisualSyncSystem {
             if (!usesRealBlockModel(definition)) {
                 continue;
             }
+            // ItemsAdder custom blocks are physically placed — no fake block packet needed
+            if (definition.itemsAdderBlockId() != null) {
+                continue;
+            }
 
             final Location location = blockBaseLocation(placedBlock);
             if (location.getWorld() == null || location.distanceSquared(player.getLocation()) > syncRadiusSquared) {
@@ -59,6 +63,32 @@ public final class VisualSyncSystem {
         if (!usesRealBlockModel(definition)) {
             return;
         }
+
+        // ItemsAdder custom block: place the real block in the world
+        if (definition.itemsAdderBlockId() != null) {
+            final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
+            me.chyxelmc.mmoblock.api.compat.ItemsAdderCompat.placeBlock(loc, definition.itemsAdderBlockId());
+
+            // Schedule a chunk refresh 1 tick later to ensure the client re-syncs the
+            // block data. During a config reload, the despawn+respawn cycle can cause
+            // the client to lose the custom block visual even though the server-side
+            // block remains intact. This matches the same pattern used for vanilla
+            // fake blocks below.
+            try {
+                final int cx = (int) Math.floor(placedBlock.x()) >> 4;
+                final int cz = (int) Math.floor(placedBlock.z()) >> 4;
+                this.plugin.scheduler().runAtLocationLater(loc, () -> {
+                    try {
+                        world.refreshChunk(cx, cz);
+                    } catch (final Throwable ignored) {
+                    }
+                }, 1L);
+            } catch (final Throwable ignored) {
+            }
+            return;
+        }
+
+        // Vanilla block: send fake block packet
         final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
         // Send immediately and schedule a follow-up send one tick later to avoid
         // client-side packet ordering issues that can cause the fake block to
@@ -88,7 +118,16 @@ public final class VisualSyncSystem {
         if (!usesRealBlockModel(definition)) {
             return;
         }
+
         final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
+
+        // ItemsAdder custom block: remove the real block from the world
+        if (definition.itemsAdderBlockId() != null) {
+            me.chyxelmc.mmoblock.api.compat.ItemsAdderCompat.removeBlock(loc);
+            return;
+        }
+
+        // Vanilla block: clear fake block packet
         try {
             // remove registry entry first so outbound correction packet will be allowed through
             final int bx = (int) Math.floor(placedBlock.x());
@@ -104,8 +143,10 @@ public final class VisualSyncSystem {
         if (definition == null) return false;
         if (definition.schematicsEnabled()) return false;
         if (definition.bdengineEnabled()) return false;
-        return definition.useRealBlockModel()
-            && definition.realBlockMaterial() != null
+        if (!definition.useRealBlockModel()) return false;
+        // ItemsAdder custom block: valid without a Bukkit Material
+        if (definition.itemsAdderBlockId() != null) return true;
+        return definition.realBlockMaterial() != null
             && definition.realBlockMaterial().isBlock();
     }
 
@@ -113,7 +154,10 @@ public final class VisualSyncSystem {
         if (definition.particleMaterial() != null) {
             return definition.particleMaterial();
         }
-        return usesRealBlockModel(definition) ? definition.realBlockMaterial() : Material.STONE;
+        if (usesRealBlockModel(definition)) {
+            return definition.realBlockMaterial() != null ? definition.realBlockMaterial() : Material.STONE;
+        }
+        return Material.STONE;
     }
 
     public void sendBreakAnimation(final PlacedBlock block, final ToolAction action, final int progress, final boolean clear) {

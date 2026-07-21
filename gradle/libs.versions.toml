@@ -12,6 +12,7 @@ folia-api = "26.1.2.build.746-stable"
 ## Compability with other Plugins
 modelEngine= "R4.1.0"
 betterModel= "3.2.0"
+itemsAdder= "4.0.18-beta-10"
 
 [libraries]
 paperApiV1194 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_19_4" }
@@ -25,6 +26,7 @@ foliaApi = { module= "io.canvasmc.canvas:canvas-api", version.ref = "folia-api" 
 modelEngineApi= { module= "com.ticxo.modelengine:ModelEngine", version.ref = "modelEngine" }
 betterModelApi= { module= "io.github.toxicity188:bettermodel-api", version.ref = "betterModel" }
 betterModelBukkitApi= { module= "io.github.toxicity188:bettermodel-bukkit-api", version.ref = "betterModel" }
+itemsAdderApi= { module= "beer.devs:itemsadder-api", version.ref = "itemsAdder" }
 
 [plugins]
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }

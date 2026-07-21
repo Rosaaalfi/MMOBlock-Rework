@@ -79,10 +79,21 @@ public final class DropSystem implements Listener {
     }
 
     private void dropMaterial(final PlacedBlock block, final Player player, final DropEntry entry, final int amount) {
-        if (entry.material() == null || amount <= 0) {
+        if (amount <= 0) {
             return;
         }
-        final ItemStack stack = new ItemStack(entry.material(), amount);
+        // Resolve ItemStack: ItemsAdder custom item or Bukkit Material
+        final ItemStack stack;
+        if (entry.itemsAdderId() != null) {
+            stack = me.chyxelmc.mmoblock.api.compat.ItemsAdderCompat.getItemStack(entry.itemsAdderId(), amount);
+            if (stack == null) {
+                return; // ItemsAdder item not available
+            }
+        } else if (entry.material() != null) {
+            stack = new ItemStack(entry.material(), amount);
+        } else {
+            return;
+        }
         final String dropType = entry.dropType().toLowerCase();
         if ("inventory".equals(dropType)) {
             final Map<Integer, ItemStack> remainder = player.getInventory().addItem(stack);
@@ -108,7 +119,9 @@ public final class DropSystem implements Listener {
 
         // Drop each unit as its own entity so every item flies individually
         for (int i = 0; i < amount; i++) {
-            final Item item = world.dropItem(location, new ItemStack(entry.material(), 1));
+            final ItemStack unitStack = stack.clone();
+            unitStack.setAmount(1);
+            final Item item = world.dropItem(location, unitStack);
             if (item == null) {
                 continue;
             }

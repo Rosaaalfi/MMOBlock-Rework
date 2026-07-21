@@ -26,7 +26,11 @@ exampleEntity:
   modelType:
     block:
       enabled: true
-      block: minecraft:diamond_ore # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
+      block: itemsadder:example_block # custom block from ItemsAdder plugin, <namespace>:<block_id>. You can use this to define custom blocks from ItemsAdder plugin.
+    # Vanilla block
+    # block:
+    #   enabled: true
+    #   block: minecraft:diamond_ore # The exact block to use as the display for the entity.
     bdengine:
       enabled: false # Enable BDEngine for this entity. If false.
       model: iron_ore # get model from models dir
