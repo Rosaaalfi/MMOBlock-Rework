@@ -29,6 +29,6 @@ public final class SafeClassLoader {
         if (!trusted) {
             throw new SecurityException("Blocked untrusted class load attempt: " + className);
         }
-        return Class.forName(className);
+        return SafeClassLoader.class.getClassLoader().loadClass(className);
     }
 }

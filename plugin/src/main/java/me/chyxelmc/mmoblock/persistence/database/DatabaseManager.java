@@ -76,19 +76,33 @@ public final class DatabaseManager {
         }
     }
 
-    private static final java.util.Set<String> ALLOWED_COLUMNS = java.util.Set.of("origin_x", "origin_y", "origin_z");
+    private static final java.util.Map<String, String> ALTER_ADD_COLUMN_H2_QUERIES = java.util.Map.of(
+        "origin_x", "ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS origin_x DOUBLE",
+        "origin_y", "ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS origin_y DOUBLE",
+        "origin_z", "ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS origin_z DOUBLE"
+    );
+
+    private static final java.util.Map<String, String> ALTER_ADD_COLUMN_MYSQL_QUERIES = java.util.Map.of(
+        "origin_x", "ALTER TABLE mmoblock_block ADD COLUMN origin_x DOUBLE",
+        "origin_y", "ALTER TABLE mmoblock_block ADD COLUMN origin_y DOUBLE",
+        "origin_z", "ALTER TABLE mmoblock_block ADD COLUMN origin_z DOUBLE"
+    );
 
     private void migrateBlockColumns(final Statement statement) throws SQLException {
-        for (final String column : ALLOWED_COLUMNS) {
-            // Validate column name against both regex and allowlist to prevent SQL injection
-            if (!column.matches("^[a-zA-Z0-9_]{1,64}$") || !ALLOWED_COLUMNS.contains(column)) {
-                throw new IllegalArgumentException("Rejected unsafe column name: " + column);
+        for (final String column : ALTER_ADD_COLUMN_H2_QUERIES.keySet()) {
+            final String exactQuery = this.dialect == Dialect.H2
+                ? ALTER_ADD_COLUMN_H2_QUERIES.get(column)
+                : ALTER_ADD_COLUMN_MYSQL_QUERIES.get(column);
+
+            if (exactQuery == null) {
+                throw new IllegalArgumentException("Rejected unsafe or unknown column name: " + column);
             }
+
             if (this.dialect == Dialect.H2) {
-                statement.execute("ALTER TABLE mmoblock_block ADD COLUMN IF NOT EXISTS " + column + " DOUBLE");
+                statement.execute(exactQuery);
             } else {
                 try {
-                    statement.execute("ALTER TABLE mmoblock_block ADD COLUMN " + column + " DOUBLE");
+                    statement.execute(exactQuery);
                 } catch (final SQLException ignored) {
                     // Column likely already exists; ignore Duplicate column errors
                 }
