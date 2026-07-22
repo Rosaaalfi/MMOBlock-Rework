@@ -23,6 +23,7 @@ import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
 import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
 import me.chyxelmc.mmoblock.runtime.visual.BdEngineService;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
+import me.chyxelmc.mmoblock.runtime.visual.SchematicService;
 
 public final class BlockChunkLifecycleOrchestrator {
 
@@ -39,6 +40,7 @@ public final class BlockChunkLifecycleOrchestrator {
     private final VisualSyncSystem visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
     private final BlockModelApplier modelApplier;
+    private final SchematicService schematicService;
     private final BdEngineService bdEngineService;
     private final BlockInteractionOrchestrator interactionOrchestrator;
     private final BlockRespawnOrchestrator respawnOrchestrator;
@@ -54,6 +56,7 @@ public final class BlockChunkLifecycleOrchestrator {
             final VisualSyncSystem visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService,
             final BlockModelApplier modelApplier,
+            final SchematicService schematicService,
             final BdEngineService bdEngineService,
             final BlockInteractionOrchestrator interactionOrchestrator,
             final BlockRespawnOrchestrator respawnOrchestrator
@@ -68,6 +71,7 @@ public final class BlockChunkLifecycleOrchestrator {
         this.visualSyncSystem = visualSyncSystem;
         this.hologramRuntimeService = hologramRuntimeService;
         this.modelApplier = modelApplier;
+        this.schematicService = schematicService;
         this.bdEngineService = bdEngineService;
         this.interactionOrchestrator = interactionOrchestrator;
         this.respawnOrchestrator = respawnOrchestrator;
@@ -118,6 +122,26 @@ public final class BlockChunkLifecycleOrchestrator {
         }
     }
 
+    private void syncSchematicsForPlayer(final Player player, final Collection<PlacedBlockModel> blocks) {
+        final World world = player.getWorld();
+        for (final PlacedBlockModel block : blocks) {
+            if (!block.world().equals(world.getName())) continue;
+            if (!this.lifecycleSystem.isActive(block)) continue;
+            final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
+            if (definition == null || !definition.schematicsEnabled()) continue;
+            this.schematicService.showSchematicForPlayer(
+                    block.uniqueId().toString(),
+                    player,
+                    definition,
+                    world,
+                    block.x(),
+                    block.y(),
+                    block.z(),
+                    false
+            );
+        }
+    }
+
     public void syncFakeBlocksForPlayer(final Player player) {
         this.visualSyncSystem.syncFakeBlocksForPlayer(
                 player,
@@ -127,6 +151,7 @@ public final class BlockChunkLifecycleOrchestrator {
                 FAKE_BLOCK_SYNC_RADIUS_SQUARED
         );
         this.hologramRuntimeService.syncForPlayer(player, this.ecsState.blocks());
+        syncSchematicsForPlayer(player, this.ecsState.blocks());
         for (final PlacedBlockModel block : this.ecsState.blocks()) {
             this.bdEngineService.syncForPlayer(player, block.uniqueId());
         }
@@ -149,6 +174,7 @@ public final class BlockChunkLifecycleOrchestrator {
                 FAKE_BLOCK_SYNC_RADIUS_SQUARED
         );
         this.hologramRuntimeService.syncForPlayer(player, candidateBlocks);
+        syncSchematicsForPlayer(player, candidateBlocks);
         for (final PlacedBlockModel block : candidateBlocks) {
             this.bdEngineService.syncForPlayer(player, block.uniqueId());
         }
@@ -163,6 +189,11 @@ public final class BlockChunkLifecycleOrchestrator {
             if (this.lifecycleSystem.isActive(block)) {
                 if (this.interactionOrchestrator.spawn(block, definition, world)) {
                     this.hologramRuntimeService.showActive(block, definition);
+                    // Schedule a delayed visual re-apply 10 ticks later to handle startup
+                    // timing issues where the NMS layer or world may not be fully ready.
+                    // This is particularly important for schematics and CraftEngine blocks
+                    // on server restart where the initial apply may silently fail.
+                    scheduleDelayedVisualApply(block, definition, world);
                 }
                 continue;
             }
@@ -207,8 +238,42 @@ public final class BlockChunkLifecycleOrchestrator {
             }
             if (this.interactionOrchestrator.spawn(block, definition, world)) {
                 this.hologramRuntimeService.showActive(block, definition);
+                scheduleDelayedVisualApply(block, definition, world);
             }
         }, 20L);
+    }
+
+    /**
+     * Schedule a delayed re-apply of visual models (schematics, CraftEngine blocks, etc.)
+     * to handle timing issues on server startup where the NMS layer or world may not
+     * be fully ready during the initial spawn.
+     * <p>
+     * This runs 10 ticks after the successful spawn and re-applies the models that were
+     * already applied in {@link BlockInteractionOrchestrator#applySpawnedModels}.
+     * Non-fatal exceptions during re-application are silently ignored.
+     */
+    private void scheduleDelayedVisualApply(
+            final PlacedBlockModel block,
+            final BlockDefinitionModel definition,
+            final World world
+    ) {
+        final UUID blockId = block.uniqueId();
+        final String worldName = world.getName();
+        this.scheduler.runAtLocationLater(blockLocation(world, block), () -> {
+            try {
+                final World w = this.plugin.getServer().getWorld(worldName);
+                if (w == null) return;
+                if (!this.ecsState.containsBlock(blockId)) return;
+                final PlacedBlockModel current = this.ecsState.getBlock(blockId);
+                if (current == null || !this.lifecycleSystem.isActive(current)) return;
+                final BlockDefinitionModel def = this.blockConfigService.findBlock(current.type());
+                if (def == null) return;
+                this.visualSyncSystem.applyRealBlockModel(current, def, w);
+                this.modelApplier.applySchematicModel(current, def, w, false);
+            } catch (final Exception ignored) {
+                // expected - non-critical retry
+            }
+        }, 10L);
     }
 
     private static boolean isChunkLoaded(final World world, final double x, final double z) {

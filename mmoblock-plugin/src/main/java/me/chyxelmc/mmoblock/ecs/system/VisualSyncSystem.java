@@ -46,8 +46,8 @@ public final class VisualSyncSystem {
             if (!usesRealBlockModel(definition)) {
                 continue;
             }
-            // ItemsAdder custom blocks are physically placed — no fake block packet needed
-            if (definition.itemsAdderBlockId() != null) {
+            // ItemsAdder/CraftEngine custom blocks are physically placed — no fake block packet needed
+            if (definition.itemsAdderBlockId() != null || definition.craftEngineBlockId() != null) {
                 continue;
             }
 
@@ -74,6 +74,31 @@ public final class VisualSyncSystem {
             // the client to lose the custom block visual even though the server-side
             // block remains intact. This matches the same pattern used for vanilla
             // fake blocks below.
+            try {
+                final int cx = (int) Math.floor(placedBlock.x()) >> 4;
+                final int cz = (int) Math.floor(placedBlock.z()) >> 4;
+                this.plugin.scheduler().runAtLocationLater(loc, () -> {
+                    try {
+                        world.refreshChunk(cx, cz);
+                    } catch (final Exception ignored) {
+                    // expected - reflection fallback
+                    }
+                }, 1L);
+            } catch (final Exception ignored) {
+            // expected - reflection fallback
+            }
+            return;
+        }
+
+        // CraftEngine custom block: place the real block in the world
+        if (definition.craftEngineBlockId() != null) {
+            final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
+            me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.placeBlock(loc, definition.craftEngineBlockId());
+
+            // Schedule a chunk refresh 1 tick later to ensure the client re-syncs the
+            // block data. During a config reload, the despawn+respawn cycle can cause
+            // the client to lose the custom block visual even though the server-side
+            // block remains intact.
             try {
                 final int cx = (int) Math.floor(placedBlock.x()) >> 4;
                 final int cz = (int) Math.floor(placedBlock.z()) >> 4;
@@ -126,9 +151,13 @@ public final class VisualSyncSystem {
 
         final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
 
-        // ItemsAdder custom block: remove the real block from the world
+        // ItemsAdder/CraftEngine custom block: remove the real block from the world
         if (definition.itemsAdderBlockId() != null) {
             me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.removeBlock(loc);
+            return;
+        }
+        if (definition.craftEngineBlockId() != null) {
+            me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.removeBlock(loc);
             return;
         }
 
@@ -150,8 +179,9 @@ public final class VisualSyncSystem {
         if (definition.schematicsEnabled()) return false;
         if (definition.bdengineEnabled()) return false;
         if (!definition.useRealBlockModel()) return false;
-        // ItemsAdder custom block: valid without a Bukkit Material
+        // ItemsAdder/CraftEngine custom block: valid without a Bukkit Material
         if (definition.itemsAdderBlockId() != null) return true;
+        if (definition.craftEngineBlockId() != null) return true;
         return definition.realBlockMaterial() != null
             && definition.realBlockMaterial().isBlock();
     }

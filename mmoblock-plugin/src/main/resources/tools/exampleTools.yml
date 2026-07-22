@@ -1,27 +1,44 @@
 exampleTools:
-  - material: DIAMOND_PICKAXE
+  - item:
+      type: vanilla
+      material: DIAMOND_PICKAXE
     # have 3 different click types, left_click, right_click, and both_click. You can choose to use one or more of them.
     both_click:
       decreaseDurability: 15
       clickNeeded: 4
     allowedDrops:
         - exampleDrops # Reference to the drops defined in exampleDrops.yml
-  - material: NETHERITE_PICKAXE
+  - item:
+      type: vanilla
+      material: NETHERITE_PICKAXE
     left_click:
       decreaseDurability: 10
       clickNeeded: 3
     allowedDrops:
         - exampleDrops
-  - material: NETHERITE_PICKAXE
+  - item:
+      type: vanilla
+      material: NETHERITE_PICKAXE
     right_click:
       decreaseDurability: 10
       clickNeeded: 3
     allowedDrops: []
 
   # Custom item from ItemsAdder plugin, <namespace>:<item_id>. You can use this to define custom tools from ItemsAdder plugin.
-  - material: itemsadder:iron_pick # Reference to the custom item defined in ItemsAdder plugin, <namespace>:<item_id>.
+  - item:
+      type: itemsadder
+      material: namespace:iron_pick # Reference to the custom item defined in ItemsAdder plugin, <namespace>:<item_id>.
     both_click:
       decreaseDurability: 10 #decrease the custom durability from ItemsAdder custom item, this is not the vanilla durability, this is the custom durability from ItemsAdder.
+      clickNeeded: 3
+    allowedDrops:
+        - exampleDropsCustom # Reference to the drops defined in exampleDropsCustom.yml
+  # Custom item from CraftEngine plugin, <namespace>:<item_id>. You can use this to define custom tools from CraftEngine plugin.
+  - item:
+      type: craftengine
+      material: namespace:custom_pickaxe # Reference to the custom item defined in CraftEngine plugin, <namespace>:<item_id> namespace is not fixed in craftengine only.
+    both_click:
+      decreaseDurability: 10 #decrease the custom durability from CraftEngine custom item, this is not the vanilla durability, this is the custom durability from CraftEngine.
       clickNeeded: 3
     allowedDrops:
         - exampleDropsCustom # Reference to the drops defined in exampleDropsCustom.yml

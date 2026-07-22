@@ -73,6 +73,37 @@ public final class SchematicService {
         }
 
         this.activeSchematicBlocks.put(blockUniqueId, entries);
+
+        // Schedule a delayed re-send of the fake blocks 5 ticks later to handle
+        // client-side packet ordering issues on server restart / chunk reload.
+        // The client may receive chunk data before the fake-block packets, causing
+        // the schematic blocks to remain invisible. A second send ensures they appear.
+        // This matches the same pattern used by VisualSyncSystem.applyRealBlockModel()
+        // for vanilla and custom blocks.
+        try {
+            final String wName = world.getName();
+            this.plugin.scheduler().runAtLocationLater(
+                    new Location(world, x, y, z),
+                    () -> {
+                        final World w = this.plugin.getServer().getWorld(wName);
+                        if (w == null) return;
+                        final List<SchematicBlockEntry> current = this.activeSchematicBlocks.get(blockUniqueId);
+                        if (current == null) return;
+                        for (final SchematicBlockEntry entry : current) {
+                            try {
+                                final Material mat = Material.matchMaterial(entry.materialName());
+                                if (mat == null || !mat.isBlock()) continue;
+                                this.nmsAdapter.showFakeBlock(w,
+                                        new Location(w, entry.x(), entry.y(), entry.z()), mat);
+                            } catch (final Exception ignored) {
+                            }
+                        }
+                    },
+                    5L
+            );
+        } catch (final Exception ignored) {
+            // expected - fallback for older scheduler versions
+        }
     }
 
     public void clearSchematic(final String blockUniqueId, final World world) {

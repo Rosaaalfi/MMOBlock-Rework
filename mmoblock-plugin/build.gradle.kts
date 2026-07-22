@@ -21,6 +21,8 @@ dependencies {
     compileOnly(libs.betterModelApi)
     compileOnly(libs.betterModelBukkitApi)
     compileOnly(libs.itemsAdderApi)
+    compileOnly(libs.craftEngineBukkitApi)
+    compileOnly(libs.craftEngineCoreApi)
 
     //implementation("me.chyxelmc:mmoblock-api:3.0.0-SNAPSHOT")
     implementation(project(":mmoblock-api"))

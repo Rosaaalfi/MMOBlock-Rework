@@ -45,7 +45,9 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
     private static final String GET_REMOVER_TOKEN = "remover";
     private static final String SUFFIX_FILES = " files";
 
-    private static final List<String> ROOT_SUBCOMMANDS = List.of(CMD_BLOCK, CMD_NODE, CMD_RELOAD);
+    private static final String CMD_DB = "db";
+
+    private static final List<String> ROOT_SUBCOMMANDS = List.of(CMD_BLOCK, CMD_DB, CMD_NODE, CMD_RELOAD);
     private static final List<String> RELOAD_SUBCOMMANDS = List.of("config", CMD_BLOCKS, CMD_DROPS, "lang", CMD_TOOLS, "nodes");
     private static final List<String> NODE_SUBCOMMANDS = List.of(CMD_PLACE, CMD_REMOVE, CMD_LIST, CMD_GET);
     private static final List<String> BLOCK_SUBCOMMANDS = List.of(CMD_PLACE, CMD_REMOVE, CMD_LIST, CMD_GET);
@@ -89,6 +91,7 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
             case CMD_RELOAD -> handleReload(sender, args);
             case CMD_NODE -> handleNodes(sender, args);
             case CMD_BLOCK -> handleBlock(sender, args);
+            case CMD_DB -> handleDb(sender, args);
             default -> {
                 send(sender, this.configService.messageComponent("commands.unknown_subcommand", "Unknown subcommand."));
                 yield true;
@@ -468,6 +471,72 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleDb(final CommandSender sender, final String[] args) {
+        if (args.length < 2) {
+            send(sender, Component.text("Usage: /mmoblock db changepassword <old> <new>"));
+            return true;
+        }
+        return switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "changepassword" -> handleDbChangePassword(sender, args);
+            default -> {
+                send(sender, Component.text("Unknown db subcommand. Usage: /mmoblock db changepassword <old> <new>"));
+                yield true;
+            }
+        };
+    }
+
+    private boolean handleDbChangePassword(final CommandSender sender, final String[] args) {
+        if (args.length < 4) {
+            send(sender, Component.text("Usage: /mmoblock db changepassword <old> <new>"));
+            return true;
+        }
+        if (!sender.hasPermission("mmoblock.admin")) {
+            send(sender, Component.text("§cYou don't have permission to change the database password."));
+            return true;
+        }
+
+        final String oldPassword = args[2];
+        final String newPassword = args[3];
+
+        if (newPassword.isEmpty()) {
+            send(sender, Component.text("§cNew password must not be empty."));
+            return true;
+        }
+
+        // Only supported for H2 databases
+        if (this.plugin.getConfig().getBoolean("databases.mysql.enabled", false)) {
+            send(sender, Component.text("§cThis command is only available when using the H2 database (databases.mysql.enabled is false)."));
+            return true;
+        }
+
+        // Verify old password matches what's currently configured (check both config and env var)
+        final String configPassword = this.plugin.getConfig().getString("databases.h2.password", "");
+        final String envPassword = System.getenv("MMOBLOCK_H2_PASSWORD");
+        final boolean matchesConfig = !configPassword.isEmpty() && configPassword.equals(oldPassword);
+        final boolean matchesEnv = envPassword != null && !envPassword.isEmpty() && envPassword.equals(oldPassword);
+        if (!matchesConfig && !matchesEnv) {
+            send(sender, Component.text("§cOld password does not match the current H2 database password. "
+                    + "Check your config.yml (databases.h2.password) or MMOBLOCK_H2_PASSWORD environment variable."));
+            return true;
+        }
+
+        if (this.plugin.blockRuntimeService() == null) {
+            send(sender, Component.text("§cDatabase is not initialized yet."));
+            return true;
+        }
+
+        try {
+            final java.util.logging.Logger logger = this.plugin.getLogger();
+            logger.info("Changing H2 database password...");
+            this.plugin.databaseUtils().changePassword(this.plugin, oldPassword, newPassword);
+            send(sender, Component.text("§aH2 database password changed successfully!"));
+            logger.info("H2 database password has been changed.");
+        } catch (final Exception exception) {
+            send(sender, Component.text("§cFailed to change H2 database password: " + exception.getMessage()));
+        }
+        return true;
+    }
+
     private boolean handleReload(final CommandSender sender, final String[] args) {
         if (!this.plugin.isReady()) {
             send(sender, Component.text("§cCannot reload while plugin is still starting up. Please wait."));
@@ -539,6 +608,9 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
         }
 
         final String sub = args[0].toLowerCase(Locale.ROOT);
+        if (CMD_DB.equals(sub) && args.length == 2) {
+            return filter(List.of("changepassword"), args[1]);
+        }
         if (CMD_RELOAD.equals(sub) && args.length == 2) {
             return filter(RELOAD_SUBCOMMANDS, args[1]);
         }

@@ -1,8 +1,5 @@
 package me.chyxelmc.mmoblock.nms;
 
-import me.chyxelmc.mmoblock.nms.utils.ReflectionUtil;
-import org.bukkit.Bukkit;
-
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -11,6 +8,10 @@ import java.util.ServiceLoader;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
+
+import org.bukkit.Bukkit;
+
+import me.chyxelmc.mmoblock.nms.utils.ReflectionUtil;
 
 public final class NmsAdapterRegistry {
 
@@ -81,7 +82,7 @@ public final class NmsAdapterRegistry {
 
             if (matchesVersion(versionRaw, serverVersion)) {
                 try {
-                    logger.info("Loaded NMS adapter: " + serverVersion + " (Provider defined: [" + versionRaw + "]) (" + mappingType + ")");
+                    logger.info("Loaded NMS adapter: " + serverVersion + " (Provider defined: [" + versionRaw + "])");
                     return provider.create();
                 } catch (NoClassDefFoundError e) {
                     logger.warning("Skipping NMS adapter for " + versionRaw + " due to missing classes: " + e.getMessage());

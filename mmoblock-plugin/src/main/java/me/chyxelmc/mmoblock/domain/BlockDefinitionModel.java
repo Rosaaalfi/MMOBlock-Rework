@@ -73,6 +73,7 @@ import org.bukkit.Sound;
  * @param itemName              Custom item name
  * @param itemMaterial          Custom item material
  * @param itemsAdderBlockId     ItemsAdder block ID (if any)
+ * @param craftEngineBlockId    CraftEngine block ID (if any)
  */
 public record BlockDefinitionModel(
     String id,
@@ -140,7 +141,9 @@ public record BlockDefinitionModel(
     String itemName,
     Material itemMaterial,
     // itemsadder
-    String itemsAdderBlockId
+    String itemsAdderBlockId,
+    // craftengine
+    String craftEngineBlockId
 ) implements me.chyxelmc.mmoblock.api.model.BlockDefinition {
 
     // ---- Supplementary inner types merged from former Impl files ----
@@ -189,12 +192,13 @@ public record BlockDefinitionModel(
         boolean effectExplosion,
         DropGlow effectGlow,
         DropBeam effectBeam,
-        String itemsAdderId
+        String itemsAdderId,
+        String craftEngineId
     ) implements me.chyxelmc.mmoblock.api.model.DropEntry {
     }
 
     /**
-     * A tool action defining click behaviour for a material or ItemsAdder item.
+     * A tool action defining click behaviour for a material or ItemsAdder/CraftEngine item.
      */
     public record ToolAction(
         Material material,
@@ -202,7 +206,8 @@ public record BlockDefinitionModel(
         int decreaseDurability,
         List<String> allowedDrops,
         String clickType,
-        String itemsAdderId
+        String itemsAdderId,
+        String craftEngineId
     ) implements me.chyxelmc.mmoblock.api.model.ToolAction {
     }
 }

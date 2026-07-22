@@ -1,5 +1,14 @@
 package me.chyxelmc.mmoblock.runtime.interaction;
 
+import java.util.UUID;
+
+import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
+import org.bukkit.World;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
+import org.bukkit.persistence.PersistentDataType;
+
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
@@ -9,14 +18,6 @@ import me.chyxelmc.mmoblock.ecs.component.PositionComponent;
 import me.chyxelmc.mmoblock.ecs.system.VisualSyncSystem;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
-import org.bukkit.Location;
-import org.bukkit.NamespacedKey;
-import org.bukkit.World;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.Interaction;
-import org.bukkit.persistence.PersistentDataType;
-
-import java.util.UUID;
 
 public final class BlockInteractionOrchestrator {
 

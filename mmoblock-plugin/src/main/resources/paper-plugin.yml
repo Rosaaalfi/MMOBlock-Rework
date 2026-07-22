@@ -27,6 +27,9 @@ dependencies:
   - name: ItemsAdder
     load: BEFORE
     required: false
+  - name: CraftEngine
+    load: BEFORE
+    required: false
 
 main: me.chyxelmc.mmoblock.MMOBlock
 loader: me.chyxelmc.mmoblock.MMOBlockLoader

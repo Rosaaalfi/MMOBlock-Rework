@@ -19,5 +19,6 @@ allprojects {
         maven("https://central.sonatype.com/repository/maven-snapshots/")
         maven("https://mvn.lumine.io/repository/maven-public/")
         maven("https://repo1.maven.org/maven2/")
+        maven("https://repo.momirealms.net/releases/")
     }
 }

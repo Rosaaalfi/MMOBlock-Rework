@@ -1,0 +1,300 @@
+{
+  "repo_notes": [
+    {
+      "content": ""
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "High-level introduction to MMOBlock: what it is, its modular architecture, target platforms (Paper/Folia), and how the major subsystems relate to each other. Links to all child sections for deeper exploration.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Getting Started & Installation",
+      "purpose": "How to install MMOBlock on a Paper or Folia server, required dependencies (PlaceholderAPI, ModelEngine, etc.), plugin manifest details (paper-plugin.yml), and the MMOBlockLoader classpath bootstrap process.",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Module Structure",
+      "purpose": "Explains the multi-module Gradle project layout: mmoblock-api, plugin, nms-loader, nms-v* adapters, and platform modules. Describes how they fit together and why the separation exists.",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Plugin Lifecycle & Core Services",
+      "purpose": "Overview of how MMOBlock initializes, coordinates its services, and shuts down. Introduces the RuntimeCoordinator, ECS framework, and the main MMOBlock JavaPlugin class. Links to child pages for each major service.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Startup & Shutdown Sequence",
+      "purpose": "Detailed walkthrough of onEnable() and onDisable(): NMS adapter resolution, database initialization, ECS task scheduling, persistence restore, and graceful cleanup of NMS entities.",
+      "parent": "Plugin Lifecycle & Core Services",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Entity Component System (ECS)",
+      "purpose": "Explains the ECS architecture used internally: EntityManager, SystemManager, SystemBase, and the built-in components (HologramComponent, InteractionComponent, LifespanComponent, PositionComponent) and systems (HologramSystem, InteractionSpawnSystem, InteractionRemoveSystem).",
+      "parent": "Plugin Lifecycle & Core Services",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Admin Commands",
+      "purpose": "Documents the /mmoblock command tree: block and node subcommands (place, remove, get, list), reload subcommands, the Remover Token mechanic, and Brigadier/legacy command registration.",
+      "parent": "Plugin Lifecycle & Core Services",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Block & Node Runtime",
+      "purpose": "Overview of how custom blocks and nodes are managed at runtime: placement, interaction, mining, respawn, and visual synchronization. Links to child pages for blocks and nodes separately.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "BlockRuntimeService — Block Lifecycle",
+      "purpose": "Deep dive into BlockRuntimeService: placement methods (place, placeNodeBlock, placeRandomNodeBlock), interaction and mining pipeline, look protection, respawn/safety logic (grounded support, hemmed-in check, proximity), and visual engine integration (Schematics, BdEngine, ModelEngine).",
+      "parent": "Block & Node Runtime",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "NodeRuntimeService — Node Lifecycle",
+      "purpose": "Explains the Node concept (multi-block resource nodes), NodeRuntimeService, NodeDefinition, PlacedNode, NodeConfigService, NodeRepository, and the block-list hologram display with {block_lists} placeholder.",
+      "parent": "Block & Node Runtime",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Mining System & Drop System",
+      "purpose": "Covers MiningSystem (per-player progress tracking, throttling, eviction), RespawnSystem, DropSystem (drop types: MATERIAL/EXPERIENCE/COMMAND, per-player visibility, explosion velocity, glow/beam visual effects, rainbow cycle, Folia thread safety).",
+      "parent": "Block & Node Runtime",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuration System",
+      "purpose": "Overview of the YAML-based configuration system: the four config domains (blocks, drops, tools, lang), BlockConfigService loading pipeline, and how definitions are validated and reloaded. Links to child pages for each domain.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Block Definitions (blocks/*.yml)",
+      "purpose": "Documents the block YAML schema: item, respawnTime, deadDelay, randomLocation, particleBreak, sound, breakAnimation, hitbox, modelType (block/bdengine/schematics/modelEngine), conditions, allowedTools, and the display/hologram section. Includes annotated examples.",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Drop Tables (drops/*.yml)",
+      "purpose": "Documents the drop YAML schema: material/experience/command drop types, probability (chances), quantity ranges, dropType (inventory/frontGround/centerGround), perPlayer, effectExplosion, effectBeam, and effectGlow. Includes annotated examples.",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Tools & Language Configuration",
+      "purpose": "Documents the tools/*.yml schema (ToolAction: clickNeeded, decreaseDurability, allowedDrops) and the lang/*.yml localization files (en-us, id-id, ja-jp). Explains how messageComponent() resolves localized strings with placeholders.",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Global Config (config.yml)",
+      "purpose": "Documents config.yml settings: debug, bStats, updateChecker, lang, extractDefaultAssets, interactionThrottleMs, database settings (H2/MySQL), progressbar format, and hologram packet tuning (maxUpdatesPerTick, spacing, offset).",
+      "parent": "Configuration System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Visual Systems",
+      "purpose": "Overview of the visual rendering subsystems: holograms, fake blocks, schematics, BdEngine, and ModelEngine integration. Links to child pages for each renderer.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Hologram System",
+      "purpose": "Deep dive into HologramRuntimeService: rendering pipeline (line resolution, layout calculation, backend selection), PacketNmsBackend (PacketSession, redundancy caching, throttled updates, proximity rescan), ECS integration, DisplayLine types (TEXT/ITEM/BLOCK), RenderState (ACTIVE/PROGRESS/DEAD), and animation tags (<anim:wave>, <anim:colors>, <anim:typewriter>, <anim:burn>).",
+      "parent": "Visual Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Fake Block & Schematic Rendering",
+      "purpose": "Explains FakeBlockRegistry, how fake block packets are sent via NmsAdapter (showFakeBlock/clearFakeBlock), FakeBlockPacketHandler Netty injection, and SchematicService (.schem/.schematic file loading, placeFacing, adjustPos, normal/dead states).",
+      "parent": "Visual Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "BdEngine & ModelEngine Integration",
+      "purpose": "Covers BdEngineService (Block Display entity rendering, .bdengine model files, onSpawn/onClick animations, collision lists, size scaling), ModelEngine integration (model attachment, state animations, barrier collision), and the NmsAdapter packet-based BdEngine model system.",
+      "parent": "Visual Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "NMS Abstraction Layer",
+      "purpose": "Overview of the NMS (Native Minecraft Server) abstraction strategy: why it exists, how NmsAdapterRegistry resolves the correct adapter at runtime, and the supported Minecraft versions. Links to child pages for the loader and version-specific adapters.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "NmsAdapter Interface & NmsAdapterRegistry",
+      "purpose": "Documents the NmsAdapter interface (all methods: spawnInteraction, removeInteraction, sendBreakAnimation, showFakeBlock, clearFakeBlock, upsertPacketHologram, upsertPacketBdEngineModel, applyEntityGlow, etc.), NmsAdapterRegistry version resolution algorithm (exact match → fallback), MappingType detection (Mojang vs Spigot), and ServiceLoader/JAR scanning.",
+      "parent": "NMS Abstraction Layer",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Version-Specific NMS Adapters",
+      "purpose": "Describes the per-version adapter modules (nms-v1_21_4, nms-v1_21_1, nms-v1_21_11, nms-v26_1, nms-v26_2, nms-mojang-v1_19_4, nms-mojang-v1_20_4, nms-spigot-v1_19_4, nms-spigot-v1_20_4), their NmsProvider pattern, FakeBlockPacketHandler Netty injection, and how each implements the NmsAdapter interface using direct NMS/CraftBukkit classes.",
+      "parent": "NMS Abstraction Layer",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Platform Abstraction (Paper & Folia)",
+      "purpose": "Explains the platform module: why a Scheduler abstraction is needed for Folia compatibility, the Scheduler interface, PaperScheduler (BukkitScheduler-backed), FoliaScheduler (region/entity/global schedulers), SchedulerTask, and PlatformSchedulerProvider.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Persistence Layer",
+      "purpose": "Overview of the data persistence architecture: DatabaseManager (H2/MySQL via HikariCP), repositories (BlockRepository, RespawnRepository, NodeRepository), DataCache (Caffeine-backed), and the PersistenceSystem/PersistenceReadSystem ECS systems.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Database Schema & Repositories",
+      "purpose": "Documents the SQL schema (mmoblock_block, mmoblock_respawn, mmoblock_node tables), column migration strategy, BlockRepository/RespawnRepository/NodeRepository CRUD operations, and H2 vs MySQL dialect differences.",
+      "parent": "Persistence Layer",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Caching & Async Persistence Systems",
+      "purpose": "Explains DataCache (Caffeine), the PersistenceReadSystem (async startup restore), PersistenceSystem (async save on block break/respawn), and the RespawnRepository for tracking respawn timestamps.",
+      "parent": "Persistence Layer",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Public API (mmoblock-api)",
+      "purpose": "Overview of the mmoblock-api module for third-party plugin developers: MMOBlockApi singleton, ApiProvider, BlockService, NodeService, events, and data model classes. Links to child pages for events and models.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "API Events",
+      "purpose": "Documents all public Bukkit events: BlockMineEvent (isCompleted, getDefinition), BlockPlaceEvent, BlockRemoveEvent, BlockRespawnEvent — their fields, when they fire, and how to listen to them.",
+      "parent": "Public API (mmoblock-api)",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "API Data Models & Services",
+      "purpose": "Documents the public API model classes (PlacedBlock, PlacedNode, BlockDefinition, NodeDefinition, ToolAction, DropEntry, DropType, DropBeam, DropGlow, ConditionDefinition, DisplayLine), result types (PlaceResult, NodePlaceResult), and how to use BlockService/NodeService to place or query blocks programmatically.",
+      "parent": "Public API (mmoblock-api)",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}

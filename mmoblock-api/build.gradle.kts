@@ -50,7 +50,7 @@ project.version = when {
         baseVersion
     }
     else -> {
-        "$baseVersion-RELEASE"
+        "$baseVersion"
     }
 }
 println("Publishing version: ${project.version}")

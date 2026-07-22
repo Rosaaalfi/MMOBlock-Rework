@@ -1,4 +1,4 @@
-package me.chyxelmc.mmoblock.placeholder;
+package me.chyxelmc.mmoblock.api.integration.placeholder;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;

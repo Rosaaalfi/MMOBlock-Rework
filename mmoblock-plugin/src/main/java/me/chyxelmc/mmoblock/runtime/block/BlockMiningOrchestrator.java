@@ -293,6 +293,10 @@ public final class BlockMiningOrchestrator {
             return;
         }
 
+        if (me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.applyCustomDurability(item, decreaseDurability)) {
+            return;
+        }
+
         if (me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.applyCustomDurability(item, decreaseDurability)) {
             return;
         }

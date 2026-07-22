@@ -392,6 +392,7 @@ public final class NodeRuntimeService {
                 false, "", 1.0D, "", "", List.of(),
                 null,
                 null,
+                null,
                 null
         );
     }

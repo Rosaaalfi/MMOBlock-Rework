@@ -1,4 +1,4 @@
-package me.chyxelmc.mmoblock.placeholder;
+package me.chyxelmc.mmoblock.api.integration.placeholder;
 
 import java.util.Map;
 import java.util.UUID;

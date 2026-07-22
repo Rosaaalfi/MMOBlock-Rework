@@ -1,5 +1,7 @@
 exampleDrops:
-  - material: iron_ingot # material to drop
+  - item:
+      type: vanilla
+      material: iron_ingot # material to drop
     total: [ 1-2 ] # 1-2 items
     chances: 0.01 # 1% chance
     dropType: frontGround #inventory, frontGround(front of player), and centerGround(center of entity or block).
@@ -13,7 +15,9 @@ exampleDrops:
       enabled: true # default is false, enable or disable the glow effect, can only be used with centerGround and frontGround dropType.
       color: rainbow # color of the glow effect. You can find a list of colors here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Color.html
 
-  - material: raw_iron # material to drop
+  - item:
+      type: vanilla
+      material: raw_iron # material to drop
     total: [ 1-2 ] # 1-2 items
     chances: 0.4 # 40% chance
     dropType: centerGround #inventory, frontGround(front of player), and centerGround(center of entity or block).
@@ -27,7 +31,9 @@ exampleDrops:
       enabled: true # default is false, enable or disable the glow effect, can only be used with centerGround and frontGround dropType.
       color: white # color of the glow effect. You can find a list of colors here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Color.html
 
-  - material: iron_nugget # material to drop
+  - item:
+      type: vanilla
+      material: iron_nugget # material to drop
     total: [ 1-2 ] # 1-2 items
     chances: 0.2 # 20% chance
     dropType: inventory #inventory, frontGround(front of player), and centerGround(center of entity or block).

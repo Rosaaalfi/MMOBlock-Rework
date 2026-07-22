@@ -1,5 +1,7 @@
 exampleDropsWood:
-  - material: oak_planks # material to drop
+  - item:
+      type: vanilla
+      material: oak_planks # material to drop
     total: [ 1-2 ] # 1-2 items
     chances: 1 # 40% chance
     dropType: frontGround # inventory, frontGround(front of player), and centerGround(center of entity or block).

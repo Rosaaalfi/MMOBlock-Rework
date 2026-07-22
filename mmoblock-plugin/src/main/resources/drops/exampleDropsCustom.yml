@@ -1,5 +1,8 @@
 exampleDropsCustom:
-  - material: itemsadder:iron_crumble # Reference to the custom item defined in ItemsAdder plugin, <namespace>:<item_id>.
+  # Custom item from ItemsAdder plugin, <namespace>:<item_id>. You can use this to define custom drops from ItemsAdder plugin.
+  - item:
+      type: itemsadder
+      material: namespace:iron_crumble # Reference to the custom item defined in ItemsAdder plugin, <namespace>:<item_id>.
     total: [ 1-2 ] # 1-2 items
     chances: 1 # 1% chance
     dropType: frontGround #inventory, frontGround(front of player), and centerGround(center of entity or block).
@@ -12,3 +15,19 @@ exampleDropsCustom:
     effectGlow:
       enabled: true # default is false, enable or disable the glow effect, can only be used with centerGround and frontGround dropType.
       color: rainbow # color of the glow effect. You can find a list of colors here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Color.html
+
+  - item:
+      type: craftengine
+      material: namespace:custom_drop # <namespace>:<item_id> from CraftEngine
+    total: [ 1-2 ] # 1-2 items
+    chances: 0.5 # 50% chance
+    dropType: frontGround #inventory, frontGround(front of player), and centerGround(center of entity or block).
+    perPlayer: true # default is false, only last player to break the block will get the drop.
+    effectExplosion: true # default is false, enable or disable the explosion velocity effect.
+    effectBeam:
+      enabled: true # default is false, enable or disable the beam effect.
+      color: gold # color of the beam effect. Supports: black, navy, dark_green, teal, maroon, purple, gold, silver, blue, lime, cyan, red, pink, yellow, white, rainbow
+      particle: REDSTONE # particle of the beam effect.
+    effectGlow:
+      enabled: true # default is false, enable or disable the glow effect.
+      color: gold # color of the glow effect. Supports: black, navy, dark_green, teal, maroon, purple, gold, silver, blue, lime, cyan, red, pink, yellow, white, rainbow

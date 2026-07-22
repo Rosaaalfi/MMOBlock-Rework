@@ -22,7 +22,8 @@ exampleEntityNodes:
   modelType:
     block:
       enabled: true
-      block: minecraft:iron_ore # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
+      type: vanilla
+      material: minecraft:iron_ore # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
   allowedTools:
     - exampleTools
   conditions:

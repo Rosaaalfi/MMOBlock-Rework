@@ -208,6 +208,7 @@ public final class BlockRuntimeService {
                 this.visualSyncSystem,
                 this.hologramRuntimeService,
                 this.modelApplier,
+                this.schematicService,
                 this.bdEngineService,
                 this.interactionOrchestrator,
                 this.respawnOrchestrator

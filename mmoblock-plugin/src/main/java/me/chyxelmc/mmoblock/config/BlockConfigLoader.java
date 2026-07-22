@@ -22,6 +22,9 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration;
+import me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration;
+import me.chyxelmc.mmoblock.api.integration.MaterialClassification;
 import me.chyxelmc.mmoblock.api.model.DropBeam;
 import me.chyxelmc.mmoblock.api.model.DropGlow;
 import me.chyxelmc.mmoblock.api.model.DropType;
@@ -100,24 +103,21 @@ public final class BlockConfigLoader {
                 final boolean randomLocationEnabled = randomLocation != null && randomLocation.getBoolean("enabled", false);
                 final double randomLocationRadius = randomLocationEnabled ? Math.max(0.0D, randomLocation.getDouble("radius", 0.0D)) : 0.0D;
                 boolean useRealBlockModel = section.getBoolean("modelType.block.enabled", false);
-                final String configuredModelBlock = section.getString("modelType.block.block");
+                final String configuredModelBlock = section.getString("modelType.block.material");
                 if (!useRealBlockModel && configuredModelBlock != null && !configuredModelBlock.isBlank()) {
-                    // Compatibility fallback for older files that only set modelType.block.block.
+                    // Compatibility fallback for older files that only set modelType.block.material.
                     useRealBlockModel = true;
                 }
 
-                // Check for ItemsAdder custom block first
-                final String itemsAdderBlockId;
-                final Material realBlockMaterial;
-                if (configuredModelBlock != null && me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.isItemsAdderId(configuredModelBlock)) {
-                    itemsAdderBlockId = configuredModelBlock;
-                    realBlockMaterial = Material.STONE; // fallback for particle effects
-                } else {
-                    itemsAdderBlockId = null;
-                    realBlockMaterial = parseMaterial(configuredModelBlock == null ? "minecraft:stone" : configuredModelBlock);
-                    if (useRealBlockModel && realBlockMaterial == null) {
-                        report.error("Block '" + key + "' has invalid modelType.block.block material.");
-                    }
+                // Resolve block type: explicit "type" key takes precedence, then auto-detect
+                final String blockType = section.getString("modelType.block.type");
+                final MaterialClassification blockClass = MaterialClassification.resolve(blockType, configuredModelBlock);
+                final String itemsAdderBlockId = blockClass.itemsAdderId();
+                final String craftEngineBlockId = blockClass.craftEngineId();
+                final Material realBlockMaterial = blockClass.material() != null ? blockClass.material()
+                        : (configuredModelBlock != null ? Material.STONE : null); // fallback for particle effects
+                if (useRealBlockModel && blockClass.material() == null && itemsAdderBlockId == null && craftEngineBlockId == null) {
+                    report.error("Block '" + key + "' has invalid modelType.block.material.");
                 }
                 final Sound soundOnClick = parseSound(section.getString("sound.onClick"), "sound.onClick", key, report);
                 final Sound soundOnDead = parseSound(section.getString("sound.onDead"), "sound.onDead", key, report);
@@ -336,7 +336,8 @@ public final class BlockConfigLoader {
                                 betterModelCollisionPositions,
                                 itemName,
                                 itemMaterial,
-                                itemsAdderBlockId
+                                itemsAdderBlockId,
+                                craftEngineBlockId
                         )
                 );
                 loaded++;
@@ -420,7 +421,9 @@ public final class BlockConfigLoader {
 
     public ToolAction resolveToolAction(final BlockDefinitionModel blockDefinition, final org.bukkit.inventory.ItemStack item, final String clickType) {
         final Material material = item == null ? null : item.getType();
-        final boolean isCustomItem = me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.isCustomItem(item);
+        final boolean isItemsAdderCustomItem = me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.isCustomItem(item);
+        final boolean isCraftEngineCustomItem = me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.isCustomItem(item);
+        final boolean isAnyCustomItem = isItemsAdderCustomItem || isCraftEngineCustomItem;
 
         for (final String toolId : blockDefinition.allowedTools()) {
             final List<ToolAction> actions = this.tools.get(toolId.toLowerCase(Locale.ROOT));
@@ -428,14 +431,19 @@ public final class BlockConfigLoader {
                 continue;
             }
             for (final ToolAction action : actions) {
-                if (action.itemsAdderId() != null) {
+                if (action.craftEngineId() != null) {
+                    // CraftEngine tool: match by custom item ID
+                    if (!me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.matchItem(item, action.craftEngineId())) {
+                        continue;
+                    }
+                } else if (action.itemsAdderId() != null) {
                     // ItemsAdder tool: match by custom item ID
                     if (!me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.matchItem(item, action.itemsAdderId())) {
                         continue;
                     }
-                } else if (isCustomItem) {
+                } else if (isAnyCustomItem) {
                     // Held item is a custom item but this tool entry is a vanilla Material —
-                    // custom items must only match ItemsAdder tool entries. Skip.
+                    // custom items must only match specific tool entries. Skip.
                     continue;
                 } else {
                     // Vanilla tool: match by Material enum
@@ -456,15 +464,15 @@ public final class BlockConfigLoader {
      * Used by external API consumers that do not have access to the full ItemStack.
      */
     public ToolAction resolveToolAction(final BlockDefinitionModel blockDefinition, final Material material, final String clickType) {
-        // ItemsAdder tools cannot be matched by Material alone — fall through to null
+        // ItemsAdder/CraftEngine tools cannot be matched by Material alone — fall through to null
         for (final String toolId : blockDefinition.allowedTools()) {
             final List<ToolAction> actions = this.tools.get(toolId.toLowerCase(Locale.ROOT));
             if (actions == null) {
                 continue;
             }
             for (final ToolAction action : actions) {
-                if (action.itemsAdderId() != null) {
-                    continue; // cannot match ItemsAdder tools without ItemStack
+                if (action.craftEngineId() != null || action.itemsAdderId() != null) {
+                    continue; // cannot match custom tools without ItemStack
                 }
                 if (action.material() != material) {
                     continue;
@@ -574,31 +582,36 @@ public final class BlockConfigLoader {
     }
 
     private List<ToolAction> parseToolActions(final Map<?, ?> raw, final String groupId, final ValidationReport report) {
-        final Object materialRaw = raw.get("material");
-        if (!(materialRaw instanceof String materialName)) {
+        // Support both new nested "item" object and legacy top-level "material"
+        final String materialName;
+        final String itemType;
+        final Object itemRaw = raw.get("item");
+        if (itemRaw instanceof Map<?, ?> itemMap) {
+            materialName = itemMap.get("material") != null ? String.valueOf(itemMap.get("material")) : null;
+            itemType = itemMap.get("type") != null ? String.valueOf(itemMap.get("type")).trim().toLowerCase(Locale.ROOT) : null;
+        } else {
+            materialName = raw.get("material") != null ? String.valueOf(raw.get("material")) : null;
+            itemType = null;
+        }
+        if (materialName == null) {
             report.error("Tool group '" + groupId + "' contains entry without material.");
             return List.of();
         }
 
-        final String itemsAdderId;
-        final Material material;
-        if (me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.isItemsAdderId(materialName)) {
-            itemsAdderId = materialName;
-            material = null;
-        } else {
-            itemsAdderId = null;
-            material = Material.matchMaterial(materialName);
-            if (material == null) {
-                report.error("Tool group '" + groupId + "' contains invalid material: " + materialName);
-                return List.of();
-            }
+        final MaterialClassification toolClass = MaterialClassification.resolve(itemType, materialName);
+        final String itemsAdderId = toolClass.itemsAdderId();
+        final String craftEngineId = toolClass.craftEngineId();
+        final Material material = toolClass.material();
+        if (material == null && itemsAdderId == null && craftEngineId == null) {
+            report.error("Tool group '" + groupId + "' contains invalid material: " + materialName);
+            return List.of();
         }
 
         final List<String> allowedDrops = normalizeStringList(raw.get("allowedDrops"));
         final List<ToolAction> actions = new ArrayList<>();
-        parseToolAction(raw, groupId, "both_click", material, itemsAdderId, allowedDrops, actions, report);
-        parseToolAction(raw, groupId, "left_click", material, itemsAdderId, allowedDrops, actions, report);
-        parseToolAction(raw, groupId, "right_click", material, itemsAdderId, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "both_click", material, itemsAdderId, craftEngineId, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "left_click", material, itemsAdderId, craftEngineId, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "right_click", material, itemsAdderId, craftEngineId, allowedDrops, actions, report);
         return actions;
     }
 
@@ -608,6 +621,7 @@ public final class BlockConfigLoader {
             final String clickType,
             final Material material,
             final String itemsAdderId,
+            final String craftEngineId,
             final List<String> allowedDrops,
             final List<ToolAction> actions,
             final ValidationReport report
@@ -623,7 +637,7 @@ public final class BlockConfigLoader {
             report.error("Tool group '" + groupId + "' has invalid clickNeeded <= 0 for " + clickType);
             return;
         }
-        actions.add(new ToolAction(material, clickNeeded, decreaseDurability, allowedDrops, clickType, itemsAdderId));
+        actions.add(new ToolAction(material, clickNeeded, decreaseDurability, allowedDrops, clickType, itemsAdderId, craftEngineId));
     }
 
     private DropEntry parseDropEntry(final Map<?, ?> raw, final String dropId, final ValidationReport report) {
@@ -638,30 +652,35 @@ public final class BlockConfigLoader {
         final DropGlow effectGlow = parseDropGlow(raw);
         final DropBeam effectBeam = parseDropBeam(raw);
 
-        if (raw.containsKey("material")) {
-            final String materialStr = String.valueOf(raw.get("material"));
-            final String itemsAdderId;
-            final Material material;
-            if (me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.isItemsAdderId(materialStr)) {
-                itemsAdderId = materialStr;
-                material = null;
-            } else {
-                itemsAdderId = null;
-                material = Material.matchMaterial(materialStr);
-                if (material == null) {
-                    report.error("Drop group '" + dropId + "' contains invalid material: " + materialStr);
-                    return null;
-                }
+        // Support both new nested "item" object and legacy top-level "material"
+        final String materialStr;
+        final String itemType;
+        final Object itemRaw = raw.get("item");
+        if (itemRaw instanceof Map<?, ?> itemMap) {
+            materialStr = itemMap.get("material") != null ? String.valueOf(itemMap.get("material")) : null;
+            itemType = itemMap.get("type") != null ? String.valueOf(itemMap.get("type")).trim().toLowerCase(Locale.ROOT) : null;
+        } else {
+            materialStr = raw.get("material") != null ? String.valueOf(raw.get("material")) : null;
+            itemType = null;
+        }
+        if (materialStr != null) {
+            final MaterialClassification dropClass = MaterialClassification.resolve(itemType, materialStr);
+            final String itemsAdderId = dropClass.itemsAdderId();
+            final String craftEngineId = dropClass.craftEngineId();
+            final Material material = dropClass.material();
+            if (material == null && itemsAdderId == null && craftEngineId == null) {
+                report.error("Drop group '" + dropId + "' contains invalid material: " + materialStr);
+                return null;
             }
             final int[] range = parseRange(raw.get("total"), 1, 1);
-            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam, itemsAdderId);
+            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam, itemsAdderId, craftEngineId);
         }
         if (raw.containsKey("experience")) {
             final int[] range = parseRange(raw.get("experience"), 1, 1);
-            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null, null);
+            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null, null, null);
         }
         if (raw.containsKey("command")) {
-            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null, null);
+            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null, null, null);
         }
         report.warn("Drop group '" + dropId + "' contains unsupported drop entry: " + raw);
         return null;

@@ -56,12 +56,23 @@ public interface BlockDefinition {
     String itemName();
     Material itemMaterial();
 
+    // ---- Third-party block integration IDs ----
+
     /**
      * ItemsAdder namespaced block ID for {@code modelType.block}, e.g. {@code "itemsadder:example_block"}.
      * When non-null, the block model is placed as a real ItemsAdder custom block instead of
      * sending a fake block packet with {@link #realBlockMaterial()}.
      */
     default String itemsAdderBlockId() {
+        return null;
+    }
+
+    /**
+     * CraftEngine namespaced block ID for {@code modelType.block}, e.g. {@code "craftengine:custom_block"}.
+     * When non-null, the block model is placed as a real CraftEngine custom block instead of
+     * sending a fake block packet with {@link #realBlockMaterial()}.
+     */
+    default String craftEngineBlockId() {
         return null;
     }
 }

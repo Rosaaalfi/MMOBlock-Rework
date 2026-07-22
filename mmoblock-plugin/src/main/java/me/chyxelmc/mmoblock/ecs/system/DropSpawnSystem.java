@@ -84,7 +84,12 @@ public final class DropSpawnSystem implements Listener {
             return;
         }
         final ItemStack stack;
-        if (entry.itemsAdderId() != null) {
+        if (entry.craftEngineId() != null) {
+            stack = me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.getItemStack(entry.craftEngineId(), amount);
+            if (stack == null) {
+                return;
+            }
+        } else if (entry.itemsAdderId() != null) {
             stack = me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.getItemStack(entry.itemsAdderId(), amount);
             if (stack == null) {
                 return;

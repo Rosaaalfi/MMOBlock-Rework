@@ -26,8 +26,8 @@ import me.chyxelmc.mmoblock.persistence.BlockRepository;
 import me.chyxelmc.mmoblock.persistence.RespawnRepository;
 import me.chyxelmc.mmoblock.persistence.cache.DataCache;
 import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
-import me.chyxelmc.mmoblock.placeholder.HologramPlaceholderContextStore;
-import me.chyxelmc.mmoblock.placeholder.MMOBlockPlaceholderExpansion;
+import me.chyxelmc.mmoblock.api.integration.placeholder.HologramPlaceholderContextStore;
+import me.chyxelmc.mmoblock.api.integration.placeholder.MMOBlockPlaceholderExpansion;
 import me.chyxelmc.mmoblock.platform.PlatformSchedulerProvider;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
@@ -487,7 +487,9 @@ public final class MMOBlock extends JavaPlugin{
             // PluginCommand constructor is package-private; no public API for dynamic command registration.
             // This is a documented Bukkit pattern for plugins that need to register commands at runtime.
             final Constructor<PluginCommand> constructor = PluginCommand.class.getDeclaredConstructor(String.class, Plugin.class);
-            me.chyxelmc.mmoblock.nms.utils.ReflectionUtil.safeSetAccessible(constructor, "PluginCommand constructor for dynamic command registration (documented Bukkit pattern)");
+            // PluginCommand constructor is package-private; this is a documented Bukkit pattern.
+            // No need to log at WARNING level — this is intentional and well-known.
+            constructor.setAccessible(true);
             final PluginCommand dynamic = constructor.newInstance(CMD_NAME, this);
             dynamic.setDescription("Manage MMOBlock interaction entities");
             dynamic.setUsage("/mmoblock");
@@ -524,6 +526,10 @@ public final class MMOBlock extends JavaPlugin{
 
     public me.chyxelmc.mmoblock.runtime.BlockRuntimeService blockRuntimeService() {
         return this.blockRuntimeService;
+    }
+
+    public DatabaseUtils databaseUtils() {
+        return this.databaseUtils;
     }
 
     public me.chyxelmc.mmoblock.config.BlockConfigLoader blockConfigService() {
