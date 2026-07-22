@@ -7,6 +7,7 @@
 ### *Unblock the Fun, One Click at a Time.*
 
 [![Build](https://img.shields.io/github/actions/workflow/status/Rosaaalfi/MMOBlock-Rework/gradle.yml?style=for-the-badge&label=Build&labelColor=1A1B26&color=2EA043&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/actions)
+[![Code Quality Badge](https://img.shields.io/codacy/grade/372316daf86d4bfeb5d01b4d53473782?style=for-the-badge&label=Code%20Quality&labelColor=1A1B26&logo=codacy)](https://app.codacy.com/gh/Rosaaalfi/MMOBlock-Rework/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?style=for-the-badge&label=Issues&labelColor=1A1B26&color=D15794&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
 [![Chyxel Repository](https://img.shields.io/badge/Chyxel_Repository-v3.5.0--RELEASE-007ACC?style=for-the-badge&labelColor=1A1B26&logo=apachemaven)](https://repo.chyxelmc.me/home/)
 
