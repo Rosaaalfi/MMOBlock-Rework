@@ -10,6 +10,7 @@ public interface PlacedNode {
     double x();
     double y();
     double z();
+    @SuppressWarnings("java:S1452")
     List<? extends NodeBlockEntry> blocks();
 
     interface NodeBlockEntry {

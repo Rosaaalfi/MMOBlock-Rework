@@ -1,0 +1,181 @@
+package me.chyxelmc.mmoblock.runtime.block;
+
+import java.util.Set;
+import java.util.UUID;
+
+import org.bukkit.World;
+
+import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.config.BlockConfigLoader;
+import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
+import me.chyxelmc.mmoblock.ecs.BlockEcsState;
+import me.chyxelmc.mmoblock.ecs.system.BlockRespawnSystem;
+import me.chyxelmc.mmoblock.ecs.system.LifecycleSystem;
+import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
+import me.chyxelmc.mmoblock.ecs.system.VisualSyncSystem;
+import me.chyxelmc.mmoblock.runtime.BlockRuntimeService.PlaceResult;
+import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
+import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
+import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
+
+public final class BlockLifecycleOrchestrator {
+
+    private final MMOBlock plugin;
+    private final BlockConfigLoader blockConfigService;
+    private final PersistenceSystem persistenceSystem;
+    private final BlockEcsState ecsState;
+    private final BlockRespawnSystem respawnSystem;
+    private final LifecycleSystem lifecycleSystem;
+    private final VisualSyncSystem visualSyncSystem;
+    private final HologramRuntimeService hologramRuntimeService;
+    private final BlockModelApplier modelApplier;
+    private final BlockInteractionOrchestrator interactionOrchestrator;
+    private final BlockEventDispatcher eventDispatcher;
+    private final Set<UUID> transientBlocks;
+    private final Set<UUID> suppressDeadHologram;
+
+    public BlockLifecycleOrchestrator(
+            final MMOBlock plugin,
+            final BlockConfigLoader blockConfigService,
+            final PersistenceSystem persistenceSystem,
+            final BlockEcsState ecsState,
+            final BlockRespawnSystem respawnSystem,
+            final LifecycleSystem lifecycleSystem,
+            final VisualSyncSystem visualSyncSystem,
+            final HologramRuntimeService hologramRuntimeService,
+            final BlockModelApplier modelApplier,
+            final BlockInteractionOrchestrator interactionOrchestrator,
+            final BlockEventDispatcher eventDispatcher,
+            final Set<UUID> transientBlocks,
+            final Set<UUID> suppressDeadHologram
+    ) {
+        this.plugin = plugin;
+        this.blockConfigService = blockConfigService;
+        this.persistenceSystem = persistenceSystem;
+        this.ecsState = ecsState;
+        this.respawnSystem = respawnSystem;
+        this.lifecycleSystem = lifecycleSystem;
+        this.visualSyncSystem = visualSyncSystem;
+        this.hologramRuntimeService = hologramRuntimeService;
+        this.modelApplier = modelApplier;
+        this.interactionOrchestrator = interactionOrchestrator;
+        this.eventDispatcher = eventDispatcher;
+        this.transientBlocks = transientBlocks;
+        this.suppressDeadHologram = suppressDeadHologram;
+    }
+
+    public PlaceResult place(
+            final String type,
+            final World world,
+            final double x,
+            final double y,
+            final double z,
+            final String facing,
+            final boolean persist,
+            final boolean suppressDead
+    ) {
+        final BlockDefinitionModel definition = this.blockConfigService.findBlock(type);
+        if (definition == null) {
+            return PlaceResult.error("Unknown block id: " + type);
+        }
+
+        if (this.ecsState.containsAt(world.getName(), x, y, z)) {
+            return PlaceResult.error("Block already exists at that position");
+        }
+
+        final UUID uniqueId = UUID.randomUUID();
+        final PlacedBlockModel placedBlock = new PlacedBlockModel(uniqueId, definition.id(), world.getName(), x, y, z, facing, LifecycleSystem.STATUS_ACTIVE);
+
+        this.ecsState.putBlock(placedBlock);
+
+        if (isChunkLoaded(world, x, z) && !this.interactionOrchestrator.spawn(placedBlock, definition, world)) {
+            this.ecsState.removeBlock(placedBlock.uniqueId());
+            return PlaceResult.error("Failed to spawn interaction entity");
+        }
+
+        this.eventDispatcher.callPlace(placedBlock, definition);
+        if (persist) {
+            this.persistenceSystem.persistBlockAsync(placedBlock);
+        } else {
+            this.transientBlocks.add(uniqueId);
+        }
+        if (suppressDead) {
+            this.suppressDeadHologram.add(uniqueId);
+        }
+        if (isChunkLoaded(world, x, z)) {
+            this.hologramRuntimeService.showActive(placedBlock, definition);
+        }
+        return PlaceResult.success(placedBlock);
+    }
+
+    public boolean remove(final String type, final World world, final double x, final double y, final double z) {
+        final PlacedBlockModel placedBlock = this.ecsState.blockAt(world.getName(), x, y, z);
+        if (placedBlock == null) {
+            return false;
+        }
+        if (!placedBlock.type().equalsIgnoreCase(type)) {
+            return false;
+        }
+
+        clearVisuals(placedBlock);
+        this.interactionOrchestrator.despawn(placedBlock);
+        this.respawnSystem.cancel(placedBlock.uniqueId());
+        this.ecsState.removeBlock(placedBlock.uniqueId());
+        this.eventDispatcher.callRemove(placedBlock);
+        this.hologramRuntimeService.remove(placedBlock);
+        if (!this.transientBlocks.contains(placedBlock.uniqueId())) {
+            this.persistenceSystem.deleteBlockAsync(placedBlock.uniqueId());
+            this.persistenceSystem.deleteRespawnAsync(placedBlock.uniqueId());
+        }
+        unregisterNodeBlock(placedBlock.uniqueId());
+        return true;
+    }
+
+    public void cleanupMissingDefinition(final PlacedBlockModel block) {
+        this.respawnSystem.cancel(block.uniqueId());
+        clearVisuals(block);
+        this.interactionOrchestrator.despawn(block);
+        this.ecsState.removeBlock(block.uniqueId());
+        this.hologramRuntimeService.remove(block);
+        this.persistenceSystem.deleteBlockAsync(block.uniqueId());
+        this.persistenceSystem.deleteRespawnAsync(block.uniqueId());
+    }
+
+    public void registerNodeBlock(final UUID blockUniqueId) {
+        if (blockUniqueId == null) {
+            return;
+        }
+        this.transientBlocks.add(blockUniqueId);
+        this.suppressDeadHologram.add(blockUniqueId);
+    }
+
+    public void unregisterNodeBlock(final UUID blockUniqueId) {
+        if (blockUniqueId == null) {
+            return;
+        }
+        this.transientBlocks.remove(blockUniqueId);
+        this.suppressDeadHologram.remove(blockUniqueId);
+    }
+
+    private void clearVisuals(final PlacedBlockModel block) {
+        final World world = this.plugin.getServer().getWorld(block.world());
+        if (world == null) {
+            return;
+        }
+        final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
+        if (definition != null) {
+            this.visualSyncSystem.clearRealBlockModel(block, definition, world);
+        }
+        this.modelApplier.clearSchematicModel(block, world);
+        this.modelApplier.clearBdEngineModel(block, world);
+        this.modelApplier.clearModelEngineModel(block, world);
+        this.modelApplier.clearModelEngineCollision(block, world);
+        this.modelApplier.clearBetterModelModel(block, world);
+        this.modelApplier.clearBetterModelCollision(block, world);
+    }
+
+    private static boolean isChunkLoaded(final World world, final double x, final double z) {
+        return world != null && world.isChunkLoaded((int) Math.floor(x) >> 4, (int) Math.floor(z) >> 4);
+    }
+}

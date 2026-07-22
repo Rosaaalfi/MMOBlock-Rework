@@ -1,0 +1,582 @@
+package me.chyxelmc.mmoblock;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.Locale;
+
+import org.bukkit.Bukkit;
+import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import me.chyxelmc.mmoblock.api.ApiProvider;
+import me.chyxelmc.mmoblock.api.MMOBlockApiImpl;
+import me.chyxelmc.mmoblock.command.MMOBlockCommand;
+import me.chyxelmc.mmoblock.config.BlockConfigLoader;
+import me.chyxelmc.mmoblock.listener.ChunkLifecycleListener;
+import me.chyxelmc.mmoblock.listener.PlatformSyncListener;
+import me.chyxelmc.mmoblock.listener.HologramCleanupListener;
+import me.chyxelmc.mmoblock.listener.InteractionListener;
+import me.chyxelmc.mmoblock.nms.NmsAdapter;
+import me.chyxelmc.mmoblock.nms.NmsAdapterRegistry;
+import me.chyxelmc.mmoblock.ecs.EntityManager;
+import me.chyxelmc.mmoblock.ecs.SystemManager;
+import me.chyxelmc.mmoblock.persistence.BlockRepository;
+import me.chyxelmc.mmoblock.persistence.RespawnRepository;
+import me.chyxelmc.mmoblock.persistence.cache.DataCache;
+import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
+import me.chyxelmc.mmoblock.placeholder.HologramPlaceholderContextStore;
+import me.chyxelmc.mmoblock.placeholder.MMOBlockPlaceholderExpansion;
+import me.chyxelmc.mmoblock.platform.PlatformSchedulerProvider;
+import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
+import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
+import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
+import me.chyxelmc.mmoblock.runtime.RuntimeCoordinator;
+import me.chyxelmc.mmoblock.ecs.system.InteractionSpawnSystem;
+import me.chyxelmc.mmoblock.ecs.system.PacketHologramSyncSystem;
+import me.chyxelmc.mmoblock.ecs.system.PersistenceReadSystem;
+import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
+import me.chyxelmc.mmoblock.utils.DatabaseUtils;
+import me.chyxelmc.mmoblock.utils.analytics.Metrics;
+
+public final class MMOBlock extends JavaPlugin{
+
+    private NmsAdapter nmsAdapter;
+    private EntityManager entityManager;
+    private SystemManager systemManager;
+    private Scheduler scheduler;
+    private SchedulerTask ecsTask;
+    private BlockConfigLoader blockConfigService;
+    private me.chyxelmc.mmoblock.config.NodeConfigLoader nodeConfigService;
+    private DatabaseUtils databaseUtils;
+    private DatabaseManager databaseManager;
+    private DataCache dataCache;
+    private BlockRepository blockRepository;
+    private RespawnRepository respawnRepository;
+    private me.chyxelmc.mmoblock.persistence.NodeRepository nodeRepository;
+    private BlockRuntimeService blockRuntimeService;
+    private me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService;
+    private RuntimeCoordinator runtimeCoordinator;
+    private HologramPlaceholderContextStore placeholderContextStore;
+    private MMOBlockPlaceholderExpansion placeholderExpansion;
+    private Method placeholderApiSetMethod;
+    private MMOBlockApiImpl apiImpl;
+    private volatile boolean ready;
+    private static final String PERMISSION = "mmoblock.admin";
+    private static final String CMD_NAME = "mmoblock";
+
+    public boolean isReady() {
+        return this.ready;
+    }
+
+    @Override
+    public void onEnable() {
+
+        saveDefaultConfig();
+        this.scheduler = PlatformSchedulerProvider.createScheduler(this);
+        me.chyxelmc.mmoblock.nms.utils.ReflectionUtil.init(getLogger());
+        this.nmsAdapter = NmsAdapterRegistry.resolveCurrent(getLogger());
+        this.nmsAdapter.validateNms();
+
+        this.blockConfigService = new BlockConfigLoader(this);
+        this.blockConfigService.reloadAll();
+
+        this.nodeConfigService = new me.chyxelmc.mmoblock.config.NodeConfigLoader(this);
+        this.nodeConfigService.reloadNodes();
+
+        this.databaseUtils = new DatabaseUtils();
+        this.databaseManager = new DatabaseManager(this, this.databaseUtils);
+        this.databaseManager.initialize();
+        this.dataCache = new DataCache();
+        this.blockRepository = new BlockRepository(this.databaseManager, this.dataCache);
+        this.respawnRepository = new RespawnRepository(this.databaseManager, this.dataCache);
+        this.nodeRepository = new me.chyxelmc.mmoblock.persistence.NodeRepository(this.databaseManager, this.dataCache);
+        final PersistenceReadSystem persistenceReadSystem = new PersistenceReadSystem(this.blockRepository, this.respawnRepository, this.dataCache);
+        final PersistenceSystem persistenceSystem = new PersistenceSystem(this, this.scheduler, this.blockRepository, this.respawnRepository, this.dataCache);
+        this.blockRuntimeService = new BlockRuntimeService(
+            this,
+            this.nmsAdapter,
+            this.scheduler,
+            this.blockConfigService,
+            persistenceReadSystem,
+            persistenceSystem,
+            this.dataCache
+        );
+        this.nodeRuntimeService = new me.chyxelmc.mmoblock.runtime.NodeRuntimeService(
+                this,
+                this.nmsAdapter,
+                this.scheduler,
+                this.blockConfigService,
+                this.nodeConfigService,
+                this.blockRuntimeService,
+                this.nodeRepository,
+                this.dataCache
+        );
+        this.placeholderContextStore = new HologramPlaceholderContextStore();
+        initializePlaceholderApiBridge();
+        // Register FakeBlockPacketHandler checker if available (best-effort via reflection).
+        try {
+            final String handlerPkg = this.nmsAdapter.getClass().getPackage().getName();
+            final String handlerClassName = handlerPkg + ".FakeBlockPacketHandler";
+            final String checkerClassName = handlerPkg + ".FakeBlockPacketHandler$FakeBlockChecker";
+            validateFakeHandlerClassName(handlerClassName);
+            validateFakeHandlerClassName(checkerClassName);
+            final Class<?> handlerClass = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(handlerClassName);
+            final Class<?> checkerIface = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(checkerClassName);
+            final Object proxy = java.lang.reflect.Proxy.newProxyInstance(
+                    checkerIface.getClassLoader(),
+                    new Class[]{checkerIface},
+                    (proxyObj, method, args) -> {
+                        try {
+                            final org.bukkit.entity.Player p = (org.bukkit.entity.Player) args[0];
+                            final Object blockPos = args[1];
+                            if (p == null || blockPos == null) return false;
+                            final int x = (int) blockPos.getClass().getMethod("getX").invoke(blockPos);
+                            final int y = (int) blockPos.getClass().getMethod("getY").invoke(blockPos);
+                            final int z = (int) blockPos.getClass().getMethod("getZ").invoke(blockPos);
+                            return me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.contains(p.getWorld().getName(), x, y, z);
+                        } catch (final Exception t) {
+                            return false;
+                        }
+                    }
+            );
+            final java.lang.reflect.Method setChecker = handlerClass.getMethod("setFakeChecker", checkerIface);
+            setChecker.invoke(null, proxy);
+        } catch (final Exception ignored) {
+        // expected - reflection fallback
+        }
+        this.runtimeCoordinator = new RuntimeCoordinator(persistenceReadSystem, this.blockRuntimeService, this.nodeRuntimeService);
+
+        this.apiImpl = new MMOBlockApiImpl(
+                this.blockRuntimeService,
+                this.blockConfigService,
+                this.nodeRuntimeService,
+                this.nodeConfigService
+        );
+        ApiProvider.register(this.apiImpl);
+
+        if (getConfig().getBoolean("bStats", true)) {
+            new Metrics(this, 30727);
+        }
+
+        final MMOBlockCommand commandExecutor = new MMOBlockCommand(
+                this,
+                this.blockConfigService,
+                this.nodeConfigService,
+                this.blockRuntimeService,
+                this.nodeRuntimeService,
+                this.runtimeCoordinator
+        );
+        if (!tryRegisterPaperCommand(commandExecutor)) {
+            final PluginCommand mmoblockCommand = resolveOrRegisterMmoBlockCommand();
+                if (mmoblockCommand != null) {
+                mmoblockCommand.setExecutor(commandExecutor);
+                mmoblockCommand.setTabCompleter(commandExecutor);
+                mmoblockCommand.setPermission(PERMISSION);
+            } else {
+                // logging removed
+            }
+        } else {
+            // logging removed
+        }
+
+        getServer().getPluginManager().registerEvents(
+                new InteractionListener(this, this.blockRuntimeService, this.nodeRuntimeService, this.blockConfigService, this.nodeConfigService),
+                this
+        );
+        getServer().getPluginManager().registerEvents(new PlatformSyncListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService), this);
+        getServer().getPluginManager().registerEvents(new ChunkLifecycleListener(this.blockRuntimeService, this.nodeRuntimeService), this);
+        final java.util.function.Consumer<java.util.UUID> hologramCleanup = playerId -> {
+                    if (this.systemManager == null) {
+                        return;
+                    }
+                    final PacketHologramSyncSystem holo = this.systemManager.getSystem(PacketHologramSyncSystem.class);
+                    if (holo != null) holo.removePlayerEntries(playerId);
+                };
+        getServer().getPluginManager().registerEvents(new HologramCleanupListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService, hologramCleanup), this);
+
+        this.runtimeCoordinator.restoreFromPersistence();
+
+        // Setup ECS integration: create managers/systems and schedule ticking every server tick
+        try {
+            this.entityManager = new EntityManager();
+            // Provide a callback so that when the ECS InteractionSpawnSystem successfully
+            // spawns an NMS interaction, the plugin updates the corresponding PlacedBlock
+            // with the spawned interaction UUID.
+            this.systemManager = new SystemManager();
+            this.systemManager.register(new InteractionSpawnSystem(this.nmsAdapter, (blockId, nmsEntityId) -> {
+                try {
+                    if (this.blockRuntimeService != null) {
+                        this.blockRuntimeService.onInteractionSpawned(blockId, nmsEntityId);
+                    }
+                } catch (final Exception ignored) {
+                    // expected - reflection fallback
+                }
+            }));
+            this.systemManager.register(new PacketHologramSyncSystem(this.nmsAdapter));
+            // Provide the entity manager to BlockRuntimeService so it can create ECS entities
+            try {
+                this.blockRuntimeService.setEntityManager(this.entityManager);
+            } catch (final Exception ignored) {
+            // expected - reflection fallback
+            }
+            try {
+                this.nodeRuntimeService.setEntityManager(this.entityManager);
+            } catch (final Exception ignored) {
+            // expected - reflection fallback
+            }
+        // schedule tick at 1 tick interval
+            this.ecsTask = this.scheduler.runTimer(() -> {
+                try {
+                    this.systemManager.tick(this.entityManager, System.currentTimeMillis());
+                } catch (final Exception t) {
+                    // logging removed
+                }
+            }, 1L, 1L);
+        } catch (final RuntimeException ex) {
+            // logging removed
+            this.entityManager = null;
+            this.systemManager = null;
+        }
+
+        for (final Player player : Bukkit.getOnlinePlayers()) {
+            this.nmsAdapter.sendSystemMessage(player, "MMOBlock active on NMS " + this.nmsAdapter.targetMinecraftVersion());
+            // Ensure the per-player Netty handler is injected for players already online when the
+            // plugin enables. FakeBlockSyncListener injects on join, but this covers the case
+            // where the plugin was (re)loaded while players were online.
+            try {
+                final String clsName = fakePacketHandlerClassName();
+                if (clsName != null) {
+                    validateFakeHandlerClassName(clsName);
+                    final Class<?> cls = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(clsName);
+                    final java.lang.reflect.Method inject = cls.getMethod("inject", org.bukkit.entity.Player.class);
+                    inject.invoke(null, player);
+                }
+            } catch (final Exception ignored) {
+            // expected - reflection fallback
+            }
+            syncPlayerVisualsNowAndDelayed(player);
+        }
+
+        this.ready = true;
+    }
+
+    /**
+     * Returns the fully-qualified FakeBlockPacketHandler class name for the active NMS adapter,
+     * or null if no adapter is available.
+     */
+    public String fakePacketHandlerClassName() {
+        if (this.nmsAdapter == null) return null;
+        return this.nmsAdapter.getClass().getPackage().getName() + ".FakeBlockPacketHandler";
+    }
+
+    /**
+     * Validates that a class name is within the allowed NMS handler package before
+     * reflective loading. Throws {@link IllegalArgumentException} if the name is
+     * not on the allowlist.
+     */
+    public static void validateFakeHandlerClassName(final String clsName) {
+        if (clsName == null) {
+            throw new IllegalArgumentException("Class name must not be null");
+        }
+        if (!clsName.startsWith("me.chyxelmc.mmoblock.nms.")) {
+            throw new IllegalArgumentException("Unauthorized class name outside allowed package: " + clsName);
+        }
+        if (!clsName.contains("FakeBlockPacketHandler")) {
+            throw new IllegalArgumentException("Unauthorized class name: " + clsName);
+        }
+    }
+
+
+    @Override
+    public void onDisable() {
+        if (this.placeholderExpansion != null) {
+            try {
+                this.placeholderExpansion.unregister();
+            } catch (final Exception ignored) {
+            // expected - reflection fallback
+            }
+        }
+        this.placeholderExpansion = null;
+        this.placeholderApiSetMethod = null;
+        if (this.placeholderContextStore != null) {
+            this.placeholderContextStore.clear();
+            this.placeholderContextStore = null;
+        }
+        if (this.blockRuntimeService != null) {
+            this.runtimeCoordinator.shutdown();
+            this.blockRuntimeService = null;
+            this.nodeRuntimeService = null;
+        }
+        this.runtimeCoordinator = null;
+        if (this.databaseManager != null) {
+            this.databaseManager.close();
+            this.databaseManager = null;
+        }
+        if (this.databaseUtils != null) {
+            this.databaseUtils.close();
+            this.databaseUtils = null;
+        }
+        if (this.dataCache != null) {
+            this.dataCache.clear();
+            this.dataCache = null;
+        }
+        this.blockRepository = null;
+        this.respawnRepository = null;
+        this.nodeRepository = null;
+        this.blockConfigService = null;
+        this.nodeConfigService = null;
+        ApiProvider.register(null);
+        this.apiImpl = null;
+        // Cleanup ECS-managed NMS entities and holograms
+        try {
+            if (this.ecsTask != null) {
+                this.ecsTask.cancel();
+                this.ecsTask = null;
+            }
+            if (this.entityManager != null && this.nmsAdapter != null) {
+                this.systemManager.tick(this.entityManager, System.currentTimeMillis());
+            }
+        } catch (final Exception ignored) {
+        // expected - reflection fallback
+        }
+
+        // Best-effort cleanup: uninject per-player handlers to avoid lingering pipeline state.
+        try {
+            final String clsName = fakePacketHandlerClassName();
+            if (clsName != null) {
+                validateFakeHandlerClassName(clsName);
+                final Class<?> cls = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(clsName);
+                final java.lang.reflect.Method uninject = cls.getMethod("uninject", org.bukkit.entity.Player.class);
+                for (final Player p : Bukkit.getOnlinePlayers()) {
+                    try {
+                        uninject.invoke(null, p);
+                    } catch (final Exception ignored) {
+                    // expected - reflection fallback
+                    }
+                }
+            }
+        } catch (final Exception ignored) {
+        // expected - reflection fallback
+        }
+        this.entityManager = null;
+        this.systemManager = null;
+        this.nmsAdapter = null;
+        me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.clear();
+    }
+
+    private void syncPlayerVisualsNowAndDelayed(final Player player) {
+        if (this.blockRuntimeService == null || player == null || !player.isOnline()) {
+            return;
+        }
+        final var loc = player.getLocation();
+        this.blockRuntimeService.syncFakeBlocksForPlayer(player);
+        if (this.nodeRuntimeService != null) {
+            this.nodeRuntimeService.syncForPlayer(player);
+        }
+        this.scheduler.runAtLocationLater(loc, () -> {
+            if (this.blockRuntimeService != null && player.isOnline()) {
+                this.blockRuntimeService.syncFakeBlocksForPlayer(player);
+                if (this.nodeRuntimeService != null) {
+                    this.nodeRuntimeService.syncForPlayer(player);
+                }
+            }
+        }, 2L);
+        this.scheduler.runAtLocationLater(loc, () -> {
+            if (this.blockRuntimeService != null && player.isOnline()) {
+                this.blockRuntimeService.syncFakeBlocksForPlayer(player);
+                if (this.nodeRuntimeService != null) {
+                    this.nodeRuntimeService.syncForPlayer(player);
+                }
+            }
+        }, 20L);
+    }
+
+    private boolean tryRegisterPaperCommand(final MMOBlockCommand commandExecutor) {
+        try {
+            final Class<?> basicCommandClass = Class.forName("io.papermc.paper.command.brigadier.BasicCommand");
+            final Class<?> sourceStackClass = Class.forName("io.papermc.paper.command.brigadier.CommandSourceStack");
+
+            final Object basicCommand = java.lang.reflect.Proxy.newProxyInstance(
+                basicCommandClass.getClassLoader(),
+                new Class[]{basicCommandClass},
+                (proxy, method, args) -> {
+                    final String name = method.getName();
+                    if ("execute".equals(name) && args != null && args.length == 2) {
+                        final org.bukkit.command.CommandSender sender = (org.bukkit.command.CommandSender) sourceStackClass.getMethod("getSender").invoke(args[0]);
+                        commandExecutor.onCommand(sender, null, CMD_NAME, (String[]) args[1]);
+                        return null;
+                    }
+                    if ("suggest".equals(name) && args != null && args.length == 2) {
+                        final org.bukkit.command.CommandSender sender = (org.bukkit.command.CommandSender) sourceStackClass.getMethod("getSender").invoke(args[0]);
+                        return commandExecutor.onTabComplete(sender, null, CMD_NAME, (String[]) args[1]);
+                    }
+                    if ("permission".equals(name)) {
+                        return PERMISSION;
+                    }
+                    if ("toString".equals(name)) {
+                        return "MMOBlockBasicCommandProxy";
+                    }
+                    if (!method.getReturnType().isPrimitive()) {
+                        return null;
+                    }
+                    if (method.getReturnType() == boolean.class) {
+                        return false;
+                    }
+                    if (method.getReturnType() == char.class) {
+                        return '\0';
+                    }
+                    if (method.getReturnType() == byte.class) {
+                        return (byte) 0;
+                    }
+                    if (method.getReturnType() == short.class) {
+                        return (short) 0;
+                    }
+                    if (method.getReturnType() == int.class) {
+                        return 0;
+                    }
+                    if (method.getReturnType() == long.class) {
+                        return 0L;
+                    }
+                    if (method.getReturnType() == float.class) {
+                        return 0.0F;
+                    }
+                    if (method.getReturnType() == double.class) {
+                        return 0.0D;
+                    }
+                    return null;
+                }
+            );
+
+            final java.lang.reflect.Method registerCommand = org.bukkit.plugin.java.JavaPlugin.class.getMethod(
+                "registerCommand",
+                String.class,
+                String.class,
+                java.util.List.class,
+                basicCommandClass
+            );
+            registerCommand.invoke(this, CMD_NAME, "Manage MMOBlock interaction entities", java.util.List.of(), basicCommand);
+            return true;
+        } catch (final ReflectiveOperationException | LinkageError exception) {
+            return false;
+        }
+    }
+    private PluginCommand resolveOrRegisterMmoBlockCommand() {
+        PluginCommand command = null;
+        try {
+            command = getCommand(CMD_NAME);
+        } catch (final UnsupportedOperationException ignored) {
+            // Paper plugins may not support YAML command declarations.
+        }
+        if (command == null) {
+            command = Bukkit.getPluginCommand(CMD_NAME);
+        }
+        if (command != null) {
+            if (command.getPlugin() != this) {
+                getLogger().severe("Cannot bind /mmoblock: command already owned by plugin " + command.getPlugin().getName());
+                return null;
+            }
+            return command;
+        }
+        return registerDynamicMmoBlockCommand();
+    }
+
+    private PluginCommand registerDynamicMmoBlockCommand() {
+        try {
+            // PluginCommand constructor is package-private; no public API for dynamic command registration.
+            // This is a documented Bukkit pattern for plugins that need to register commands at runtime.
+            final Constructor<PluginCommand> constructor = PluginCommand.class.getDeclaredConstructor(String.class, Plugin.class);
+            me.chyxelmc.mmoblock.nms.utils.ReflectionUtil.safeSetAccessible(constructor, "PluginCommand constructor for dynamic command registration (documented Bukkit pattern)");
+            final PluginCommand dynamic = constructor.newInstance(CMD_NAME, this);
+            dynamic.setDescription("Manage MMOBlock interaction entities");
+            dynamic.setUsage("/mmoblock");
+            dynamic.setPermission(PERMISSION);
+
+            final Method getCommandMap = getServer().getClass().getMethod("getCommandMap");
+            final Object commandMap = getCommandMap.invoke(getServer());
+            if (commandMap == null) {
+                // logging removed
+                return null;
+            }
+
+            final Method register = commandMap.getClass().getMethod("register", String.class, org.bukkit.command.Command.class);
+            final String fallbackPrefix = getDescription().getName().toLowerCase(Locale.ROOT);
+            final boolean registered = (boolean) register.invoke(commandMap, fallbackPrefix, dynamic);
+            if (!registered) {
+                // logging removed
+            }
+
+            final PluginCommand resolved = Bukkit.getPluginCommand(CMD_NAME);
+            if (resolved == null) {
+                // logging removed
+            }
+            return resolved;
+        } catch (final ReflectiveOperationException exception) {
+            // logging removed
+            return null;
+        }
+    }
+
+    public Scheduler scheduler() {
+        return this.scheduler;
+    }
+
+    public me.chyxelmc.mmoblock.runtime.BlockRuntimeService blockRuntimeService() {
+        return this.blockRuntimeService;
+    }
+
+    public me.chyxelmc.mmoblock.config.BlockConfigLoader blockConfigService() {
+        return this.blockConfigService;
+    }
+
+    public HologramPlaceholderContextStore placeholderContextStore() {
+        return this.placeholderContextStore;
+    }
+
+    public String applyHologramPlaceholderApi(
+            final Player player,
+            final String text,
+            final int progress,
+            final int maxProgress,
+            final long respawnTimeSeconds
+    ) {
+        if (player == null || text == null || text.isEmpty()) {
+            return text;
+        }
+        final Method method = this.placeholderApiSetMethod;
+        final HologramPlaceholderContextStore contextStore = this.placeholderContextStore;
+        if (method == null || contextStore == null) {
+            return text;
+        }
+        contextStore.set(
+                player.getUniqueId(),
+                new HologramPlaceholderContextStore.ContextValues(progress, maxProgress, respawnTimeSeconds)
+        );
+        try {
+            final Object result = method.invoke(null, player, text);
+            return result instanceof String resolved ? resolved : text;
+        } catch (final Exception ignored) {
+            return text;
+        } finally {
+            contextStore.clear(player.getUniqueId());
+        }
+    }
+
+    private void initializePlaceholderApiBridge() {
+        if (!getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            this.placeholderApiSetMethod = null;
+            this.placeholderExpansion = null;
+            return;
+        }
+        try {
+            final Class<?> placeholderApiClass = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
+            this.placeholderApiSetMethod = placeholderApiClass.getMethod("setPlaceholders", Player.class, String.class);
+            this.placeholderExpansion = new MMOBlockPlaceholderExpansion(this);
+            this.placeholderExpansion.register();
+        } catch (final Exception throwable) {
+            this.placeholderApiSetMethod = null;
+            this.placeholderExpansion = null;
+        }
+    }
+}
