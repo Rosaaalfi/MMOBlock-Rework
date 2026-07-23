@@ -1,9 +1,12 @@
-exampleEntitySchematic:
+exampleBDEngine:
   item:
-    name: "&7Example Schematic"
-    material: oak_sapling
-  respawnTime: 5 # Time in seconds for the entity to respawn after being killed
-  deadDelay: 5 # Time in seconds for the entity to disappear after being killed
+    name: "Example BDEngine"
+    material: diamond_ore
+  respawnTime: 1 # Time in seconds for the block to respawn after being broken
+  deadDelay: 5 # Time in seconds for the block to disappear after being broken
+  randomLocation: # Whether the block should respawn at a random location around the original spawn location. If false, the block will respawn at the original spawn location.
+    enabled: true
+    radius: 1 # The radius in blocks around the original spawn location where the block can respawn. The block will respawn at a random location within this radius.
   particleBreak:
     enabled: true
     source:
@@ -18,20 +21,27 @@ exampleEntitySchematic:
     onRespawn: block.stone.place # Sound to play when the entity respawns.
   breakAnimation: true # Whether to play the block breaking animation when the entity is click. using packet block breaking animation.
   hitbox: # AABB hitbox for the entity. The hitbox will be centered on the entity's location.
-    width: 10 # The width of the entity's hitbox.
-    height: 20 # The height of the entity's hitbox.
+    width: 1.2 # The width of the entity's hitbox.
+    height: 5 # The height of the entity's hitbox.
   modelType:
-    schematics:
-      enabled: true
-      file:
-        normal: "tree" # The exact schematic to use as the display for the entity. using fake block send packet, get file from folder /models/schematics/filename.type
-        dead: "dead/dead_tree" # accept all this type file .schem, .schematic and .schematics
-      placeFacing: north # north, south, east, west, up, down, randomUp(only randomize n w s e), randomDown(only randomize n w s e) and random(completely random)
-      adjustPos: #adjusting position from center
-        normal:
-          - "-14, 0, -15" # only x y z
-        dead:
-          - "-14, 0, -15" # only x y z
+    bdengine:
+      enabled: true # Enable BDEngine for this entity. If false.
+      model: tree # get model from models dir
+      collision:
+        - "0, 0, 0" # The position of the hitbox relative to the entity's location. This is a list of x, y, z coordinates. The hitbox will be centered on the entity's location, so you can use negative values to offset the hitbox in any direction.
+        - "0, 1, 0"
+        - "0, 2, 0"
+        - "0, 3, 0"
+        - "0, 4, 0"
+      size: 1.0 # The size of the BDEngine model.
+      onSpawn: # Custom animation to play when the BDEngine model is spawned.
+        name: spawn
+        timeline_length: 0.5 # The length of the timeline in seconds. This is the total length of the animation, including all keyframes.
+        mode: once # The mode of the animation. Supported modes are: once, loop. Once will play the animation once and then stop. Loop will play the animation in a loop.
+      onCLick: # Example of a click animation from BDEngine.
+        name: click
+        timeline_length: 0.2 # The length of the timeline in seconds. This is the total length of the animation, including all keyframes.
+        mode: once # The mode of the animation. Supported modes are: once, loop. Once will play the animation once and then stop. Loop will play the animation in a loop.
   allowedTools:
     - exampleToolsAxe
   conditions:
@@ -48,8 +58,8 @@ exampleEntitySchematic:
   display: # Use holograms to display information about the entity. You can have up to 4 lines of text.
     displayHeight: 2.1 # height of the all hologram lines above the entity's location. This will be the height of the first line of the hologram. The second line will be 0.25 blocks below the first line, the third line will be 0.25 blocks below the second line, and the fourth line will be 0.25 blocks below the third line.
     displayFacing: # hologram can teleport to the near player, display Per Player Facing, if player the player out of range unload/remove hologram
-      facing: intercardinal # cardinal only nwse and intercardinal include NW, NE, SE, SW
-      distance: 3 # distance hologram can teleport to the near player from center
+      facing: cardinal # cardinal only nwse and intercardinal include NW, NE, SE, SW
+      distance: 2 # distance hologram can teleport to the near player from center
       detectRange: 16 # 16x16 1 chunk range to detect player
     lines:
       - line: 1 #top line of the hologram

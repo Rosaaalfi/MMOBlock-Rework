@@ -22,8 +22,6 @@ import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration;
-import me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration;
 import me.chyxelmc.mmoblock.api.integration.MaterialClassification;
 import me.chyxelmc.mmoblock.api.model.DropBeam;
 import me.chyxelmc.mmoblock.api.model.DropGlow;
@@ -421,9 +419,6 @@ public final class BlockConfigLoader {
 
     public ToolAction resolveToolAction(final BlockDefinitionModel blockDefinition, final org.bukkit.inventory.ItemStack item, final String clickType) {
         final Material material = item == null ? null : item.getType();
-        final boolean isItemsAdderCustomItem = me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.isCustomItem(item);
-        final boolean isCraftEngineCustomItem = me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.isCustomItem(item);
-        final boolean isAnyCustomItem = isItemsAdderCustomItem || isCraftEngineCustomItem;
 
         for (final String toolId : blockDefinition.allowedTools()) {
             final List<ToolAction> actions = this.tools.get(toolId.toLowerCase(Locale.ROOT));
@@ -431,20 +426,33 @@ public final class BlockConfigLoader {
                 continue;
             }
             for (final ToolAction action : actions) {
-                if (action.craftEngineId() != null) {
+                if (action.mmoItemsId() != null) {
+                    // MMOItems tool: match by custom item ID
+                    try {
+                        if (!me.chyxelmc.mmoblock.api.integration.MMOItemsIntegration.matchItem(item, action.mmoItemsId())) {
+                            continue;
+                        }
+                    } catch (final Exception ignored) {
+                        continue;
+                    }
+                } else if (action.craftEngineId() != null) {
                     // CraftEngine tool: match by custom item ID
-                    if (!me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.matchItem(item, action.craftEngineId())) {
+                    try {
+                        if (!me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.matchItem(item, action.craftEngineId())) {
+                            continue;
+                        }
+                    } catch (final Exception ignored) {
                         continue;
                     }
                 } else if (action.itemsAdderId() != null) {
                     // ItemsAdder tool: match by custom item ID
-                    if (!me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.matchItem(item, action.itemsAdderId())) {
+                    try {
+                        if (!me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.matchItem(item, action.itemsAdderId())) {
+                            continue;
+                        }
+                    } catch (final Exception ignored) {
                         continue;
                     }
-                } else if (isAnyCustomItem) {
-                    // Held item is a custom item but this tool entry is a vanilla Material —
-                    // custom items must only match specific tool entries. Skip.
-                    continue;
                 } else {
                     // Vanilla tool: match by Material enum
                     if (action.material() != material) {
@@ -464,14 +472,14 @@ public final class BlockConfigLoader {
      * Used by external API consumers that do not have access to the full ItemStack.
      */
     public ToolAction resolveToolAction(final BlockDefinitionModel blockDefinition, final Material material, final String clickType) {
-        // ItemsAdder/CraftEngine tools cannot be matched by Material alone — fall through to null
+        // MMOItems/ItemsAdder/CraftEngine tools cannot be matched by Material alone — fall through to null
         for (final String toolId : blockDefinition.allowedTools()) {
             final List<ToolAction> actions = this.tools.get(toolId.toLowerCase(Locale.ROOT));
             if (actions == null) {
                 continue;
             }
             for (final ToolAction action : actions) {
-                if (action.craftEngineId() != null || action.itemsAdderId() != null) {
+                if (action.mmoItemsId() != null || action.craftEngineId() != null || action.itemsAdderId() != null) {
                     continue; // cannot match custom tools without ItemStack
                 }
                 if (action.material() != material) {
@@ -601,17 +609,18 @@ public final class BlockConfigLoader {
         final MaterialClassification toolClass = MaterialClassification.resolve(itemType, materialName);
         final String itemsAdderId = toolClass.itemsAdderId();
         final String craftEngineId = toolClass.craftEngineId();
+        final String mmoItemsId = toolClass.mmoItemsId();
         final Material material = toolClass.material();
-        if (material == null && itemsAdderId == null && craftEngineId == null) {
+        if (material == null && itemsAdderId == null && craftEngineId == null && mmoItemsId == null) {
             report.error("Tool group '" + groupId + "' contains invalid material: " + materialName);
             return List.of();
         }
 
         final List<String> allowedDrops = normalizeStringList(raw.get("allowedDrops"));
         final List<ToolAction> actions = new ArrayList<>();
-        parseToolAction(raw, groupId, "both_click", material, itemsAdderId, craftEngineId, allowedDrops, actions, report);
-        parseToolAction(raw, groupId, "left_click", material, itemsAdderId, craftEngineId, allowedDrops, actions, report);
-        parseToolAction(raw, groupId, "right_click", material, itemsAdderId, craftEngineId, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "both_click", material, itemsAdderId, craftEngineId, mmoItemsId, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "left_click", material, itemsAdderId, craftEngineId, mmoItemsId, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "right_click", material, itemsAdderId, craftEngineId, mmoItemsId, allowedDrops, actions, report);
         return actions;
     }
 
@@ -622,6 +631,7 @@ public final class BlockConfigLoader {
             final Material material,
             final String itemsAdderId,
             final String craftEngineId,
+            final String mmoItemsId,
             final List<String> allowedDrops,
             final List<ToolAction> actions,
             final ValidationReport report
@@ -637,7 +647,7 @@ public final class BlockConfigLoader {
             report.error("Tool group '" + groupId + "' has invalid clickNeeded <= 0 for " + clickType);
             return;
         }
-        actions.add(new ToolAction(material, clickNeeded, decreaseDurability, allowedDrops, clickType, itemsAdderId, craftEngineId));
+        actions.add(new ToolAction(material, clickNeeded, decreaseDurability, allowedDrops, clickType, itemsAdderId, craftEngineId, mmoItemsId));
     }
 
     private DropEntry parseDropEntry(final Map<?, ?> raw, final String dropId, final ValidationReport report) {
@@ -667,20 +677,21 @@ public final class BlockConfigLoader {
             final MaterialClassification dropClass = MaterialClassification.resolve(itemType, materialStr);
             final String itemsAdderId = dropClass.itemsAdderId();
             final String craftEngineId = dropClass.craftEngineId();
+            final String mmoItemsId = dropClass.mmoItemsId();
             final Material material = dropClass.material();
-            if (material == null && itemsAdderId == null && craftEngineId == null) {
+            if (material == null && itemsAdderId == null && craftEngineId == null && mmoItemsId == null) {
                 report.error("Drop group '" + dropId + "' contains invalid material: " + materialStr);
                 return null;
             }
             final int[] range = parseRange(raw.get("total"), 1, 1);
-            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam, itemsAdderId, craftEngineId);
+            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam, itemsAdderId, craftEngineId, mmoItemsId);
         }
         if (raw.containsKey("experience")) {
             final int[] range = parseRange(raw.get("experience"), 1, 1);
-            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null, null, null);
+            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null, null, null, null);
         }
         if (raw.containsKey("command")) {
-            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null, null, null);
+            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null, null, null, null);
         }
         report.warn("Drop group '" + dropId + "' contains unsupported drop entry: " + raw);
         return null;
@@ -1021,10 +1032,10 @@ public final class BlockConfigLoader {
         }
 
         if ("blocks".equals(folderName)) {
-            saveResourceWithReplace("blocks/exampleEntity.yml");
-            saveResourceWithReplace("blocks/exampleEntityNodes.yml");
-            saveResourceWithReplace("blocks/exampleEntitySchematics.yml");
-            saveResourceWithReplace("blocks/exampleEntityBDEngine.yml");
+            saveResourceWithReplace("blocks/exampleBlock.yml");
+            saveResourceWithReplace("blocks/exampleNodes.yml");
+            saveResourceWithReplace("blocks/exampleSchematics.yml");
+            saveResourceWithReplace("blocks/exampleBDEngine.yml");
         }
         if ("drops".equals(folderName)) {
             saveResourceWithReplace("drops/exampleDrops.yml");

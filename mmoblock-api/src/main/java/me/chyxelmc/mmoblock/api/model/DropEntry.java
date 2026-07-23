@@ -60,4 +60,12 @@ public interface DropEntry {
     default String craftEngineId() {
         return null;
     }
+
+    /**
+     * MMOItems item ID for this drop, e.g. {@code "custom_drop"}.
+     * When non-null, the drop will resolve via MMOItems API instead of Bukkit {@link org.bukkit.Material}.
+     */
+    default String mmoItemsId() {
+        return null;
+    }
 }

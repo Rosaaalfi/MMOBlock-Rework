@@ -130,7 +130,7 @@ public final class ItemsAdderIntegration {
      * @return {@code true} if ItemsAdder is available and the item is a custom ItemsAdder item
      */
     public static boolean isCustomItem(final ItemStack item) {
-        if (!AVAILABLE || item == null) return false;
+        if (!AVAILABLE || item == null || item.getType().isAir()) return false;
         try {
             return dev.lone.itemsadder.api.CustomStack.byItemStack(item) != null;
         } catch (final Exception ignored) {

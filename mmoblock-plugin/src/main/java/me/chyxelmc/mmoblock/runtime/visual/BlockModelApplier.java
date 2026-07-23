@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -17,6 +18,7 @@ import me.chyxelmc.mmoblock.api.integration.ModelEngineIntegration;
 import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
+import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
 
 /**
  * Handles application and removal of third-party block models (Schematics, BDEngine,
@@ -69,7 +71,7 @@ public final class BlockModelApplier {
                     block.z(),
                     dead
             );
-        } catch (final Exception ignored) {
+        } catch (final Throwable ignored) {
         }
     }
 
@@ -77,7 +79,7 @@ public final class BlockModelApplier {
         if (world == null) return;
         try {
             this.schematicService.clearSchematic(block.uniqueId().toString(), world);
-        } catch (final Exception ignored) {
+        } catch (final Throwable ignored) {
         }
     }
 
@@ -102,7 +104,7 @@ public final class BlockModelApplier {
                     definition.bdengineOnSpawnTimelineLength(),
                     definition.bdengineOnSpawnAnimationMode()
             );
-        } catch (final Exception ignored) {
+        } catch (final Throwable ignored) {
         }
     }
 
@@ -110,7 +112,7 @@ public final class BlockModelApplier {
         if (block == null) return;
         try {
             this.bdEngineService.clearModel(block.uniqueId(), world);
-        } catch (final Exception ignored) {
+        } catch (final Throwable ignored) {
         }
     }
 
@@ -118,7 +120,7 @@ public final class BlockModelApplier {
         if (block == null || animationName == null || animationName.isBlank()) return;
         try {
             this.bdEngineService.playAnimation(block.uniqueId(), animationName, timelineLengthSeconds, mode);
-        } catch (final Exception ignored) {
+        } catch (final Throwable ignored) {
         }
     }
 
@@ -154,7 +156,7 @@ public final class BlockModelApplier {
                     definition.modelEngineOnSpawnLerpOut(),
                     definition.modelEngineOnSpawnSpeed()
             );
-        } catch (final Exception ex) {
+        } catch (final Throwable ex) {
             this.plugin.getLogger().warning("[ModelEngine] Failed to show model '" + definition.modelEngineModelId()
                     + "' on " + block.interactionEntityId() + ": " + ex.getMessage());
         }
@@ -167,9 +169,11 @@ public final class BlockModelApplier {
         if (entity == null) return;
         try {
             ModelEngineIntegration.removeModel(entity);
-        } catch (final Exception ex) {
-            this.plugin.getLogger().warning("[ModelEngine] Failed to remove model from "
-                    + block.interactionEntityId() + ": " + ex.getMessage());
+        } catch (final Throwable ex) {
+            /*
+            ** this.plugin.getLogger().warning("[ModelEngine] Failed to remove model from "
+            **         + block.interactionEntityId() + ": " + ex.getMessage());
+            */
         }
     }
 
@@ -183,7 +187,7 @@ public final class BlockModelApplier {
         if (entity == null) return;
         try {
             ModelEngineIntegration.playAnimation(entity, definition.modelEngineModelId(), animationName, lerpIn, lerpOut, speed);
-        } catch (final Exception ex) {
+        } catch (final Throwable ex) {
             this.plugin.getLogger().warning("[ModelEngine] Failed to play animation '" + animationName
                     + "' on " + block.interactionEntityId() + ": " + ex.getMessage());
         }
@@ -247,7 +251,7 @@ public final class BlockModelApplier {
                     block.uniqueId(),
                     definition.betterModelModelSize()
             );
-        } catch (final Exception ex) {
+        } catch (final Throwable ex) {
             this.plugin.getLogger().warning("[BetterModel] Failed to show model '" + definition.betterModelModelId()
                     + FOR_BLOCK_SUFFIX + block.uniqueId() + ": " + ex.getMessage());
         }
@@ -258,7 +262,7 @@ public final class BlockModelApplier {
         if (!BetterModelIntegration.isAvailable()) return;
         try {
             BetterModelIntegration.removeModel(block.uniqueId());
-        } catch (final Exception ex) {
+        } catch (final Throwable ex) {
             this.plugin.getLogger().warning("[BetterModel] Failed to remove model for block "
                     + block.uniqueId() + ": " + ex.getMessage());
         }
@@ -277,7 +281,7 @@ public final class BlockModelApplier {
                         + animationName + FOR_BLOCK_SUFFIX + block.uniqueId()
                         + " — model '" + definition.betterModelModelId() + "' may not be attached");
             }
-        } catch (final Exception ex) {
+        } catch (final Throwable ex) {
             this.plugin.getLogger().warning("[BetterModel] Failed to play animation '" + animationName
                     + FOR_BLOCK_SUFFIX + block.uniqueId() + ": " + ex.getMessage());
         }

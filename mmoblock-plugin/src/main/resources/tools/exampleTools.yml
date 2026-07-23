@@ -42,3 +42,12 @@ exampleTools:
       clickNeeded: 3
     allowedDrops:
         - exampleDropsCustom # Reference to the drops defined in exampleDropsCustom.yml
+  # Custom item from MMOItems plugin, <item_id>. You can use this to define custom tools from MMOItems plugin.
+  - item:
+      type: mmoitems
+      material: custom_pickaxe # Reference to the custom item defined in MMOItems plugin, <item_id>.
+    both_click:
+      decreaseDurability: 10 #decrease the custom durability from MMOItems custom item, this is not the vanilla durability, this is the custom durability from MMOItems.
+      clickNeeded: 3
+    allowedDrops:
+      - exampleDropsCustom # Reference to the drops defined in exampleDropsCustom.yml

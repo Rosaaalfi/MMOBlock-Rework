@@ -14,8 +14,15 @@ modelEngine= "R4.1.0"
 betterModel= "3.2.0"
 itemsAdder= "4.0.18-beta-10"
 craftEngine= "26.7"
+mmoitems= "6.10.1-SNAPSHOT"
+mythiclib= "1.7.1-SNAPSHOT"
+mmocore= "1.13.1-SNAPSHOT"
+
+# Obfuscation
+proguard = "7.9.1"
 
 [libraries]
+proguardGradle = { module = "com.guardsquare:proguard-gradle", version.ref = "proguard" }
 paperApiV1194 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_19_4" }
 paperApiV12111 = { module = "io.papermc.paper:paper-api", version.ref = "paper-api-1_21_11" }
 miniMessageLib= { module = "net.kyori:adventure-text-minimessage", version.ref = "minimessage" }
@@ -30,7 +37,9 @@ betterModelBukkitApi= { module= "io.github.toxicity188:bettermodel-bukkit-api", 
 itemsAdderApi= { module= "beer.devs:itemsadder-api", version.ref = "itemsAdder" }
 craftEngineBukkitApi= { module= "net.momirealms:craft-engine-bukkit", version.ref = "craftEngine" }
 craftEngineCoreApi= { module= "net.momirealms:craft-engine-core", version.ref = "craftEngine" }
-
+mmoitemsApi= { module= "net.Indyuce:MMOItems-API", version.ref = "mmoitems" }
+mythiclibApi= { module= "io.lumine:MythicLib-dist", version.ref = "mythiclib" }
+mmocoreApi= { module= "net.Indyuce:MMOCore-API", version.ref = "mmocore" }
 [plugins]
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }
 run-shadow = { id = "com.gradleup.shadow", version.ref = "shadow"}

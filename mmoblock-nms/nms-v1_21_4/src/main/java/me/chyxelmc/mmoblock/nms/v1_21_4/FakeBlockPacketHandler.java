@@ -81,7 +81,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             Integer cz = null;
             for (final Field f : packet.getClass().getDeclaredFields()) {
                 try {
-                    ReflectionUtil.safeSetAccessible(f, "NMS packet chunk coordinate field");
+                    ReflectionUtil.setAccessibleQuietly(f);
                     final String name = f.getName().toLowerCase(Locale.ROOT);
                     final Object val = f.get(packet);
                     if (val == null) continue;
@@ -589,7 +589,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             } catch (final NoSuchMethodException ignored) { }
             for (final Field f : packet.getClass().getDeclaredFields()) {
                 try {
-                    ReflectionUtil.safeSetAccessible(f, "NMS packet BlockPos field");
+                    ReflectionUtil.setAccessibleQuietly(f);
                     final Object val = f.get(packet);
                     if (val instanceof BlockPos) return (BlockPos) val;
                     if (val instanceof Integer) {
@@ -608,7 +608,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
         for (final String name : names) {
             try {
                 final Field f = c.getDeclaredField(name);
-                ReflectionUtil.safeSetAccessible(f, "NMS packet named int field");
+                ReflectionUtil.setAccessibleQuietly(f);
                 final Object o = f.get(instance);
                 if (o instanceof Integer) return (Integer) o;
             } catch (final Exception ignored) { }
@@ -616,7 +616,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
         for (final Field f : c.getDeclaredFields()) {
             try {
                 if (f.getType() == int.class || f.getType() == Integer.class) {
-                    ReflectionUtil.safeSetAccessible(f, "NMS packet all-int-field fallback");
+                    ReflectionUtil.setAccessibleQuietly(f);
                     final Object o = f.get(instance);
                     if (o instanceof Integer) return (Integer) o;
                 }

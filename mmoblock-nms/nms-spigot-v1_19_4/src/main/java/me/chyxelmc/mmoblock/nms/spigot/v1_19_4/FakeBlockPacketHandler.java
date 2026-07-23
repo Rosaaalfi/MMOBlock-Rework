@@ -90,8 +90,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             Integer cz = null;
             for (final Field f : packet.getClass().getDeclaredFields()) {
                 try {
-                    // NMS packet fields are package-private; reflection needed for cross-version chunk coordinate extraction
-                    ReflectionUtil.safeSetAccessible(f, "NMS packet chunk coordinate field");
+                    ReflectionUtil.setAccessibleQuietly(f);
                     final String name = f.getName().toLowerCase(Locale.ROOT);
                     final Object val = f.get(packet);
                     if (val == null) continue;
@@ -702,8 +701,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
 
             for (final Field f : packet.getClass().getDeclaredFields()) {
                 try {
-                    // NMS packet fields for BlockPos are not part of any public API
-                    ReflectionUtil.safeSetAccessible(f, "NMS packet BlockPos field");
+                    ReflectionUtil.setAccessibleQuietly(f);
                     final Object val = f.get(packet);
                     if (val instanceof BlockPos) return (BlockPos) val;
                     // Some packets store ints x,y,z instead of BlockPos
@@ -728,8 +726,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
         for (final String name : names) {
             try {
                 final Field f = c.getDeclaredField(name);
-                // NMS packet fields are non-public; reflection required for cross-version int coordinate extraction
-                ReflectionUtil.safeSetAccessible(f, "NMS packet named int field");
+                ReflectionUtil.setAccessibleQuietly(f);
                 final Object o = f.get(instance);
                 if (o instanceof Integer) return (Integer) o;
             } catch (final Exception ignored) {
@@ -740,8 +737,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
         for (final Field f : c.getDeclaredFields()) {
             try {
                 if (f.getType() == int.class || f.getType() == Integer.class) {
-                    // NMS packet int fields are not part of any public API
-                    ReflectionUtil.safeSetAccessible(f, "NMS packet all-int-field fallback");
+                    ReflectionUtil.setAccessibleQuietly(f);
                     final Object o = f.get(instance);
                     if (o instanceof Integer) return (Integer) o;
                 }

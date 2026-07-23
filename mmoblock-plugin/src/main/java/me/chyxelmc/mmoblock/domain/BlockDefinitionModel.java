@@ -193,7 +193,8 @@ public record BlockDefinitionModel(
         DropGlow effectGlow,
         DropBeam effectBeam,
         String itemsAdderId,
-        String craftEngineId
+        String craftEngineId,
+        String mmoItemsId
     ) implements me.chyxelmc.mmoblock.api.model.DropEntry {
     }
 
@@ -207,7 +208,8 @@ public record BlockDefinitionModel(
         List<String> allowedDrops,
         String clickType,
         String itemsAdderId,
-        String craftEngineId
+        String craftEngineId,
+        String mmoItemsId
     ) implements me.chyxelmc.mmoblock.api.model.ToolAction {
     }
 }
