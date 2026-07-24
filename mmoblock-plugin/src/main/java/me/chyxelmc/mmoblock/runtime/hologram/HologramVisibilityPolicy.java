@@ -14,12 +14,21 @@ final class HologramVisibilityPolicy {
         final String type = definition.displayFacingType();
         return type != null
                 && !type.isBlank()
-                && definition.displayFacingDistance() > 0.0D
-                && definition.displayFacingDetectRange() > 0.0D;
+                && definition.displayFacingDistance() > 0.0D;
+    }
+
+    boolean hasDetectRange(final BlockDefinitionModel definition) {
+        if (definition == null) {
+            return false;
+        }
+        // detectRange works independently of displayFacing type.
+        // When detectRange > 0, it controls visibility range regardless of
+        // whether the hologram faces the player (distance > 0) or not.
+        return definition.displayFacingDetectRange() > 0.0D;
     }
 
     double rangeSquared(final BlockDefinitionModel definition) {
-        if (hasDisplayFacing(definition)) {
+        if (hasDetectRange(definition)) {
             final double range = Math.max(0.0D, definition.displayFacingDetectRange());
             return range * range;
         }
@@ -33,7 +42,7 @@ final class HologramVisibilityPolicy {
             }
             return resolveDisplayFacingLocation(session.baseLocation(), viewer, session.definition());
         }
-        if (!isViewerInRange(viewer, world, session.baseLocation(), HologramRuntimeService.PACKET_SYNC_RADIUS_SQUARED)) {
+        if (!isViewerInRange(viewer, world, session.baseLocation(), rangeSquared(session.definition()))) {
             return null;
         }
         return session.baseLocation();

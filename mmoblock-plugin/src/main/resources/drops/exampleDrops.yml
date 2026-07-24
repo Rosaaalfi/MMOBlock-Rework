@@ -7,7 +7,7 @@ exampleDrops:
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
       text: "&a+{item_amount} &r{item_name}" # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
-    dropType: frontGround #inventory, frontGround(front of player), and centerGround(center of entity or block).
+    dropType: frontGround # inventory, frontGround(front of player), and centerGround(center of entity or block).
     perPlayer: true # default is false, only last player to break the block will get the drop and the drop cannot be claimed and seen by other players. If false, all players in the area will get the drop, can only be used with centerGround and frontGround dropType.
     effectExplosion: true # default is false, enable or disable the explosion velocity effect. If enabled, the drop will be launched into the air when it drops, can only be used with centerGround and frontGround dropType.
     effectBeam:
@@ -26,12 +26,12 @@ exampleDrops:
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
       text: "&a+{item_amount} &r{item_name}" # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
-    dropType: centerGround #inventory, frontGround(front of player), and centerGround(center of entity or block).
+    dropType: centerGround # inventory, frontGround(front of player), and centerGround(center of entity or block).
     perPlayer: true # default is false, only last player to break the block will get the drop and the drop cannot be claimed and seen by other players. If false, all players in the area will get the drop, can only be used with centerGround and frontGround dropType.
     effectExplosion: true # default is false, enable or disable the explosion velocity effect. If enabled, the drop will be launched into the air when it drops, can only be used with centerGround and frontGround dropType.
     effectBeam:
       enabled: true # default is false, enable or disable the beam effect, can only be used with centerGround and frontGround dropType.
-      #color: blue # color of the beam effect. You can find a list of colors here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Color.html, can only be used with centerGround and frontGround dropType and particle type REDSTONE.
+      # color: blue # color of the beam effect. You can find a list of colors here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Color.html, can only be used with centerGround and frontGround dropType and particle type REDSTONE.
       particle: FLAME # particle of the beam effect. You can find a list of particles here: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Particle.html
     effectGlow:
       enabled: true # default is false, enable or disable the glow effect, can only be used with centerGround and frontGround dropType.
@@ -45,7 +45,7 @@ exampleDrops:
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
       text: "&a+{item_amount} &r{item_name}" # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
-    dropType: inventory #inventory, frontGround(front of player), and centerGround(center of entity or block).
+    dropType: inventory # inventory, frontGround(front of player), and centerGround(center of entity or block).
 
   - experience: vanilla # type of experience, support vanilla and mmocore. If you want to use mmocore experience, you need to have MMOCore plugin installed and enabled.
     amount: [ 10-20 ] # 10-20 experience points

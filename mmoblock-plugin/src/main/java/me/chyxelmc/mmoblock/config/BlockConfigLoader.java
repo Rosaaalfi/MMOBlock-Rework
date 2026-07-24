@@ -25,6 +25,7 @@ import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.api.integration.MaterialClassification;
 import me.chyxelmc.mmoblock.api.model.DropBeam;
 import me.chyxelmc.mmoblock.api.model.DropGlow;
+import me.chyxelmc.mmoblock.api.model.DropPopup;
 import me.chyxelmc.mmoblock.api.model.DropType;
 import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.ConditionDefinition;
@@ -684,17 +685,35 @@ public final class BlockConfigLoader {
                 return null;
             }
             final int[] range = parseRange(raw.get("total"), 1, 1);
-            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam, itemsAdderId, craftEngineId, mmoItemsId);
+            final DropPopup dropPopup = parseDropPopup(raw);
+            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam, itemsAdderId, craftEngineId, mmoItemsId, "vanilla", null, dropPopup);
         }
         if (raw.containsKey("experience")) {
-            final int[] range = parseRange(raw.get("experience"), 1, 1);
-            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null, null, null, null);
+            final String experienceSource = String.valueOf(raw.get("experience")).trim().toLowerCase(Locale.ROOT);
+            final int[] range = parseRange(raw.get("amount"), 1, 1);
+            final DropPopup dropPopup = parseDropPopup(raw);
+            final String mmocoreProfession = raw.containsKey("mmocore_profession") ? String.valueOf(raw.get("mmocore_profession")).trim().toLowerCase(Locale.ROOT) : "main";
+            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null, null, null, null, experienceSource, mmocoreProfession, dropPopup);
         }
         if (raw.containsKey("command")) {
-            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null, null, null, null);
+            final DropPopup dropPopup = parseDropPopup(raw);
+            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null, null, null, null, "vanilla", null, dropPopup);
         }
         report.warn("Drop group '" + dropId + "' contains unsupported drop entry: " + raw);
         return null;
+    }
+
+    private DropPopup parseDropPopup(final Map<?, ?> raw) {
+        final Object popupRaw = raw.get("dropPopup");
+        if (!(popupRaw instanceof Map<?, ?> popupMap)) {
+            return null;
+        }
+        final boolean enabled = parseBoolean(popupMap.get("enabled"), false);
+        if (!enabled) {
+            return null;
+        }
+        final String text = popupMap.get("text") != null ? String.valueOf(popupMap.get("text")) : "";
+        return new DropPopup(true, text);
     }
 
     private DropGlow parseDropGlow(final Map<?, ?> raw) {
@@ -1040,6 +1059,7 @@ public final class BlockConfigLoader {
         if ("drops".equals(folderName)) {
             saveResourceWithReplace("drops/exampleDrops.yml");
             saveResourceWithReplace("drops/exampleDropsWood.yml");
+            saveResourceWithReplace("drops/exampleDropsCustom.yml");
         }
         if ("tools".equals(folderName)) {
             saveResourceWithReplace("tools/exampleTools.yml");

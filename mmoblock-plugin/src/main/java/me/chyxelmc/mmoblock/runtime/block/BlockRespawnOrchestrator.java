@@ -175,18 +175,52 @@ public final class BlockRespawnOrchestrator {
                 final String facing = this.randomLocationResolver.resolveRandomFacing(world, location.getBlockX(), location.getBlockY(), location.getBlockZ());
                 return new RespawnTarget(location, facing);
             }
-            final Location fallback = this.randomLocationResolver.findSafeBlockLocation(
-                    world,
-                    (int) Math.floor(nodeContext.originX()),
-                    (int) Math.floor(nodeContext.originY()),
-                    (int) Math.floor(nodeContext.originZ()),
-                    block.uniqueId(),
-                    nodeContext.closest()
+            // resolveRandomContextLocation returned null — spread around origin
+            // without closest requirement so it works on flat terrain, and
+            // ensure the result is NOT within 1 block of the center.
+            final int originBlockX = (int) Math.floor(nodeContext.originX());
+            final int originBlockY = (int) Math.floor(nodeContext.originY());
+            final int originBlockZ = (int) Math.floor(nodeContext.originZ());
+
+            // First try: origin without closest requirement
+            final Location originSafe = this.randomLocationResolver.findSafeBlockLocation(
+                    world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false
             );
-            final Location loc = fallback != null
-                    ? fallback
-                    : new Location(world, Math.floor(nodeContext.originX()), Math.floor(nodeContext.originY()), Math.floor(nodeContext.originZ()));
-            return new RespawnTarget(loc, block.facing());
+            if (originSafe != null
+                    && !isWithinHorizontalDistance(originSafe, originBlockX, originBlockZ, 1.0D)) {
+                final String facing = this.randomLocationResolver.resolveRandomFacing(world,
+                        originSafe.getBlockX(), originSafe.getBlockY(), originSafe.getBlockZ());
+                return new RespawnTarget(originSafe, facing);
+            }
+
+            // Second try: spread around origin with offsets (avoid center 1x1 area)
+            final int[][] offsets = {
+                {2, 0}, {-2, 0}, {0, 2}, {0, -2},
+                {2, 1}, {2, -1}, {-2, 1}, {-2, -1},
+                {1, 2}, {1, -2}, {-1, 2}, {-1, -2},
+                {3, 0}, {-3, 0}, {0, 3}, {0, -3}
+            };
+            for (final int[] offset : offsets) {
+                final Location offsetLoc = this.randomLocationResolver.findSafeBlockLocation(
+                        world,
+                        originBlockX + offset[0],
+                        originBlockY,
+                        originBlockZ + offset[1],
+                        block.uniqueId(),
+                        false
+                );
+                if (offsetLoc != null) {
+                    final String facing = this.randomLocationResolver.resolveRandomFacing(world,
+                            offsetLoc.getBlockX(), offsetLoc.getBlockY(), offsetLoc.getBlockZ());
+                    return new RespawnTarget(offsetLoc, facing);
+                }
+            }
+
+            // Ultimate fallback: the absolute origin (should rarely happen)
+            return new RespawnTarget(
+                    new Location(world, originBlockX, originBlockY, originBlockZ),
+                    block.facing()
+            );
         }
 
         final int originBlockX = (int) Math.floor(block.originX());
@@ -224,6 +258,17 @@ public final class BlockRespawnOrchestrator {
 
     private static boolean isChunkLoaded(final World world, final double x, final double z) {
         return world != null && world.isChunkLoaded((int) Math.floor(x) >> 4, (int) Math.floor(z) >> 4);
+    }
+
+    private static boolean isWithinHorizontalDistance(
+            final Location loc,
+            final int originBlockX,
+            final int originBlockZ,
+            final double threshold
+    ) {
+        final double dx = (loc.getBlockX() + 0.5D) - (originBlockX + 0.5D);
+        final double dz = (loc.getBlockZ() + 0.5D) - (originBlockZ + 0.5D);
+        return (dx * dx) + (dz * dz) <= threshold * threshold;
     }
 
     private record RespawnTarget(Location location, String facing) {

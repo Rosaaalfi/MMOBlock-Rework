@@ -1,21 +1,22 @@
 # Security Policy
 
-## Supported Versions
+## Supported Server Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Version          | Supported          |
+|------------------|--------------------|
+| 1.19.4           | :white_check_mark: |
+| 1.20 - 1.20.2    | :x:                |
+| 1.20.4           | :white_check_mark: |
+| 1.20.5 - 1.20.6  | :x:                |
+| 1.21 - 1.21.1    | :white_check_mark: |
+| 1.21.2 - 1.21.3  | :x:                |
+| 1.21.4           | :white_check_mark: |
+| 1.21.5 - 1.21.10 | :x:                |
+| 1.21.11          | :white_check_mark: |
+| 26.x             | :white_check_mark: |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+If you discover a security vulnerability, please report it via [GitHub Issues](https://github.com/chyxelmc/MMOBlock-Rework/issues) or contact me directly.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Response time: within 48 hours.

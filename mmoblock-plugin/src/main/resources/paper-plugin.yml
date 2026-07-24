@@ -33,6 +33,9 @@ dependencies:
   - name: MMOItems
     load: BEFORE
     required: false
+  - name: MMOCore
+    load: BEFORE
+    required: false
 
 main: me.chyxelmc.mmoblock.MMOBlock
 loader: me.chyxelmc.mmoblock.MMOBlockLoader

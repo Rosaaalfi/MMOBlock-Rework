@@ -23,4 +23,4 @@ exampleDropsWood:
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
       text: "&a+{exp_amount} &rEXP" # text of the popup effect, can use {exp_amount} as placeholders.
-    dropType: frontGround #frontGround(front of player), and centerGround(center of entity or block).
+    dropType: frontGround # frontGround(front of player), and centerGround(center of entity or block).

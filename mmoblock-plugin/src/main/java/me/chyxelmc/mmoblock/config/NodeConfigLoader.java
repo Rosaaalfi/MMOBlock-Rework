@@ -84,6 +84,9 @@ public final class NodeConfigLoader {
                 final double displayHeight = displaySection != null
                         ? displaySection.getDouble("displayHeight", section.getDouble("displayHeight", 1.6D))
                         : section.getDouble("displayHeight", 1.6D);
+                final double detectRange = displaySection != null
+                        ? displaySection.getDouble("detectRange", 0.0D)
+                        : 0.0D;
                 final List<DisplayLine> displayLines = parseDisplayLines(section, key, report);
 
                 this.nodeDefinitions.put(
@@ -99,6 +102,7 @@ public final class NodeConfigLoader {
                                 blockListActive,
                                 blockListDead,
                                 displayHeight,
+                                detectRange,
                                 displayLines,
                                 itemName,
                                 itemMaterial

@@ -8,18 +8,26 @@ import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
  * Handles visual packet sync concerns (fake blocks and break animation).
+ * <p>Tracks original block materials for ItemsAdder/CraftEngine blocks placed
+ * over water or lava so the liquid is properly restored on removal.</p>
  */
 public final class VisualSyncSystem {
 
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
+    /** Tracks the original block material before a custom block was placed in its position. */
+    private final Map<UUID, Material> originalMaterials = new ConcurrentHashMap<>();
 
     public VisualSyncSystem(final MMOBlock plugin, final NmsAdapter nmsAdapter) {
         this.plugin = plugin;
@@ -67,6 +75,8 @@ public final class VisualSyncSystem {
         // ItemsAdder custom block: place the real block in the world
         if (definition.itemsAdderBlockId() != null) {
             final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
+            // Save original block material BEFORE placing custom block (for water/lava restoration)
+            saveOriginalMaterial(placedBlock.uniqueId(), loc);
             me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.placeBlock(loc, definition.itemsAdderBlockId());
 
             // Schedule a chunk refresh 1 tick later to ensure the client re-syncs the
@@ -93,6 +103,8 @@ public final class VisualSyncSystem {
         // CraftEngine custom block: place the real block in the world
         if (definition.craftEngineBlockId() != null) {
             final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
+            // Save original block material BEFORE placing custom block (for water/lava restoration)
+            saveOriginalMaterial(placedBlock.uniqueId(), loc);
             me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.placeBlock(loc, definition.craftEngineBlockId());
 
             // Schedule a chunk refresh 1 tick later to ensure the client re-syncs the
@@ -153,11 +165,22 @@ public final class VisualSyncSystem {
 
         // ItemsAdder/CraftEngine custom block: remove the real block from the world
         if (definition.itemsAdderBlockId() != null) {
-            me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.removeBlock(loc);
+            // If the position has already been restored to liquid (e.g. by a previous
+            // unload+clear cycle), skip removeBlock to avoid destroying the restored water.
+            if (!isLiquidMaterial(loc.getBlock().getType())) {
+                me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.removeBlock(loc);
+            }
+            // Restore the original material (e.g. water/lava) from our tracking map
+            restoreOriginalMaterial(placedBlock.uniqueId(), loc);
             return;
         }
         if (definition.craftEngineBlockId() != null) {
-            me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.removeBlock(loc);
+            // If the position has already been restored to liquid, skip removeBlock.
+            if (!isLiquidMaterial(loc.getBlock().getType())) {
+                me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.removeBlock(loc);
+            }
+            // Restore the original material (e.g. water/lava) from our tracking map
+            restoreOriginalMaterial(placedBlock.uniqueId(), loc);
             return;
         }
 
@@ -172,6 +195,75 @@ public final class VisualSyncSystem {
         // expected - reflection fallback
         }
         this.nmsAdapter.clearFakeBlock(world, loc);
+    }
+
+    /**
+     * Saves the current block material at the given location before a custom block
+     * (ItemsAdder/CraftEngine) is placed. This is used later to restore water/lava
+     * when the block is removed.
+     * <p>For cross-session persistence (server restart), also checks if the block
+     * ABOVE is liquid — if so, this position was originally underwater and the
+     * custom block replaced the water. Only the above check is reliable because
+     * liquid above a solid block can only exist if it was replaced.</p>
+     */
+    private void saveOriginalMaterial(final UUID blockUniqueId, final Location location) {
+        if (this.originalMaterials.containsKey(blockUniqueId)) {
+            return; // Already saved, don't overwrite
+        }
+        try {
+            final Material material = location.getBlock().getType();
+            if (isLiquidMaterial(material)) {
+                this.originalMaterials.put(blockUniqueId, material);
+                return;
+            }
+            // After a server restart, the custom block already replaced the liquid.
+            // Only check the block ABOVE — liquid can't float above a solid block,
+            // so if the block above is liquid, this position was originally liquid.
+            // (The below check is unreliable as it could be a water lake below a ledge.)
+            final Block above = location.clone().add(0, 1, 0).getBlock();
+            if (isLiquidMaterial(above.getType())) {
+                this.originalMaterials.put(blockUniqueId, above.getType());
+            }
+        } catch (final Exception ignored) {
+            // expected - reflection fallback
+        }
+    }
+
+    /**
+     * Restores the original material (water/lava) at the location if it was saved.
+     * This must be called AFTER removing the custom block so the original liquid
+     * replaces the air left by removeBlock.
+     */
+    private void restoreOriginalMaterial(final UUID blockUniqueId, final Location location) {
+        final Material original = this.originalMaterials.remove(blockUniqueId);
+        if (original != null) {
+            try {
+                location.getBlock().setType(original);
+            } catch (final Exception ignored) {
+                // expected - reflection fallback
+            }
+        }
+    }
+
+    /**
+     * Clears all tracked original materials. Should be called on plugin shutdown
+     * to prevent memory leaks.
+     */
+    public void clearOriginalMaterials() {
+        this.originalMaterials.clear();
+    }
+
+    /**
+     * Checks if the material is water or lava (for liquid restoration tracking).
+     */
+    private static boolean isLiquidMaterial(final Material material) {
+        if (material == Material.WATER || material == Material.LAVA) {
+            return true;
+        }
+        final String name = material.name();
+        return name.equals("WATER") || name.equals("LAVA")
+                || name.equals("LEGACY_WATER") || name.equals("LEGACY_LAVA")
+                || name.equals("FLOWING_WATER") || name.equals("FLOWING_LAVA");
     }
 
     public boolean usesRealBlockModel(final BlockDefinitionModel definition) {

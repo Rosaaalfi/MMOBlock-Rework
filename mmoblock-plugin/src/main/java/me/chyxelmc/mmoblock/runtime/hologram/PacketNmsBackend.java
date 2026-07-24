@@ -79,7 +79,8 @@ final class PacketNmsBackend implements HologramRuntimeService.HologramBackend {
             }
 
             final long revision = this.sessionRevision.incrementAndGet();
-            final boolean animated = HologramRuntimeService.hasAnimatedText(lines);
+            final boolean animated = HologramRuntimeService.hasAnimatedText(lines)
+                    || HologramRuntimeService.hasItemDisplayLines(lines);
             final boolean dynamicPlaceholders = HologramRuntimeService.hasPlaceholderApiTokens(lines);
             final HologramPacketSession session = new HologramPacketSession(
                     block.world(),

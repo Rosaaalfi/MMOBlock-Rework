@@ -337,8 +337,8 @@ public final class NodeRuntimeService {
                 continue;
             }
             final BlockDefinitionModel blockDefinition = this.blockConfigService.findBlock(entry.blockType());
-            final String blockName = blockDefinition != null && blockDefinition.displayName() != null
-                    ? blockDefinition.displayName()
+            final String blockName = blockDefinition != null
+                    ? blockDefinition.itemName() != null ? blockDefinition.itemName() : blockDefinition.displayName()
                     : entry.blockType();
             final boolean active = LifecycleSystem.STATUS_ACTIVE.equalsIgnoreCase(placedBlock.status());
             final String template = active ? activeTemplate : deadTemplate;
@@ -385,7 +385,7 @@ public final class NodeRuntimeService {
                 List.of(),
                 displayLines,
                 List.of(),
-                "", 0.0D, 0.0D,
+                "", 0.0D, definition.detectRange(),
                 false, "", "", FACING_NORTH, List.of(), List.of(),
                 false, "", 1.0D, "", "", 0.0D, 0.0D, "once", "once", List.of(),
                 false, "", 1.0D, "", 0.1D, 0.1D, 1.0D, "", 0.1D, 0.1D, 1.0D, List.of(),
@@ -427,15 +427,18 @@ public final class NodeRuntimeService {
                 definition.randomLocationClosest(),
                 definition.randomLocationCenterDistance()
         );
+        java.util.UUID lastPlacedBlockId = null;
         for (int i = 0; i < targetCount; i++) {
             final String blockId = pickBlockId(definition.listBlocks());
             final BlockRuntimeService.PlaceResult result = this.blockRuntimeService.placeRandomNodeBlock(
                     blockId,
                     world,
                     FACING_NORTH,
-                    randomLocationContext
+                    randomLocationContext,
+                    lastPlacedBlockId
             );
             if (result.success()) {
+                lastPlacedBlockId = result.placedBlock().uniqueId();
                 node.blocks().add(new PlacedNodeModel.NodeBlockEntryModel(result.placedBlock().uniqueId(), blockId));
             }
         }

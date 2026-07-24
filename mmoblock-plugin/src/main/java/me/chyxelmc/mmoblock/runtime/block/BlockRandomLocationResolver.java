@@ -42,7 +42,35 @@ public final class BlockRandomLocationResolver {
         final int originBlockY = (int) Math.floor(context.originY());
         final int originBlockZ = (int) Math.floor(context.originZ());
         if (!context.enabled() || context.radius() <= 0.0D) {
-            return findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, excludingBlockId, context.closest());
+            // When random location is disabled, try the origin first.
+            // If an excludingBlockId is provided (previous block already at origin),
+            // spread subsequent blocks around the origin.
+            if (excludingBlockId == null) {
+                return findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, null, context.closest());
+            }
+            // Try positions with increasing distance from the origin.
+            // Skip {0,0} since a block already occupies the exact origin.
+            final int[][] offsets = {
+                {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+                {1, 1}, {-1, -1}, {1, -1}, {-1, 1},
+                {2, 0}, {-2, 0}, {0, 2}, {0, -2},
+                {2, 1}, {2, -1}, {-2, 1}, {-2, -1},
+                {1, 2}, {1, -2}, {-1, 2}, {-1, -2}
+            };
+            for (final int[] offset : offsets) {
+                final Location loc = findSafeBlockLocation(
+                        world,
+                        originBlockX + offset[0],
+                        originBlockY,
+                        originBlockZ + offset[1],
+                        excludingBlockId,
+                        context.closest()
+                );
+                if (loc != null) {
+                    return loc;
+                }
+            }
+            return null;
         }
 
         final double radius = Math.max(0.0D, context.radius());
@@ -81,28 +109,72 @@ public final class BlockRandomLocationResolver {
         final int startY = Math.max(minY, baseY);
         final int topY = maxY - 2;
 
+        // First pass: try normal safe positions (solid ground below)
+        Location result = scanNormalUpward(world, blockX, blockZ, minY, startY, topY, excludingBlockId, requireClosestHorizontalBlock);
+        if (result != null) return result;
+
+        // Second pass: try water/lava positions (replace water/lava with the block).
+        result = scanLiquidDownward(world, blockX, blockZ, minY, startY, excludingBlockId, requireClosestHorizontalBlock);
+        if (result != null) return result;
+
+        // Third pass + Fourth pass: retry WITHOUT closest check (fallback for flat terrain)
+        if (requireClosestHorizontalBlock) {
+            result = scanNormalUpward(world, blockX, blockZ, minY, startY, topY, excludingBlockId, false);
+            if (result != null) return result;
+            result = scanLiquidDownward(world, blockX, blockZ, minY, startY, excludingBlockId, false);
+            if (result != null) return result;
+        }
+
+        return null;
+    }
+
+    /** Scan upward for normal positions (feet & head passable, solid ground below). */
+    private Location scanNormalUpward(
+            final World world, final int blockX, final int blockZ,
+            final int minY, final int startY, final int topY,
+            final UUID excludingBlockId, final boolean requireClosest
+    ) {
         for (int y = startY; y <= topY; y++) {
             final Block feet = world.getBlockAt(blockX, y, blockZ);
             final Block head = world.getBlockAt(blockX, y + 1, blockZ);
             if (!feet.isPassable() || !head.isPassable()) {
                 continue;
             }
-
             final int groundedY = resolveGroundedSpawnY(world, blockX, y, blockZ, minY);
-            if (groundedY < 0) {
-                continue;
-            }
-            if (isHemmedIn(world, blockX, groundedY, blockZ)) {
-                continue;
-            }
-            if (requireClosestHorizontalBlock && !hasHorizontalClosestBlock(world, blockX, groundedY, blockZ)) {
-                continue;
-            }
-            if (isTooCloseToPlacedBlock(world.getName(), blockX, groundedY, blockZ, excludingBlockId)) {
-                continue;
-            }
+            if (groundedY < 0) continue;
+            if (isHemmedIn(world, blockX, groundedY, blockZ)) continue;
+            if (requireClosest && !hasHorizontalClosestBlock(world, blockX, groundedY, blockZ)) continue;
+            if (isTooCloseToPlacedBlock(world.getName(), blockX, groundedY, blockZ, excludingBlockId)) continue;
             if (!hasBlockingEntityAt(world, blockX, groundedY, blockZ)) {
                 return new Location(world, blockX, groundedY, blockZ);
+            }
+        }
+        return null;
+    }
+
+    /** Scan downward for water/lava positions (feet is liquid, solid ground below). */
+    private Location scanLiquidDownward(
+            final World world, final int blockX, final int blockZ,
+            final int minY, final int startY,
+            final UUID excludingBlockId, final boolean requireClosest
+    ) {
+        for (int y = startY; y >= minY; y--) {
+            final Block feet = world.getBlockAt(blockX, y, blockZ);
+            final Block head = world.getBlockAt(blockX, y + 1, blockZ);
+            if (!isLiquid(feet) || !head.isPassable()) continue;
+            if (y - 1 >= minY) {
+                final Block support = world.getBlockAt(blockX, y - 1, blockZ);
+                if (support.getType().isAir() || isLiquid(support) || VEGETATION_MATERIALS.contains(support.getType()) || support.getType() == Material.SNOW) {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+            if (isHemmedIn(world, blockX, y, blockZ)) continue;
+            if (requireClosest && !hasHorizontalClosestBlock(world, blockX, y, blockZ)) continue;
+            if (isTooCloseToPlacedBlock(world.getName(), blockX, y, blockZ, excludingBlockId)) continue;
+            if (!hasBlockingEntityAt(world, blockX, y, blockZ)) {
+                return new Location(world, blockX, y, blockZ);
             }
         }
         return null;
@@ -256,6 +328,11 @@ public final class BlockRandomLocationResolver {
             if (entity instanceof Interaction) {
                 continue;
             }
+            // Skip players — a player placing a node is expected to stand at the
+            // spawn location, and the entity will move away naturally.
+            if (entity instanceof org.bukkit.entity.Player) {
+                continue;
+            }
             try {
                 if (entity.getBoundingBox().overlaps(spawnBox)) {
                     return true;
@@ -283,7 +360,26 @@ public final class BlockRandomLocationResolver {
         if (support.getType().isAir()) {
             return false;
         }
+        if (isLiquid(support)) {
+            return false;
+        }
         return !VEGETATION_MATERIALS.contains(support.getType());
+    }
+
+    /**
+     * Checks if the given block is a liquid block (water or lava).
+     * Uses ordinal comparison and fallback name-based checks for cross-version compatibility.
+     */
+    private static boolean isLiquid(final Block block) {
+        final Material type = block.getType();
+        if (type == Material.WATER || type == Material.LAVA) {
+            return true;
+        }
+        // Cross-version fallback for renamed/legacy materials
+        final String name = type.name();
+        return name.equals("WATER") || name.equals("LAVA")
+                || name.equals("LEGACY_WATER") || name.equals("LEGACY_LAVA")
+                || name.equals("FLOWING_WATER") || name.equals("FLOWING_LAVA");
     }
 
     private static Set<Material> buildVegetationMaterials() {

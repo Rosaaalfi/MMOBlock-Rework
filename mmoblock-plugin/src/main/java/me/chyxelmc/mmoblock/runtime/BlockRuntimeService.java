@@ -295,9 +295,10 @@ public final class BlockRuntimeService {
             final String type,
             final World world,
             final String facing,
-            final RandomLocationContext randomLocationContext
+            final RandomLocationContext randomLocationContext,
+            final UUID excludingBlockId
     ) {
-        final Location location = this.randomLocationResolver.resolveRandomContextLocation(world, randomLocationContext, null);
+        final Location location = this.randomLocationResolver.resolveRandomContextLocation(world, randomLocationContext, excludingBlockId);
         if (location == null) {
             return PlaceResult.error("No safe node spawn location found");
         }
@@ -482,6 +483,7 @@ public final class BlockRuntimeService {
         this.bdEngineService.clearAll();
         me.chyxelmc.mmoblock.api.integration.BetterModelIntegration.removeAll();
         this.modelApplier.clearAllCollisions();
+        this.visualSyncSystem.clearOriginalMaterials();
         this.ecsState.clear();
         this.transientBlocks.clear();
         this.suppressDeadHologram.clear();

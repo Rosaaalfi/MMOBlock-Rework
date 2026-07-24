@@ -8,7 +8,7 @@ exampleDropsCustom:
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
       text: "&a+{item_amount} &r{item_name}" # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
-    dropType: frontGround #inventory, frontGround(front of player), and centerGround(center of entity or block).
+    dropType: frontGround # inventory, frontGround(front of player), and centerGround(center of entity or block).
     perPlayer: true # default is false, only last player to break the block will get the drop and the drop cannot be claimed and seen by other players. If false, all players in the area will get the drop, can only be used with centerGround and frontGround dropType.
     effectExplosion: true # default is false, enable or disable the explosion velocity effect. If enabled, the drop will be launched into the air when it drops, can only be used with centerGround and frontGround dropType.
     effectBeam:
@@ -27,7 +27,7 @@ exampleDropsCustom:
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
       text: "&a+{item_amount} &r{item_name}" # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
-    dropType: frontGround #inventory, frontGround(front of player), and centerGround(center of entity or block).
+    dropType: frontGround # inventory, frontGround(front of player), and centerGround(center of entity or block).
     perPlayer: true # default is false, only last player to break the block will get the drop.
     effectExplosion: true # default is false, enable or disable the explosion velocity effect.
     effectBeam:
@@ -47,7 +47,7 @@ exampleDropsCustom:
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
       text: "&a+{item_amount} &r{item_name}" # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
-    dropType: frontGround #inventory, frontGround(front of player), and centerGround(center of entity or block).
+    dropType: frontGround # inventory, frontGround(front of player), and centerGround(center of entity or block).
     perPlayer: true # default is false, only last player to break the block will get the drop.
     effectExplosion: true # default is false, enable or disable the explosion velocity effect.
     effectBeam:
@@ -58,9 +58,10 @@ exampleDropsCustom:
       enabled: true # default is false, enable or disable the glow effect.
       color: red # color of the glow effect. Supports: black, navy, dark_green, teal, maroon, purple, gold, silver, blue, lime, cyan, red, pink, yellow, white, rainbow
   - experience: mmocore # Reference to custom experience from MMOCore plugin.
+    mmocore_profession: main # Reference to custom profession from MMOCore plugin, can be main and default profession from MMOCore(default is main, alchemy, enchanting, farming, fishing, mining, smelting, smithing and woodcutting) or Custom profession from MMOCore(example: carpenter).
     amount: [ 5-10 ] # 5-10 experience points
     chances: 0.5 # 50% chance
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
-      text: "&a+{exp_amount} &rEXP" # text of the popup effect, can use {exp_amount} as placeholders.
-    dropType: frontGround #frontGround(front of player), and centerGround(center of entity or block).
+      text: "&a+{mmocore_exp_amount} &rEXP" # text of the popup effect, can use {exp_amount} as placeholders.
+    dropType: frontGround # frontGround(front of player), and centerGround(center of entity or block).

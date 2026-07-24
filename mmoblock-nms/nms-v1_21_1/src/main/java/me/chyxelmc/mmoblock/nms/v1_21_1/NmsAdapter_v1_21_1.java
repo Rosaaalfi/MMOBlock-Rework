@@ -336,7 +336,7 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
             final double itemOffset = legacyClient ? ITEM_ENTITY_Y_OFFSET_LEGACY : ITEM_ENTITY_Y_OFFSET_MODERN;
             final double lineY = switch (line.type()) {
                 case TEXT -> legacyClient ? baseLineY - ARMOR_STAND_NAME_Y_OFFSET : baseLineY;
-                case ITEM, BLOCK -> baseLineY - itemOffset;
+                case ITEM, BLOCK -> legacyClient ? baseLineY - itemOffset : baseLineY;
             };
             final net.minecraft.world.entity.Entity display = createDisplay(level, baseLocation, line, legacyClient);
             if (display == null) {
@@ -742,8 +742,12 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
             case TEXT -> legacyClient
                     ? createLegacyArmorStandText(level, x, baseLineY - ARMOR_STAND_NAME_Y_OFFSET, z, line.text())
                     : createTextDisplay(level, x, baseLineY, z, line.text());
-            case ITEM -> createItemDisplay(level, x, baseLineY - itemOffset, z, line.material());
-            case BLOCK -> createBlockDisplay(level, x, baseLineY - itemOffset, z, line.material());
+            case ITEM -> legacyClient
+                    ? createItemDisplay(level, x, baseLineY - itemOffset, z, line.material())
+                    : createModernItemDisplay(level, x, baseLineY, z, line.material());
+            case BLOCK -> legacyClient
+                    ? createBlockDisplay(level, x, baseLineY - itemOffset, z, line.material())
+                    : createModernBlockDisplay(level, x, baseLineY, z, line.material());
         };
     }
 
@@ -801,6 +805,50 @@ public final class NmsAdapter_v1_21_1 implements NmsAdapter {
             return null;
         }
         return createItemDisplay(level, x, y, z, material);
+    }
+
+    private net.minecraft.world.entity.Entity createModernItemDisplay(final ServerLevel level, final double x, final double y, final double z, final Material material) {
+        if (material == null) {
+            return null;
+        }
+        // Compute animation based on system time for smooth rotation and bobbing
+        final long currentTime = System.currentTimeMillis();
+        final float seconds = (currentTime % 10000L) / 1000.0f;
+        final float rotationAngle = seconds * (float) (2.0 * Math.PI / 5.0); // 1 rotation per 5 seconds
+        final float verticalOffset = (float) (Math.sin(seconds * Math.PI) * 0.05); // 5cm bobbing, 2 second period
+
+        final Display.ItemDisplay display = new Display.ItemDisplay(EntityType.ITEM_DISPLAY, level);
+        display.setPos(x, y, z);
+        display.setItemStack(CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(material)));
+        display.setItemTransform(ItemDisplayContext.GROUND);
+        display.setBillboardConstraints(Display.BillboardConstraints.FIXED);
+        display.setViewRange(0.4F);
+        display.setWidth(0.5F);
+        display.setHeight(0.5F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        // Apply rotation and vertical bobbing via transformation matrix
+        final Matrix4f matrix = new Matrix4f().translation(0.0f, verticalOffset, 0.0f).rotateY(rotationAngle);
+        display.setTransformation(new Transformation(matrix));
+        display.setTransformationInterpolationDelay(0);
+        display.setTransformationInterpolationDuration(2);
+        return display;
+    }
+
+    private net.minecraft.world.entity.Entity createModernBlockDisplay(final ServerLevel level, final double x, final double y, final double z, final Material material) {
+        if (material == null || !material.isBlock()) {
+            return null;
+        }
+        final Display.BlockDisplay display = new Display.BlockDisplay(EntityType.BLOCK_DISPLAY, level);
+        display.setPos(x, y, z);
+        display.setBlockState(CraftMagicNumbers.getBlock(material).defaultBlockState());
+        display.setBillboardConstraints(Display.BillboardConstraints.CENTER);
+        display.setViewRange(0.4F);
+        display.setWidth(0.5F);
+        display.setHeight(0.5F);
+        display.setShadowRadius(0.0F);
+        display.setShadowStrength(0.0F);
+        return display;
     }
 
     private Component parseVanillaText(final String text) {

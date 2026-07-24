@@ -10,6 +10,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -28,6 +29,7 @@ import me.chyxelmc.mmoblock.config.BlockConfigLoader;
 import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.DropEntry;
 import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
 import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.ToolAction;
+import me.chyxelmc.mmoblock.utils.TextColor;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 
@@ -65,14 +67,29 @@ public final class DropSpawnSystem implements Listener {
                     continue;
                 }
                 final int amount = randomRange(entry.min(), entry.max());
+                final int finalAmount = amount;
+                final String expSource = entry.experienceSource();
                 switch (entry.type()) {
-                    case MATERIAL -> dropMaterial(block, player, entry, amount);
-                    case EXPERIENCE -> player.giveExp(amount);
+                    case MATERIAL -> dropMaterial(block, player, entry, finalAmount);
+                    case EXPERIENCE -> {
+                        if ("mmocore".equalsIgnoreCase(expSource)) {
+                            final String profession = entry.mmocoreProfession();
+                            if (profession != null && !"main".equalsIgnoreCase(profession)) {
+                                me.chyxelmc.mmoblock.api.integration.MMOCoreIntegration.giveProfessionExperience(player, profession, finalAmount);
+                            } else {
+                                me.chyxelmc.mmoblock.api.integration.MMOCoreIntegration.giveExperience(player, finalAmount);
+                            }
+                        } else {
+                            player.giveExp(finalAmount);
+                        }
+                        spawnDropPopup(block, player, entry, finalAmount);
+                    }
                     case COMMAND -> {
                         if (entry.command() != null && !entry.command().isBlank()) {
                             final String resolved = entry.command().replace("%player%", player.getName());
                             this.scheduler.run(() -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), resolved));
                         }
+                        spawnDropPopup(block, player, entry, 1);
                     }
                 }
             }
@@ -104,6 +121,7 @@ public final class DropSpawnSystem implements Listener {
         } else {
             return;
         }
+        spawnDropPopup(block, player, entry, amount, stack);
         final String dropType = entry.dropType().toLowerCase();
         if ("inventory".equals(dropType)) {
             final Map<Integer, ItemStack> remainder = player.getInventory().addItem(stack);
@@ -371,6 +389,116 @@ public final class DropSpawnSystem implements Listener {
         ));
         Collections.shuffle(colors, ThreadLocalRandom.current());
         return colors;
+    }
+
+    private void spawnDropPopup(final PlacedBlockModel block, final Player player, final DropEntry entry, final int amount) {
+        spawnDropPopup(block, player, entry, amount, null);
+    }
+
+    private void spawnDropPopup(final PlacedBlockModel block, final Player player, final DropEntry entry, final int amount, final ItemStack itemStack) {
+        if (entry.dropPopup() == null || !entry.dropPopup().enabled()) {
+            return;
+        }
+
+        String rawText = entry.dropPopup().text();
+
+        // Resolve placeholders based on drop type
+        switch (entry.type()) {
+            case MATERIAL -> {
+                rawText = rawText.replace("{item_amount}", String.valueOf(amount));
+                if (itemStack != null && itemStack.hasItemMeta()) {
+                    final var meta = itemStack.getItemMeta();
+                    if (meta.hasDisplayName()) {
+                        rawText = rawText.replace("{item_name}", meta.getDisplayName());
+                    } else {
+                        rawText = rawText.replace("{item_name}", formatMaterialName(itemStack.getType()));
+                    }
+                } else if (itemStack != null) {
+                    rawText = rawText.replace("{item_name}", formatMaterialName(itemStack.getType()));
+                }
+            }
+            case EXPERIENCE -> {
+                rawText = rawText.replace("{exp_amount}", String.valueOf(amount));
+                rawText = rawText.replace("{item_amount}", String.valueOf(amount));
+                final String expSource = entry.experienceSource();
+                if ("mmocore".equalsIgnoreCase(expSource)) {
+                    rawText = rawText.replace("{mmocore_exp_amount}", String.valueOf(amount));
+                    rawText = rawText.replace("{vanilla_exp_amount}", "0");
+                } else {
+                    rawText = rawText.replace("{mmocore_exp_amount}", "0");
+                    rawText = rawText.replace("{vanilla_exp_amount}", String.valueOf(amount));
+                }
+            }
+            case COMMAND -> {
+                rawText = rawText.replace("{item_amount}", String.valueOf(amount));
+            }
+        }
+
+        // Resolve PlaceholderAPI placeholders
+        final String resolvedText = this.plugin.applyHologramPlaceholderApi(player, rawText, 0, 0, 0L);
+        final String legacyText = TextColor.toLegacySection(resolvedText);
+
+        // Position hologram in front of player's camera (relative to head/eye position)
+        // with a small random offset so it doesn't appear at the same spot every time
+        final org.bukkit.Location eyeLoc = player.getEyeLocation();
+        final org.bukkit.util.Vector direction = eyeLoc.getDirection().normalize();
+        final org.bukkit.Location loc = eyeLoc.clone().add(direction.multiply(1.8D));
+        loc.add(
+                ThreadLocalRandom.current().nextDouble() * 1.0D - 0.5D,
+                ThreadLocalRandom.current().nextDouble() * 0.8D - 0.1D,
+                ThreadLocalRandom.current().nextDouble() * 1.0D - 0.5D
+        );
+
+        // Use a marker entity with Paper per-player visibility API so the popup
+        // is ONLY visible to the player who received the drop.
+        // The entity is invisible by default, then explicitly shown to the target player.
+        final World world = loc.getWorld();
+        if (world == null) return;
+
+        // Spawn first, then configure — avoids NoSuchMethodError on Paper 1.21.11+
+        // where World.spawn(Location, Class, Consumer) with org.bukkit.util.Consumer was removed.
+        final org.bukkit.entity.ArmorStand stand = world.spawn(loc, org.bukkit.entity.ArmorStand.class);
+        if (stand == null) return;
+        stand.setMarker(true);
+        stand.setInvisible(true);
+        stand.setSmall(true);
+        stand.setInvulnerable(true);
+        stand.setSilent(true);
+        stand.setGravity(false);
+        stand.setCustomNameVisible(true);
+        stand.setCustomName(legacyText);
+        // Paper API: invisible to all players by default
+        try {
+            stand.setVisibleByDefault(false);
+        } catch (final NoSuchMethodError ignored) {
+            // Spigot fallback — entity is visible but positioned at player's face
+        }
+
+        // Only show this entity to the player who received the drop
+        try {
+            player.showEntity(this.plugin, stand);
+        } catch (final NoSuchMethodError ignored) {
+            // Spigot fallback — entity is visible but positioned at player's face
+        }
+
+        // Remove the popup after 2 seconds (40 ticks)
+        this.scheduler.runForEntityLater(stand, stand::remove, null, 40L);
+    }
+
+    /**
+     * Formats a Bukkit Material enum name into a human-readable name.
+     * e.g. {@code IRON_INGOT} becomes {@code Iron Ingot}.
+     */
+    private static String formatMaterialName(final Material material) {
+        if (material == null) return "Item";
+        final String[] words = material.name().toLowerCase().split("_");
+        final StringBuilder sb = new StringBuilder();
+        for (final String word : words) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(Character.toUpperCase(word.charAt(0)));
+            sb.append(word.substring(1));
+        }
+        return sb.toString();
     }
 
     private int randomRange(final int min, final int max) {

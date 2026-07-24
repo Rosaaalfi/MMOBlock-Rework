@@ -4,6 +4,7 @@ import java.util.List;
 
 import me.chyxelmc.mmoblock.api.model.DropBeam;
 import me.chyxelmc.mmoblock.api.model.DropGlow;
+import me.chyxelmc.mmoblock.api.model.DropPopup;
 import me.chyxelmc.mmoblock.api.model.DropType;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -194,8 +195,21 @@ public record BlockDefinitionModel(
         DropBeam effectBeam,
         String itemsAdderId,
         String craftEngineId,
-        String mmoItemsId
+        String mmoItemsId,
+        String experienceSource,
+        String mmocoreProfession,
+        DropPopup dropPopup
     ) implements me.chyxelmc.mmoblock.api.model.DropEntry {
+
+        @Override
+        public String experienceSource() {
+            return this.experienceSource != null ? this.experienceSource : "vanilla";
+        }
+
+        @Override
+        public String mmocoreProfession() {
+            return this.mmocoreProfession != null && !this.mmocoreProfession.isBlank() ? this.mmocoreProfession : "main";
+        }
     }
 
     /**

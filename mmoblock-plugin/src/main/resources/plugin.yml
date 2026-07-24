@@ -17,6 +17,7 @@ softdepend:
   - ItemsAdder
   - CraftEngine
   - MMOItems
+  - MMOCore
 
 permissions:
   mmoblock.admin:

@@ -15,6 +15,7 @@ public interface NodeDefinition {
     String blockListActiveTemplate();
     String blockListDeadTemplate();
     double displayHeight();
+    double detectRange();
     List<? extends DisplayLine> displayLines();
     String itemName();
     Material itemMaterial();

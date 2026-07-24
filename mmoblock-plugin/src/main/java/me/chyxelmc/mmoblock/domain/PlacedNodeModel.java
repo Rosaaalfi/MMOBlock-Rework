@@ -86,6 +86,7 @@ public final class PlacedNodeModel implements me.chyxelmc.mmoblock.api.model.Pla
         String blockListActiveTemplate,
         String blockListDeadTemplate,
         double displayHeight,
+        double detectRange,
         List<? extends me.chyxelmc.mmoblock.api.model.DisplayLine> displayLines,
         String itemName,
         Material itemMaterial

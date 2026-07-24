@@ -7,7 +7,6 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.HexFormat;
 import java.util.logging.Logger;
 
@@ -81,7 +80,8 @@ public final class DatabaseUtils {
                         + "without the original password. To use a new password:");
                 LOGGER.severe("[MMOBlock]   1. Revert the password in config.yml to the original password, OR");
                 LOGGER.severe("[MMOBlock]   2. Delete the existing database file (loses all MMOBlock data) to start fresh.");
-                LOGGER.severe("[MMOBlock]   3. For a safe password change, use: /mmoblock db changepassword <old> <new>");
+                LOGGER.severe("[MMOBlock]   3. To use a new password, update the password in config.yml (databases.h2.password),\n"
+                        + "                     save your data first, then restart the server.");
                 throw new IllegalStateException("H2 database password mismatch for file: " + dbFile.getAbsolutePath(), exception);
             }
             // Re-throw other connection failures
@@ -122,48 +122,6 @@ public final class DatabaseUtils {
         this.dataSource = new HikariDataSource(hikariConfig);
     }
 
-    /**
-     * Changes the H2 database password. This connects with the old password,
-     * executes {@code ALTER USER SA SET PASSWORD}, updates the config, and
-     * records the new password hash for future change detection.
-     *
-     * @param plugin      the plugin instance for config access
-     * @param oldPassword the current H2 database password
-     * @param newPassword the new H2 database password
-     * @throws IllegalStateException if the old password does not match or the operation fails
-     */
-    public void changePassword(final JavaPlugin plugin, final String oldPassword, final String newPassword) {
-        if (!isInitialized()) {
-            throw new IllegalStateException("H2 database is not initialized");
-        }
-        if (newPassword == null || newPassword.isEmpty()) {
-            throw new IllegalArgumentException("New password must not be empty");
-        }
-
-        try (Connection conn = getConnection()) {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute("ALTER USER SA SET PASSWORD '" + newPassword.replace("'", "''") + "'");
-            }
-        } catch (final SQLException exception) {
-            throw new IllegalStateException("Failed to change H2 database password", exception);
-        }
-
-        // Update the config.yml with the new password
-        plugin.getConfig().set("databases.h2.password", newPassword);
-        plugin.saveConfig();
-
-        // Update the password hash file
-        final String configuredFile = plugin.getConfig().getString("databases.h2.file", ".caches/data");
-        final Path configuredPath = Path.of(configuredFile);
-        final Path dbPath = configuredPath.isAbsolute()
-                ? configuredPath
-                : plugin.getDataFolder().toPath().resolve(configuredPath);
-        saveActivePasswordHash(dbPath.getParent(), newPassword);
-
-        // Rebuild the datasource with the new password so existing connections work
-        this.dataSource.close();
-        initializeH2(plugin);
-    }
 
     public Connection getConnection() throws SQLException {
         if (this.dataSource == null || this.dataSource.isClosed()) {

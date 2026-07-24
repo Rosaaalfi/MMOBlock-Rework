@@ -68,4 +68,40 @@ public interface DropEntry {
     default String mmoItemsId() {
         return null;
     }
+
+    // ---- Experience configuration ----
+
+    /**
+     * Source of experience for EXPERIENCE-type drops.
+     * Supported values: {@code "vanilla"} (default) or {@code "mmocore"}.
+     *
+     * @return the experience source string, or {@code "vanilla"} if not set
+     */
+    default String experienceSource() {
+        return "vanilla";
+    }
+
+    /**
+     * MMOCore profession ID for EXPERIENCE-type drops with mmocore experience source.
+     * Default is {@code "main"} which gives class experience.
+     * Can be a default MMOCore profession (alchemy, enchanting, farming, fishing, mining,
+     * smelting, smithing, woodcutting, etc.) or a custom profession from MMOCore.
+     *
+     * @return the MMOCore profession ID, or {@code "main"} if not set
+     */
+    default String mmocoreProfession() {
+        return "main";
+    }
+
+    // ---- Drop popup ----
+
+    /**
+     * Optional popup effect configuration for the drop.
+     * When non-null and enabled, shows a floating text popup at the drop location.
+     *
+     * @return the drop popup configuration, or null if not configured
+     */
+    default DropPopup dropPopup() {
+        return null;
+    }
 }

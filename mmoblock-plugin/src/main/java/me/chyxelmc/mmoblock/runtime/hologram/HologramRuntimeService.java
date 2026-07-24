@@ -140,9 +140,9 @@ public final class HologramRuntimeService {
             return;
         }
 
-        final Location location = resolveBaseLocation(block, definition, state, world);
-        final boolean animated = this.packetLineFactory.hasAnimatedText(renderedLines);
-        final boolean containsPlaceholderApiTokens = this.packetLineFactory.hasPlaceholderApiTokens(renderedLines);
+        final Location location = resolveBaseLocation(block, definition, state, world);            final boolean animated = this.packetLineFactory.hasAnimatedText(renderedLines)
+                    || hasItemDisplayLines(renderedLines);
+            final boolean containsPlaceholderApiTokens = this.packetLineFactory.hasPlaceholderApiTokens(renderedLines);
         final HologramPlaceholderValues placeholderValues = new HologramPlaceholderValues(progress, maxProgress, respawnTimeSeconds, state.name());
 
         // If ECS integration available, create/update a HologramComponent entity.
@@ -166,6 +166,15 @@ public final class HologramRuntimeService {
 
     static boolean hasAnimatedText(final List<RenderedHologramLine> lines) {
         return new HologramPacketLineFactory().hasAnimatedText(lines);
+    }
+
+    static boolean hasItemDisplayLines(final List<RenderedHologramLine> lines) {
+        for (final RenderedHologramLine line : lines) {
+            if (line.type() == RenderedHologramLine.Type.ITEM) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static boolean hasPlaceholderApiTokens(final List<RenderedHologramLine> lines) {

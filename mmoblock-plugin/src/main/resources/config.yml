@@ -1,9 +1,9 @@
-debug: false #logging debug info to console
-bStats: true #send anonymous stats to bStats
-updateChecker: true #check for updates on https://voxel.shop/
+debug: false # logging debug info to console
+bStats: true # send anonymous stats to bStats
+updateChecker: true # check for updates on https://voxel.shop/
 lang: en-us
-extractDefaultAssets: false #extract default assets(blocks(yml), tools(yml), nodes(yml), drops(yml), models(schem, bdengine)) from the plugin jar to the plugin data folder. This will overwrite any existing files with the same name.
-interactionThrottleMs: 1000 #throttle interactions with blocks and entities to prevent spamming. Time in milliseconds.
+extractDefaultAssets: false # extract default assets(blocks(yml), tools(yml), nodes(yml), drops(yml), models(schem, bdengine)) from the plugin jar to the plugin data folder. This will overwrite any existing files with the same name.
+interactionThrottleMs: 1000 # throttle interactions with blocks and entities to prevent spamming. Time in milliseconds.
 databases:
   mysql:
     enabled: false
@@ -27,7 +27,7 @@ hologram:
     maxUpdatesPerTick: 200
     spacing:
       text: 0.25
-      item: 0.30
+      item: 0.40
       block: 0.30
     offset:
       text: 0.00

@@ -63,9 +63,6 @@ final class HologramScanScheduler {
         for (final Map.Entry<UUID, HologramPacketSession> entry : this.sessions.entrySet()) {
             final UUID hologramId = entry.getKey();
             final HologramPacketSession session = entry.getValue();
-            if (session.animated()) {
-                continue;
-            }
 
             final World world = this.plugin.getServer().getWorld(session.worldName());
             if (world == null) {

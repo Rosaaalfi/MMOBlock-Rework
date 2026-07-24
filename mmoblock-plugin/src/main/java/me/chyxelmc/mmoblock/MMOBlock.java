@@ -38,6 +38,7 @@ import me.chyxelmc.mmoblock.ecs.system.PacketHologramSyncSystem;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceReadSystem;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
 import me.chyxelmc.mmoblock.utils.DatabaseUtils;
+import me.chyxelmc.mmoblock.utils.InternalPlaceholderResolver;
 import me.chyxelmc.mmoblock.utils.analytics.Metrics;
 
 public final class MMOBlock extends JavaPlugin{
@@ -550,20 +551,25 @@ public final class MMOBlock extends JavaPlugin{
         if (player == null || text == null || text.isEmpty()) {
             return text;
         }
+
+        // Step 1: Resolve internal placeholders ({mmocore_level}, etc.)
+        String resolved = InternalPlaceholderResolver.resolve(player, text);
+
+        // Step 2: Resolve PlaceholderAPI placeholders (%placeholder% etc.)
         final Method method = this.placeholderApiSetMethod;
         final HologramPlaceholderContextStore contextStore = this.placeholderContextStore;
         if (method == null || contextStore == null) {
-            return text;
+            return resolved;
         }
         contextStore.set(
                 player.getUniqueId(),
                 new HologramPlaceholderContextStore.ContextValues(progress, maxProgress, respawnTimeSeconds)
         );
         try {
-            final Object result = method.invoke(null, player, text);
-            return result instanceof String resolved ? resolved : text;
+            final Object result = method.invoke(null, player, resolved);
+            return result instanceof String finalResolved ? finalResolved : resolved;
         } catch (final Exception ignored) {
-            return text;
+            return resolved;
         } finally {
             contextStore.clear(player.getUniqueId());
         }
