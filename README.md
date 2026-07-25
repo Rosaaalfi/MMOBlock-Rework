@@ -239,11 +239,11 @@ https://public-repo.chyxelmc.me/repository
 
 ```kotlin
 repositories {
-    maven("https://public-repo.chyxelmc.me/repository")
+    maven("https://repo.chyxelmc.me/repository")
 }
 
 dependencies {
-    implementation("me.chyxelmc:mmoblock-api:3.5.0-RELEASE")
+    implementation("me.chyxelmc:mmoblock-api:26.7.25")
 }
 ```
 
@@ -253,14 +253,14 @@ dependencies {
 <repositories>
     <repository>
         <id>chyxel-repo</id>
-        <url>https://public-repo.chyxelmc.me/repository</url>
+        <url>https://repo.chyxelmc.me/repository</url>
     </repository>
 </repositories>
 
 <dependency>
     <groupId>me.chyxelmc</groupId>
     <artifactId>mmoblock-api</artifactId>
-    <version>3.5.0-RELEASE</version>
+    <version>26.7.25</version>
 </dependency>
 ```
 
