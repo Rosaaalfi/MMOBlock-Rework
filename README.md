@@ -149,10 +149,10 @@ plugins/MMOBlock/
 
 ## Dependency
 
-MMOBlock API artifacts are published to **Chyxel Repository**. Repository docs and browsing live at <https://repo.chyxelmc.me/home/>, while Maven artifacts are served from:
+MMOBlock API artifacts are published to **Chyxel Repository**. Repository docs and browsing live at <https://repo.chyxelmc.me/>, while Maven artifacts are served from:
 
 ```
-https://public-repo.chyxelmc.me/repository
+https://repo.chyxelmc.me/repository
 ```
 
 ### Gradle (Kotlin DSL)
