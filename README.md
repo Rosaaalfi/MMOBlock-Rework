@@ -243,7 +243,7 @@ repositories {
 }
 
 dependencies {
-    implementation("me.chyxelmc:mmoblock-api:26.7.25")
+    implementation("me.chyxelmc:mmoblock-api:{version}")
 }
 ```
 
@@ -260,7 +260,7 @@ dependencies {
 <dependency>
     <groupId>me.chyxelmc</groupId>
     <artifactId>mmoblock-api</artifactId>
-    <version>26.7.25</version>
+    <version>{version}</version>
 </dependency>
 ```
 
