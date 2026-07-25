@@ -9,81 +9,79 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/Rosaaalfi/MMOBlock-Rework/gradle.yml?style=for-the-badge&label=Build&labelColor=1A1B26&color=2EA043&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/actions)
 [![Code Quality Badge](https://img.shields.io/codacy/grade/372316daf86d4bfeb5d01b4d53473782?style=for-the-badge&label=Code%20Quality&labelColor=1A1B26&logo=codacy)](https://app.codacy.com/gh/Rosaaalfi/MMOBlock-Rework/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?style=for-the-badge&label=Issues&labelColor=1A1B26&color=D15794&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
-[![Chyxel Repository](https://img.shields.io/badge/Chyxel_Repository-v3.5.0--RELEASE-007ACC?style=for-the-badge&labelColor=1A1B26&logo=apachemaven)](https://repo.chyxelmc.me/home/)
-
-</div>
+[![Chyxel Repo](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Frepo.chyxelmc.me%2Frepository%2Findex.json&query=%24.artifacts%5B0%5D.latestVersion&prefix=mmoblock-api%20-%20v&style=for-the-badge&logo=apachemaven&label=Chyxel%20Repo&labelColor=1A1B26)](https://repo.chyxelmc.me)</div>
 
 ---
 
-## 📖 About
+## About
 
 **MMOBlock** is a modular Minecraft plugin designed for modern **Paper-based servers** and compatible server software such as **Folia**.
 
 The project focuses on:
 
-| Goal | Description |
-|------|-------------|
-| 🔀 **Cross-version** | Supports multiple Minecraft versions seamlessly |
-| 🧱 **Modular Architecture** | Independent modules for scalability |
-| 🧵 **Thread-safe Systems** | Full Folia & Paper multi-thread safety |
-| ⚡ **Performance** | Optimized for high-load servers |
-| 🔌 **Extensible API** | Developer-friendly API for integrations |
+| Goal                     | Description                                     |
+|--------------------------|-------------------------------------------------|
+| **Cross-version**        | Supports multiple Minecraft versions seamlessly |
+| **Modular Architecture** | Independent modules for scalability             |
+| **Thread-safe Systems**  | Full Folia & Paper multi-thread safety          |
+| **Performance**          | Optimized for high-load servers                 |
+| **Extensible API**       | Developer-friendly API for integrations         |
 
 ---
 
-## 📚 Repository Structure
+## Repository Structure
 
 ```
 MMOBlock-Rework/
-├── mmoblock-api/          → Public API bridge for third-party developers
-├── mmoblock-ecs/          → ECS (Entity Component System) core engine
-├── mmoblock-plugin/       → Main gameplay & plugin logic (shadowJar artifact)
-├── mmoblock-nms/          → NMS compatibility umbrella
-│   ├── nms-common/        →   Internal runtime loader & adapter abstraction
-│   ├── nms-v1_21_1/       →   Minecraft 1.21.1 (Mojang-mapped)
-│   ├── nms-v1_21_4/       →   Minecraft 1.21.4 (Mojang-mapped)
-│   ├── nms-v1_21_11/      →   Minecraft 1.21.11 (Mojang-mapped)
-│   ├── nms-v26_1/         →   Minecraft 26.1 (Mojang-mapped)
-│   ├── nms-v26_2/         →   Minecraft 26.2 (Mojang-mapped)
-│   ├── nms-mojang-v1_19_4/→   Minecraft 1.19.4 (Mojang-mapped)
-│   ├── nms-mojang-v1_20_4/→   Minecraft 1.20.4 (Mojang-mapped)
-│   ├── nms-spigot-v1_19_4/ →   Minecraft 1.19.4 (Spigot/obfuscated)
-│   └── nms-spigot-v1_20_4/ →   Minecraft 1.20.4 (Spigot/obfuscated)
-├── mmoblock-platform/ → Thread-safe scheduler abstraction
-│   ├── platform-api/  →   Shared scheduler interface
-│   ├── platform-paper/→   Paper-specific scheduler
-│   └── platform-folia/→   Folia-specific scheduler
-├── docs/              → Static project page & consumer documentation
-├── server/            → Pre-configured server directories for testing
-└── runClient/         → Local test server instances
+ ├── mmoblock-api/          → Public API bridge for third-party developers
+ ├── mmoblock-ecs/          → ECS (Entity Component System) core engine
+ ├── mmoblock-plugin/       → Main gameplay & plugin logic (shadowJar artifact)
+ ├── mmoblock-nms/          → NMS compatibility umbrella
+ │   ├── nms-common/        →   Internal runtime loader & adapter abstraction
+ │   ├── nms-v1_21_1/       →   Minecraft 1.21.1 (Mojang-mapped)
+ │   ├── nms-v1_21_4/       →   Minecraft 1.21.4 (Mojang-mapped)
+ │   ├── nms-v1_21_11/      →   Minecraft 1.21.11 (Mojang-mapped)
+ │   ├── nms-v26_1/         →   Minecraft 26.1 (Mojang-mapped)
+ │   ├── nms-v26_2/         →   Minecraft 26.2 (Mojang-mapped)
+ │   ├── nms-mojang-v1_19_4/→   Minecraft 1.19.4 (Mojang-mapped)
+ │   ├── nms-mojang-v1_20_4/→   Minecraft 1.20.4 (Mojang-mapped)
+ │   ├── nms-spigot-v1_19_4/ →   Minecraft 1.19.4 (Spigot/obfuscated)
+ │   └── nms-spigot-v1_20_4/ →   Minecraft 1.20.4 (Spigot/obfuscated)
+ ├── mmoblock-platform/ → Thread-safe scheduler abstraction
+ │   ├── platform-api/  →   Shared scheduler interface
+ │   ├── platform-paper/→   Paper-specific scheduler
+ │   └── platform-folia/→   Folia-specific scheduler
+ ├── docs/              → Static project page & consumer documentation
+ ├── server/            → Pre-configured server directories for testing
+ └── runClient/         → Local test server instances
 ```
 
 > 💡 If you are working on a specific Minecraft version, navigate to the corresponding `nms-*` module under `mmoblock-nms/`.
 
 ---
 
-## ✨ Features
+## Features
 
-- 🟩 YAML-based custom block configuration
-- ⛏️ Advanced mining systems
-- 🔨 Tool-based mechanics
-- 🎁 Custom rewards & drops
-- 💬 Hologram support
-- 🗄️ Multi-database support (**H2 / MySQL**)
-- 🎨 3D model integrations
-- 🔁 Cross-version compatibility
-- 🍃 Paper & Folia support
-- 🧩 Developer-friendly API
+- YAML-based custom block configuration
+- Advanced mining systems
+- Tool-based mechanics
+- Custom rewards & drops
+- Hologram support
+- Multi-database support (**H2 / MySQL**)
+- 3D model integrations
+- Cross-version compatibility
+- Paper & Folia support
+- Developer-friendly API
 
 ---
 
-## 🗺️ Development Roadmap
+## Development Roadmap
 
 > **Legend:** &nbsp;<img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="60" height="20"/> Done &nbsp;|&nbsp; <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="60" height="20"/> In Progress &nbsp;|&nbsp; <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="60" height="20"/> Not Started
 
 ---
 
-### 🛠️ Phase 1 — Foundation
+### Foundation
 ![Progress](https://img.shields.io/badge/Progress-100%25-238636?style=flat-square)
 
 <table>
@@ -97,7 +95,7 @@ MMOBlock-Rework/
 
 ---
 
-### ⚙️ Phase 2 — Core Compatibility & Performance
+### Core Compatibility & Performance
 ![Progress](https://img.shields.io/badge/Progress-100%25-1f6feb?style=flat-square)
 
 <table>
@@ -110,7 +108,7 @@ MMOBlock-Rework/
 
 ---
 
-### 🧩 Phase 3 — ECS Engine
+### ECS Engine
 ![Progress](https://img.shields.io/badge/Progress-100%25-8957e5?style=flat-square)
 
 <table>
@@ -126,7 +124,7 @@ MMOBlock-Rework/
 
 ---
 
-### ✨ Phase 4 — Feature Expansion
+### Feature Expansion
 ![Progress](https://img.shields.io/badge/Progress-85%25-dcab0e?style=flat-square)
 
 <table>
@@ -150,7 +148,7 @@ MMOBlock-Rework/
 
 ---
 
-### 🔌 Phase 5 — Integrations
+### Integrations
 ![Progress](https://img.shields.io/badge/Progress-37%25-1f6feb?style=flat-square)
 
 **Model Systems**
@@ -173,7 +171,7 @@ MMOBlock-Rework/
 
 ---
 
-### 🧪 Phase 6 — Testing & Quality
+### Testing & Quality
 ![Progress](https://img.shields.io/badge/Progress-0%25-6e7681?style=flat-square)
 
 <table>
@@ -185,7 +183,7 @@ MMOBlock-Rework/
 
 ---
 
-### 🚀 Final Phase — Release
+### Final Release
 ![Progress](https://img.shields.io/badge/Progress-25%25-238636?style=flat-square)
 
 <table>
@@ -198,7 +196,7 @@ MMOBlock-Rework/
 
 ---
 
-## 🔧 Quick Start
+## Quick Start
 
 ### 1. Build
 
@@ -229,7 +227,7 @@ plugins/MMOBlock/
 
 ---
 
-## 📦 Dependency
+## Dependency
 
 MMOBlock API artifacts are published to **Chyxel Repository**. Repository docs and browsing live at <https://repo.chyxelmc.me/home/>, while Maven artifacts are served from:
 
@@ -268,7 +266,7 @@ dependencies {
 
 ---
 
-## 🧩 API Examples
+## API Examples
 
 ### Place a Block
 
@@ -300,7 +298,7 @@ public void onBlockMine(BlockMineEvent e) {
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 1. Use `mmoblock-api` for all API access — avoid touching internals
 2. Register your `NmsAdapter` implementations properly via `ServiceLoader`
@@ -311,10 +309,10 @@ public void onBlockMine(BlockMineEvent e) {
 
 ---
 
-## 📜 License & Support
+## License & Support
 
-- 🌐 **Website:** [chyxelmc.me](https://chyxelmc.me)
-- 🐛 **Issues:** [GitHub Issues](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
+- **Website:** [chyxelmc.me](https://chyxelmc.me)
+- **Issues:** [GitHub Issues](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
 
 ---
 

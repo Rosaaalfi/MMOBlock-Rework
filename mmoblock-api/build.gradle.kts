@@ -190,7 +190,7 @@ tasks.register("publishToChyxelRepo") {
         val r2SecretAccessKey = requiredPublishProperty("r2SecretAccessKey")
         val r2PublicUrl =
             optionalPublishProperty("r2PublicUrl")
-                ?: "https://public-repo.chyxelmc.me"
+                ?: "https://repo.chyxelmc.me"
         val r2Endpoint = "https://$r2AccountId.r2.cloudflarestorage.com"
         val awsCliPath = optionalPublishProperty("awsCliPath") ?: "aws"
 
@@ -361,7 +361,7 @@ tasks.register("printChyxelRepoProperties") {
             r2Bucket=your-r2-bucket
             r2AccessKeyId=your-r2-access-key-id
             r2SecretAccessKey=your-r2-secret-access-key
-            r2PublicUrl=https://public-repo.chyxelmc.me
+            r2PublicUrl=https://repo.chyxelmc.me
             # awsCliPath=C:/Program Files/Amazon/AWSCLIV2/aws.exe
             """.trimIndent()
         )
