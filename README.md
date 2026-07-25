@@ -77,123 +77,43 @@ MMOBlock-Rework/
 
 ## Development Roadmap
 
-> **Legend:** &nbsp;<img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="60" height="20"/> Done &nbsp;|&nbsp; <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="60" height="20"/> In Progress &nbsp;|&nbsp; <img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="60" height="20"/> Not Started
+```mermaid
+gantt
+title MMOBlock Development Roadmap (Mulai Maret 2026 – Q2 2027)
+dateFormat YYYY-MM-DD
+axisFormat %Y-%m
 
----
+    section Phase 1 — Foundation
+    Add legacy support                       :active,  p1_1, 2026-03-01, 2026-03-25
+    Stabilize base 1.19.4                    :         p1_2, 2026-03-10, 2026-04-05
+    Stabilize other versions                 :         p1_3, 2026-03-25, 2026-04-20
 
-### Foundation
-![Progress](https://img.shields.io/badge/Progress-100%25-238636?style=flat-square)
+    section Phase 2 — Compatibility
+    Multi-thread safe support                :         p2_1, 2026-04-05, 2026-05-10
+    Single-thread support                    :         p2_2, 2026-04-15, 2026-06-01
+    Full Folia compatibility                 :         p2_3, 2026-05-25, 2026-07-01
+    Full Bukkit compatibility                :         p2_4, 2026-06-10, 2026-07-15
+    Full Paper compatibility                 :         p2_5, 2026-07-05, 2026-07-30
 
-<table>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Cross-version NMS adapter system</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Legacy support — <code>1.19.4</code> (Mojang &amp; Spigot)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td><code>1.20.4</code> support (Mojang &amp; Spigot)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td><code>1.21.1</code> / <code>1.21.4</code> / <code>1.21.11</code> support</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td><code>26.1</code> / <code>26.2</code> support</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>ServiceLoader-based adapter registration</td></tr>
-</table>
+    section Phase 3 — Features
+    Essentials-like utility systems          :         p3_1, 2026-06-15, 2026-07-20
+    Performance optimization                 :         p3_2, 2026-07-01, 2026-08-20
+    New gameplay modules                     :         p3_3, 2026-07-25, 2026-10-01
 
----
+    section Phase 4 — Integrations
+    MMOItems & MMOCore integration           :         p4_1, 2026-09-10, 2026-11-05
+    Resource & Model Systems integration     :         p4_2, 2026-10-15, 2026-12-01
+    Plugin API expansion                     :         p4_3, 2026-11-01, 2027-01-15
 
-### Core Compatibility & Performance
-![Progress](https://img.shields.io/badge/Progress-100%25-1f6feb?style=flat-square)
+    section Phase 5 — Testing
+    Cross-version & Stress testing           :         p5_1, 2027-01-05, 2027-02-25
+    Compatibility & Performance benchmarks   :         p5_2, 2027-02-15, 2027-04-01
+    Gameplay balance testing                 :         p5_3, 2027-03-15, 2027-05-25
 
-<table>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Paper scheduler (single-thread)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Folia scheduler (region-thread safe)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>FoliaSafeScheduler abstraction layer</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Full Paper compatibility</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Full Folia compatibility</td></tr>
-</table>
-
----
-
-### ECS Engine
-![Progress](https://img.shields.io/badge/Progress-100%25-8957e5?style=flat-square)
-
-<table>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Core ECS — Entity, Component, System managers</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Block state management (BlockStateComponent)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Mining progress &amp; interaction systems</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Drop spawning system</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Hologram rendering &amp; packet sync</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Respawn timer system</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Persistence read/write systems</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Visual sync &amp; reconciliation</td></tr>
-</table>
-
----
-
-### Feature Expansion
-![Progress](https://img.shields.io/badge/Progress-85%25-dcab0e?style=flat-square)
-
-<table>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>YAML-based block/tool/drop/node configuration</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Advanced mining &amp; tool-based mechanics</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Custom rewards &amp; drop tables</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Full hologram system (packet-based, animated)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Multi-database support (<b>H2 / MySQL</b>)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Data caching layer</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Fake block system (packet-level)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Block respawn system</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Node system (multi-block structures)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>BDEngine 3D model support</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Schematic system (dead/variant block states)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>PlaceholderAPI expansion</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Multi-language support (EN, ID, JA, ZH-CN, ZH-TW)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Paper command API (Brigadier) integration</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Utility systems (ColorLogger, ConditionEvaluator, UpdateChecker, Metrics)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="72" height="22"/></td><td>Performance optimization &amp; profiling</td></tr>
-</table>
-
----
-
-### Integrations
-![Progress](https://img.shields.io/badge/Progress-37%25-1f6feb?style=flat-square)
-
-**Model Systems**
-
-<table>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>ItemsAdder integration</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>ModelEngine R4 integration</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>BetterModel v3 integration</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Nexo integration</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Oraxen integration</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>CraftEngine integration</td></tr>
-</table>
-
-**MMO Ecosystem**
-
-<table>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>MMOItems integration</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>MMOCore integration</td></tr>
-</table>
-
----
-
-### Testing & Quality
-![Progress](https://img.shields.io/badge/Progress-0%25-6e7681?style=flat-square)
-
-<table>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Cross-version testing</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Stress testing</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Compatibility validation</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Performance benchmarking</td></tr>
-</table>
-
----
-
-### Final Release
-![Progress](https://img.shields.io/badge/Progress-25%25-238636?style=flat-square)
-
-<table>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/done.svg" width="72" height="22"/></td><td>Stable API surface</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/wip.svg" width="72" height="22"/></td><td>CI/CD pipeline (GitHub Actions)</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Final bug fixing</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Documentation polishing</td></tr>
-<tr><td><img src="https://raw.githubusercontent.com/Rosaaalfi/Iseng/refs/heads/main/undone.svg" width="72" height="22"/></td><td>Public release</td></tr>
-</table>
-
+    section Final Phase — Release
+    Production build & Bug fixing            :         f1,   2027-04-15, 2027-06-10
+    Documentation & Public release           :         f2,   2027-06-01, 2027-06-30
+```
 ---
 
 ## Quick Start
