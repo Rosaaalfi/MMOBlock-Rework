@@ -1,8 +1,10 @@
 <div align="center">
   <img src="https://i.ibb.co.com/G3sB5Pwh/mmoblock.png" width="120" alt="MMOBlock Logo"/>
-  <h2 style="margin-top: -15px; margin-bottom: 0; font-size: 30px; font-weight: 700; font-variant-caps: all-small-caps">MMOBlock</h2>
-  <h3 style="margin-top: 5px; margin-bottom: 20px; font-weight: 700; font-variant-caps: all-small-caps;"><em>Unblock the Fun, One Click at a Time.</em></h3>
 
+### MMOBlock
+### *Unblock the Fun, One Click at a Time.*
+#
+###
 [![Build](https://img.shields.io/github/actions/workflow/status/Rosaaalfi/MMOBlock-Rework/gradle.yml?style=for-the-badge&label=Build&labelColor=1A1B26&color=2EA043&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/actions)
 [![Code Quality Badge](https://img.shields.io/codacy/grade/372316daf86d4bfeb5d01b4d53473782?style=for-the-badge&label=Code%20Quality&labelColor=1A1B26&logo=codacy)](https://app.codacy.com/gh/Rosaaalfi/MMOBlock-Rework/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?style=for-the-badge&label=Issues&labelColor=1A1B26&color=D15794&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
@@ -78,40 +80,40 @@ MMOBlock-Rework/
 
 ```mermaid
 gantt
-title MMOBlock Development Roadmap (Mulai Maret 2026 – Q2 2027)
-dateFormat YYYY-MM-DD
-axisFormat %Y-%m
+    title MMOBlock Development Roadmap (Mulai Maret 2026 – Q2 2027)
+    dateFormat YYYY-MM-DD
+    axisFormat %Y-%m
 
     section Phase 1 — Foundation
-    Add legacy support                       :active,  p1_1, 2026-03-01, 2026-03-25
-    Stabilize base 1.19.4                    :         p1_2, 2026-03-10, 2026-04-05
-    Stabilize other versions                 :         p1_3, 2026-03-25, 2026-04-20
+        Add legacy support                       :active,  p1_1, 2026-03-01, 2026-03-25
+        Stabilize base 1.19.4                    :         p1_2, 2026-03-10, 2026-04-05
+        Stabilize other versions                 :         p1_3, 2026-03-25, 2026-04-20
 
     section Phase 2 — Compatibility
-    Multi-thread safe support                :         p2_1, 2026-04-05, 2026-05-10
-    Single-thread support                    :         p2_2, 2026-04-15, 2026-06-01
-    Full Folia compatibility                 :         p2_3, 2026-05-25, 2026-07-01
-    Full Bukkit compatibility                :         p2_4, 2026-06-10, 2026-07-15
-    Full Paper compatibility                 :         p2_5, 2026-07-05, 2026-07-30
+        Multi-thread safe support                :         p2_1, 2026-04-05, 2026-05-10
+        Single-thread support                    :         p2_2, 2026-04-15, 2026-06-01
+        Full Folia compatibility                 :         p2_3, 2026-05-25, 2026-07-01
+        Full Bukkit compatibility                :         p2_4, 2026-06-10, 2026-07-15
+        Full Paper compatibility                 :         p2_5, 2026-07-05, 2026-07-30
 
     section Phase 3 — Features
-    Essentials-like utility systems          :         p3_1, 2026-06-15, 2026-07-20
-    Performance optimization                 :         p3_2, 2026-07-01, 2026-08-20
-    New gameplay modules                     :         p3_3, 2026-07-25, 2026-10-01
+        Essentials-like utility systems          :         p3_1, 2026-06-15, 2026-07-20
+        Performance optimization                 :         p3_2, 2026-07-01, 2026-08-20
+        New gameplay modules                     :         p3_3, 2026-07-25, 2026-10-01
 
     section Phase 4 — Integrations
-    MMOItems & MMOCore integration           :         p4_1, 2026-09-10, 2026-11-05
-    Resource & Model Systems integration     :         p4_2, 2026-10-15, 2026-12-01
-    Plugin API expansion                     :         p4_3, 2026-11-01, 2027-01-15
+        MMOItems & MMOCore integration           :         p4_1, 2026-09-10, 2026-11-05
+        Resource & Model Systems integration     :         p4_2, 2026-10-15, 2026-12-01
+        Plugin API expansion                     :         p4_3, 2026-11-01, 2027-01-15
 
     section Phase 5 — Testing
-    Cross-version & Stress testing           :         p5_1, 2027-01-05, 2027-02-25
-    Compatibility & Performance benchmarks   :         p5_2, 2027-02-15, 2027-04-01
-    Gameplay balance testing                 :         p5_3, 2027-03-15, 2027-05-25
+        Cross-version & Stress testing           :         p5_1, 2027-01-05, 2027-02-25
+        Compatibility & Performance benchmarks   :         p5_2, 2027-02-15, 2027-04-01
+        Gameplay balance testing                 :         p5_3, 2027-03-15, 2027-05-25
 
     section Final Phase — Release
-    Production build & Bug fixing            :         f1,   2027-04-15, 2027-06-10
-    Documentation & Public release           :         f2,   2027-06-01, 2027-06-30
+        Production build & Bug fixing            :         f1,   2027-04-15, 2027-06-10
+        Documentation & Public release           :         f2,   2027-06-01, 2027-06-30
 ```
 ---
 
@@ -177,9 +179,9 @@ dependencies {
 </repositories>
 
 <dependency>
-    <groupId>me.chyxelmc</groupId>
-    <artifactId>mmoblock-api</artifactId>
-    <version>{version}</version>
+<groupId>me.chyxelmc</groupId>
+<artifactId>mmoblock-api</artifactId>
+<version>{version}</version>
 </dependency>
 ```
 
@@ -193,13 +195,13 @@ dependencies {
 MMOBlockApi api = MMOBlockApi.get();
 
 if (api != null) {
-    api.getBlockService().placeBlock(
+        api.getBlockService().placeBlock(
         "exampleEntity",
         Bukkit.getWorlds().get(0),
         100, 64, 100,
-        "north"
-    );
-}
+                "north"
+                );
+                }
 ```
 
 ### Listen to Events
@@ -209,7 +211,7 @@ if (api != null) {
 public void onBlockMine(BlockMineEvent e) {
     if (e.isCompleted()) {
         e.getPlayer().sendMessage(
-            "You finished mining: " + e.getDefinition().getId()
+                "You finished mining: " + e.getDefinition().getId()
         );
     }
 }
