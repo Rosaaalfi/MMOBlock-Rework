@@ -1,10 +1,9 @@
 package me.chyxelmc.mmoblock.api.integration;
 
+import me.chyxelmc.mmoblock.utils.DependencyChecker;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.logging.Logger;
 
 /**
  * Integration layer for <a href="https://www.spigotmc.org/resources/mmocore.1030/">MMOCore</a>.
@@ -21,15 +20,14 @@ import java.util.logging.Logger;
 public final class MMOCoreIntegration {
 
     private static final boolean AVAILABLE;
-    private static final Logger LOGGER = Logger.getLogger(MMOCoreIntegration.class.getName());
 
     static {
         boolean available = false;
         try {
             Class.forName("net.Indyuce.mmocore.api.player.PlayerData");
             available = true;
-        } catch (final ClassNotFoundException ignored) {
-            // MMOCore not installed
+        } catch (final ReflectiveOperationException | LinkageError ignored) {
+            // MMOCore not installed or incompatible
         }
         AVAILABLE = available;
     }
@@ -45,7 +43,11 @@ public final class MMOCoreIntegration {
      * @return {@code true} if MMOCore is installed and its API classes are resolvable
      */
     public static boolean isAvailable() {
-        return AVAILABLE;
+        if (!AVAILABLE) return false;
+        if (DependencyChecker.isInitialized()) {
+            return DependencyChecker.isMMOCoreAvailable();
+        }
+        return true;
     }
 
     // -------------------------------------------------------------

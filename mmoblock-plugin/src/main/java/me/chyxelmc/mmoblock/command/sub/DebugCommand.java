@@ -4,6 +4,7 @@ import me.chyxelmc.mmoblock.command.CommandArgs;
 import me.chyxelmc.mmoblock.command.CommandContext;
 import me.chyxelmc.mmoblock.command.SubCommand;
 import me.chyxelmc.mmoblock.utils.InternalPlaceholderResolver;
+import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -32,15 +33,20 @@ public final class DebugCommand implements SubCommand {
     @Override
     public boolean execute(@NotNull final CommandSender sender, @NotNull final String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(Component.text("§cUsage: /mmoblock debug "));
-            sender.sendMessage(Component.text("§7/mmoblock debug placeholder parse  "));
+            sender.sendMessage(TextColor.toComponent("&7"));
+            sender.sendMessage(ctx.configService().messageComponent(
+                    "commands.debug.usage",
+                    "Usage: /mmoblock debug placeholder parse <player> <placeholder>"
+            ));
             return true;
         }
         return switch (args[1].toLowerCase(java.util.Locale.ROOT)) {
             case "placeholder" -> handlePlaceholder(sender, args);
             default -> {
-                sender.sendMessage(Component.text("§cUnknown debug subcommand: " + args[1]));
-                sender.sendMessage(Component.text("§7Usage: /mmoblock debug placeholder parse  "));
+                sender.sendMessage(ctx.configService().messageComponent(
+                        "commands.debug.usage",
+                        "Usage: /mmoblock debug placeholder parse <player> <placeholder>"
+                ));
                 yield true;
             }
         };
@@ -48,16 +54,19 @@ public final class DebugCommand implements SubCommand {
 
     private boolean handlePlaceholder(@NotNull final CommandSender sender, @NotNull final String[] args) {
         if (args.length < 4 || !"parse".equalsIgnoreCase(args[2])) {
-            sender.sendMessage(Component.text("§cUsage: /mmoblock debug placeholder parse  "));
+            sender.sendMessage(ctx.configService().messageComponent(
+                    "commands.debug.usage",
+                    "Usage: /mmoblock debug placeholder parse <player> <placeholder>"
+            ));
             return true;
         }
 
         final Player target = CommandArgs.resolvePlayer(sender, args[3]);
         if (target == null) {
             if ("@s".equalsIgnoreCase(args[3]) || "me".equalsIgnoreCase(args[3])) {
-                sender.sendMessage(Component.text("§cConsole must specify a player name."));
+                sender.sendMessage(TextColor.toComponent("&cConsole must specify a player name."));
             } else {
-                sender.sendMessage(Component.text("§cPlayer not found: " + args[3]));
+                sender.sendMessage(TextColor.toComponent("&cPlayer not found: " + args[3]));
             }
             return true;
         }
@@ -70,8 +79,10 @@ public final class DebugCommand implements SubCommand {
         }
         final String placeholderText = placeholderBuilder.toString();
         if (placeholderText.isEmpty()) {
-            sender.sendMessage(Component.text("§cPlease provide a placeholder string to parse."));
-            sender.sendMessage(Component.text("§7Example: /mmoblock debug placeholder parse @s {mmocore_level}"));
+            sender.sendMessage(ctx.configService().messageComponent(
+                    "commands.debug.usage",
+                    "Usage: /mmoblock debug placeholder parse me {mmocore_level}"
+            ));
             return true;
         }
 

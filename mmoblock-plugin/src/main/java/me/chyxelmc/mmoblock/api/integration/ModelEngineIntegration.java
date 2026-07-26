@@ -3,6 +3,7 @@ package me.chyxelmc.mmoblock.api.integration;
 import java.util.Objects;
 import java.util.Optional;
 
+import me.chyxelmc.mmoblock.utils.DependencyChecker;
 import org.bukkit.entity.Entity;
 
 import com.ticxo.modelengine.api.ModelEngineAPI;
@@ -44,8 +45,8 @@ public final class ModelEngineIntegration {
         try {
             Class.forName("com.ticxo.modelengine.api.ModelEngineAPI");
             available = true;
-        } catch (final ClassNotFoundException ignored) {
-            // ModelEngine not installed
+        } catch (final ReflectiveOperationException | LinkageError ignored) {
+            // ModelEngine not installed or incompatible
         }
         AVAILABLE = available;
     }
@@ -61,7 +62,11 @@ public final class ModelEngineIntegration {
      * @return {@code true} if ModelEngine is installed and its API classes are resolvable
      */
     public static boolean isAvailable() {
-        return AVAILABLE;
+        if (!AVAILABLE) return false;
+        if (DependencyChecker.isInitialized()) {
+            return DependencyChecker.isModelEngineAvailable();
+        }
+        return true;
     }
 
     /**

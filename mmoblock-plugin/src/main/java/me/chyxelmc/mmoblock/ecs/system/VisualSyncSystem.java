@@ -77,7 +77,11 @@ public final class VisualSyncSystem {
             final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
             // Save original block material BEFORE placing custom block (for water/lava restoration)
             saveOriginalMaterial(placedBlock.uniqueId(), loc);
-            me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.placeBlock(loc, definition.itemsAdderBlockId());
+            try {
+                me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.placeBlock(loc, definition.itemsAdderBlockId());
+            } catch (final Throwable ignored) {
+                // Integration class not available or incompatible
+            }
 
             // Schedule a chunk refresh 1 tick later to ensure the client re-syncs the
             // block data. During a config reload, the despawn+respawn cycle can cause
@@ -105,7 +109,11 @@ public final class VisualSyncSystem {
             final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
             // Save original block material BEFORE placing custom block (for water/lava restoration)
             saveOriginalMaterial(placedBlock.uniqueId(), loc);
-            me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.placeBlock(loc, definition.craftEngineBlockId());
+            try {
+                me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.placeBlock(loc, definition.craftEngineBlockId());
+            } catch (final Throwable ignored) {
+                // Integration class not available or incompatible
+            }
 
             // Schedule a chunk refresh 1 tick later to ensure the client re-syncs the
             // block data. During a config reload, the despawn+respawn cycle can cause
@@ -168,7 +176,11 @@ public final class VisualSyncSystem {
             // If the position has already been restored to liquid (e.g. by a previous
             // unload+clear cycle), skip removeBlock to avoid destroying the restored water.
             if (!isLiquidMaterial(loc.getBlock().getType())) {
-                me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.removeBlock(loc);
+                try {
+                    me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.removeBlock(loc);
+                } catch (final Throwable ignored) {
+                    // Integration class not available or incompatible
+                }
             }
             // Restore the original material (e.g. water/lava) from our tracking map
             restoreOriginalMaterial(placedBlock.uniqueId(), loc);
@@ -177,7 +189,11 @@ public final class VisualSyncSystem {
         if (definition.craftEngineBlockId() != null) {
             // If the position has already been restored to liquid, skip removeBlock.
             if (!isLiquidMaterial(loc.getBlock().getType())) {
-                me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.removeBlock(loc);
+                try {
+                    me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.removeBlock(loc);
+                } catch (final Throwable ignored) {
+                    // Integration class not available or incompatible
+                }
             }
             // Restore the original material (e.g. water/lava) from our tracking map
             restoreOriginalMaterial(placedBlock.uniqueId(), loc);

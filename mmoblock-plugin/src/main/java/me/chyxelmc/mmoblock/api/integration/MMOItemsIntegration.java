@@ -1,7 +1,7 @@
 package me.chyxelmc.mmoblock.api.integration;
 
-import java.util.logging.Logger;
-
+import me.chyxelmc.mmoblock.utils.DependencyChecker;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 import org.bukkit.inventory.ItemStack;
 
 /**
@@ -22,15 +22,25 @@ import org.bukkit.inventory.ItemStack;
 public final class MMOItemsIntegration {
 
     private static final boolean AVAILABLE;
-    private static final Logger LOGGER = Logger.getLogger(MMOItemsIntegration.class.getName());
 
     static {
         boolean available = false;
         try {
+            // Verify ALL MMOItems API classes used in this integration are present.
+            // This prevents NoClassDefFoundError at runtime when a specific class
+            // exists in compile-time dependency but not in the installed plugin.
             Class.forName("net.Indyuce.mmoitems.MMOItems");
+            Class.forName("net.Indyuce.mmoitems.api.Type");
+            Class.forName("net.Indyuce.mmoitems.api.item.mmoitem.MMOItem");
+            Class.forName("net.Indyuce.mmoitems.ItemStats");
+            Class.forName("net.Indyuce.mmoitems.stat.type.ItemStat");
+            Class.forName("net.Indyuce.mmoitems.stat.data.type.StatData");
+            Class.forName("net.Indyuce.mmoitems.stat.data.DoubleData");
+            Class.forName("net.Indyuce.mmoitems.api.item.build.ItemStackBuilder");
+            Class.forName("io.lumine.mythic.lib.api.item.NBTItem");
             available = true;
-        } catch (final ClassNotFoundException ignored) {
-            // MMOItems not installed
+        } catch (final ReflectiveOperationException | LinkageError ignored) {
+            // MMOItems not installed, incompatible version, or class dependency missing
         }
         AVAILABLE = available;
     }
@@ -46,7 +56,14 @@ public final class MMOItemsIntegration {
      * @return {@code true} if MMOItems is installed and its API classes are resolvable
      */
     public static boolean isAvailable() {
-        return AVAILABLE;
+        // Always check the thorough Class.forName check first.
+        // If the classes couldn't be loaded, the integration is unavailable
+        // regardless of whether Bukkit reports the plugin as enabled.
+        if (!AVAILABLE) return false;
+        if (DependencyChecker.isInitialized()) {
+            return DependencyChecker.isMMOItemsAvailable();
+        }
+        return true;
     }
 
     /**
@@ -98,7 +115,7 @@ public final class MMOItemsIntegration {
             final String id = net.Indyuce.mmoitems.MMOItems.getID(item);
             return id != null && id.equalsIgnoreCase(mmoItemsId);
         } catch (final Exception ex) {
-            LOGGER.fine("[MMOItems] Failed to match item '" + mmoItemsId + "': " + ex.getMessage());
+            MMOBlockLogger.debug("[MMOItems] Failed to match item '" + mmoItemsId + "': " + ex.getMessage());
             return false;
         }
     }
@@ -121,7 +138,7 @@ public final class MMOItemsIntegration {
                 }
             }
         } catch (final Exception ex) {
-            LOGGER.fine("[MMOItems] Failed to get item stack for '" + mmoItemsId + "': " + ex.getMessage());
+            MMOBlockLogger.debug("[MMOItems] Failed to get item stack for '" + mmoItemsId + "': " + ex.getMessage());
         }
         return null;
     }
@@ -186,8 +203,9 @@ public final class MMOItemsIntegration {
             final net.Indyuce.mmoitems.stat.type.ItemStat maxDurabilityStat =
                     net.Indyuce.mmoitems.ItemStats.MAX_DURABILITY;
             if (mmoItem.hasData(maxDurabilityStat)) {
-                final net.Indyuce.mmoitems.stat.data.type.StatData durabilityData =
-                        mmoItem.getData(maxDurabilityStat);
+                // Use Object to avoid forcing the JVM to resolve StatData/DoubleData
+                // at method-entry time when MMOItems version differs from compile target.
+                final Object durabilityData = mmoItem.getData(maxDurabilityStat);
                 if (durabilityData instanceof net.Indyuce.mmoitems.stat.data.DoubleData doubleData) {
                     maxDurability = (int) doubleData.getValue();
                 }
@@ -229,8 +247,10 @@ public final class MMOItemsIntegration {
                 item.setItemMeta(rebuilt.getItemMeta());
             }
             return true;
-        } catch (final Exception ex) {
-            LOGGER.fine("[MMOItems] Failed to apply durability: " + ex.getMessage());
+        } catch (final Throwable ex) {
+            // Catch Throwable (not just Exception) to safely handle NoClassDefFoundError
+            // and LinkageError that MMOItems version mismatches can trigger.
+            MMOBlockLogger.debug("[MMOItems] Failed to apply durability: " + ex.getMessage());
             return false;
         }
     }

@@ -1,5 +1,7 @@
 package me.chyxelmc.mmoblock.utils;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -213,17 +215,7 @@ public final class HologramAnimationUtil {
         // Preserve simple MiniMessage/legacy formatting tokens found in the original
         // so they can be re-applied around the fragments.
         String working = text;
-        final StringBuilder special = new StringBuilder();
-        // Apply all mutations to `working` BEFORE creating the Matcher to avoid
-        // regex-then-mutate inconsistency (the validated string must be the same
-        // string that gets processed).
-        {
-            // First pass: collect all MiniMessage tags from the unmodified working string.
-            final java.util.regex.Matcher collect = MINI_TAG_PATTERN.matcher(working);
-            while (collect.find()) {
-                special.append(collect.group());
-            }
-        }
+        final StringBuilder special = getStringBuilder(working);
         // Then strip all tags from working (all mutations applied before subsequent matchers)
         working = MINI_TAG_PATTERN.matcher(working).replaceAll("");
 
@@ -247,6 +239,21 @@ public final class HologramAnimationUtil {
         final String result = (secondaryTag == null ? "" : secondaryTag) + special + start
                 + (primaryTag == null ? "" : primaryTag) + special + end;
         return preserveOuterTag(text, result);
+    }
+
+    private static @NonNull StringBuilder getStringBuilder(String working) {
+        final StringBuilder special = new StringBuilder();
+        // Apply all mutations to `working` BEFORE creating the Matcher to avoid
+        // regex-then-mutate inconsistency (the validated string must be the same
+        // string that gets processed).
+        {
+            // First pass: collect all MiniMessage tags from the unmodified working string.
+            final Matcher collect = MINI_TAG_PATTERN.matcher(working);
+            while (collect.find()) {
+                special.append(collect.group());
+            }
+        }
+        return special;
     }
 
     private static String animateColors(final String text, final long step, final String... args) {

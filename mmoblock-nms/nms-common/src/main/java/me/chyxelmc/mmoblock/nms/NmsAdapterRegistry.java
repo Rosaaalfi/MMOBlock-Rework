@@ -7,10 +7,9 @@ import java.util.List;
 import java.util.ServiceLoader;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.logging.Logger;
-
 import org.bukkit.Bukkit;
 
+import me.chyxelmc.mmoblock.nms.utils.NmsLogger;
 import me.chyxelmc.mmoblock.nms.utils.ReflectionUtil;
 
 public final class NmsAdapterRegistry {
@@ -45,23 +44,40 @@ public final class NmsAdapterRegistry {
         return MappingType.MOJANG;
     }
 
-    public static MappingType detectMappingType(final Logger logger) {
+    public static void logMappingType() {
         final MappingType type = detectMappingType();
-        logger.info("Detected server mapping type: " + type);
+        NmsLogger.info("Detected server mapping type: " + type);
+    }
+
+    public static MappingType detectMappingType(final java.util.logging.Logger logger) {
+        final MappingType type = detectMappingType();
+        NmsLogger.info("Detected server mapping type: " + type);
         return type;
     }
 
-    public static NmsAdapter resolveCurrent(final Logger logger) {
-        final MappingType mappingType = detectMappingType(logger);
+    public static NmsAdapter resolveCurrent() {
+        final MappingType mappingType = detectMappingType();
         final String serverVersion = Bukkit.getMinecraftVersion();
-        return resolve(serverVersion, logger, mappingType);
+        return resolve(serverVersion, mappingType);
     }
 
-    public static NmsAdapter resolve(final String serverVersion, final Logger logger) {
-        return resolve(serverVersion, logger, detectMappingType(logger));
+    public static NmsAdapter resolveCurrent(final java.util.logging.Logger logger) {
+        return resolveCurrent();
     }
 
-    public static NmsAdapter resolve(final String serverVersion, final Logger logger, final MappingType mappingType) {
+    public static NmsAdapter resolve(final String serverVersion) {
+        return resolve(serverVersion, detectMappingType());
+    }
+
+    public static NmsAdapter resolve(final String serverVersion, final java.util.logging.Logger logger) {
+        return resolve(serverVersion, detectMappingType());
+    }
+
+    public static NmsAdapter resolve(final String serverVersion, final java.util.logging.Logger logger, final MappingType mappingType) {
+        return resolve(serverVersion, mappingType);
+    }
+
+    public static NmsAdapter resolve(final String serverVersion, final MappingType mappingType) {
         final List<NmsAdapterProvider> providers = loadProviders(mappingType);
         if (providers.isEmpty()) {
             throw new IllegalStateException("No NMS adapter providers found on classpath for version: " + serverVersion + ", mapping: " + mappingType);
@@ -82,10 +98,10 @@ public final class NmsAdapterRegistry {
 
             if (matchesVersion(versionRaw, serverVersion)) {
                 try {
-                    logger.info("Loaded NMS adapter: " + serverVersion + " (Provider defined: [" + versionRaw + "])");
+                    NmsLogger.info("Loaded NMS adapter: " + serverVersion + " (Provider defined: [" + versionRaw + "])");
                     return provider.create();
                 } catch (NoClassDefFoundError e) {
-                    logger.warning("Skipping NMS adapter for " + versionRaw + " due to missing classes: " + e.getMessage());
+                    NmsLogger.warning("Skipping NMS adapter for " + versionRaw + " due to missing classes: " + e.getMessage());
                 }
             }
         }
@@ -94,10 +110,10 @@ public final class NmsAdapterRegistry {
         final FallbackResult fallback = findFallbackProvider(providers, serverVersion);
         if (fallback != null) {
             try {
-                logger.warning("No exact NMS adapter for " + serverVersion + ", using fallback via target " + fallback.usedVersion());
+                NmsLogger.warning("No exact NMS adapter for " + serverVersion + ", using fallback via target " + fallback.usedVersion());
                 return fallback.provider().create();
             } catch (NoClassDefFoundError e) {
-                logger.warning("Fallback NMS adapter failed to load due to missing classes: " + e.getMessage());
+                NmsLogger.warning("Fallback NMS adapter failed to load due to missing classes: " + e.getMessage());
             }
         }
 

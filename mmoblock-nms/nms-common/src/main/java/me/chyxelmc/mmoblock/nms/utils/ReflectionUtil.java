@@ -1,9 +1,6 @@
 package me.chyxelmc.mmoblock.nms.utils;
 
 import java.lang.reflect.AccessibleObject;
-import java.util.logging.Logger;
-
-import org.bukkit.Bukkit;
 
 /**
  * Utility for performing reflective access in a way that is auditable in server logs.
@@ -12,18 +9,18 @@ import org.bukkit.Bukkit;
  */
 public final class ReflectionUtil {
 
-    private static Logger logger;
-
     private ReflectionUtil() {
     }
 
     /**
-     * Initializes the logger used by {@link #safeSetAccessible(AccessibleObject, String)}.
-     * Should be called once during plugin startup for the most descriptive logger.
-     * If not called, falls back to {@link Bukkit#getLogger()}.
+     * Initialization is no longer required — NmsLogger is used automatically.
+     * Kept for backward compatibility with existing callers.
+     *
+     * @deprecated No longer needed. Call can be safely removed.
      */
-    public static void init(final Logger pluginLogger) {
-        logger = pluginLogger;
+    @Deprecated
+    public static void init() {
+        // NmsLogger is self-initializing; this method is kept for compatibility.
     }
 
     /**
@@ -37,10 +34,7 @@ public final class ReflectionUtil {
     // SECURITY: intentional reflection - auditable via server log warning
     public static void safeSetAccessible(final AccessibleObject target, final String reason) {
         target.setAccessible(true); // NOSONAR // NOPMD
-        final Logger log = logger != null ? logger : (Bukkit.getServer() != null ? Bukkit.getLogger() : null);
-        if (log != null) {
-            log.warning("[MMOBlock] Reflection access: " + reason + " on " + target);
-        }
+        NmsLogger.warning("Reflection access: " + reason + " on " + target);
     }
 
     /**

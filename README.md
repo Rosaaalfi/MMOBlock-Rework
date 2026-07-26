@@ -178,11 +178,13 @@ dependencies {
     </repository>
 </repositories>
 
-<dependency>
-<groupId>me.chyxelmc</groupId>
-<artifactId>mmoblock-api</artifactId>
-<version>{version}</version>
-</dependency>
+<dependencies>
+    <dependency>
+        <groupId>me.chyxelmc</groupId>
+        <artifactId>mmoblock-api</artifactId>
+        <version>{version}</version>
+    </dependency>
+</dependencies>
 ```
 
 ---

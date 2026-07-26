@@ -1,5 +1,7 @@
 package me.chyxelmc.mmoblock.utils;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -25,6 +27,23 @@ public class ColorLogger {
     private static final String BRIGHT_BLUE = "\u001B[94m";
 
     public static String parseColorTags(String input) {
+        Map<String, String> colorMap = createColorMap();
+
+        Pattern pattern = Pattern.compile("<([a-zA-Z]+)>(.*?)</\\1>", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(input);
+        StringBuffer sb = new StringBuffer();
+
+        while(matcher.find()) {
+            String tag = matcher.group(1).toLowerCase();
+            String content = matcher.group(2);
+            String color = colorMap.getOrDefault(tag, "");
+            matcher.appendReplacement(sb, color + Matcher.quoteReplacement(content));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    private static @NonNull Map<String, String> createColorMap() {
         Map<String, String> colorMap = new HashMap<>();
         colorMap.put("reset", RESET);
         colorMap.put("black", BLACK);
@@ -41,19 +60,7 @@ public class ColorLogger {
         colorMap.put("brightGreen", BRIGHT_GREEN);
         colorMap.put("brightYellow", BRIGHT_YELLOW);
         colorMap.put("brightBlue", BRIGHT_BLUE);
-
-        Pattern pattern = Pattern.compile("<([a-zA-Z]+)>(.*?)</\\1>", Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(input);
-        StringBuffer sb = new StringBuffer();
-
-        while(matcher.find()) {
-            String tag = matcher.group(1).toLowerCase();
-            String content = matcher.group(2);
-            String color = colorMap.getOrDefault(tag, "");
-            matcher.appendReplacement(sb, color + content);
-        }
-        matcher.appendTail(sb);
-        return sb.toString();
+        return colorMap;
     }
 
     public String black(String message) {

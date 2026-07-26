@@ -433,7 +433,7 @@ public final class BlockConfigLoader {
                         if (!me.chyxelmc.mmoblock.api.integration.MMOItemsIntegration.matchItem(item, action.mmoItemsId())) {
                             continue;
                         }
-                    } catch (final Exception ignored) {
+                    } catch (final Throwable ignored) {
                         continue;
                     }
                 } else if (action.craftEngineId() != null) {
@@ -442,7 +442,7 @@ public final class BlockConfigLoader {
                         if (!me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.matchItem(item, action.craftEngineId())) {
                             continue;
                         }
-                    } catch (final Exception ignored) {
+                    } catch (final Throwable ignored) {
                         continue;
                     }
                 } else if (action.itemsAdderId() != null) {
@@ -451,7 +451,7 @@ public final class BlockConfigLoader {
                         if (!me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.matchItem(item, action.itemsAdderId())) {
                             continue;
                         }
-                    } catch (final Exception ignored) {
+                    } catch (final Throwable ignored) {
                         continue;
                     }
                 } else {

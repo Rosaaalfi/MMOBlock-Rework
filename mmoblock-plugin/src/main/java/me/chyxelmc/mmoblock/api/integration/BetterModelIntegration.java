@@ -5,9 +5,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
+import me.chyxelmc.mmoblock.utils.DependencyChecker;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 
@@ -45,7 +45,6 @@ import org.bukkit.entity.Entity;
 public final class BetterModelIntegration {
 
     private static final boolean AVAILABLE;
-    private static final Logger LOGGER = Logger.getLogger(BetterModelIntegration.class.getName());
 
     /** Maps MMOBlock block UUID → open Tracker instance (EntityTracker or DummyTracker).
      *  Type is {@code Object} to avoid forcing the JVM to resolve BetterModel API types
@@ -57,8 +56,8 @@ public final class BetterModelIntegration {
         try {
             Class.forName("kr.toxicity.model.api.BetterModel");
             available = true;
-        } catch (final ClassNotFoundException ignored) {
-            // BetterModel not installed
+        } catch (final ReflectiveOperationException | LinkageError ignored) {
+            // BetterModel not installed or incompatible
         }
         AVAILABLE = available;
     }
@@ -74,7 +73,11 @@ public final class BetterModelIntegration {
      * @return {@code true} if BetterModel is installed and its API classes are resolvable
      */
     public static boolean isAvailable() {
-        return AVAILABLE;
+        if (!AVAILABLE) return false;
+        if (DependencyChecker.isInitialized()) {
+            return DependencyChecker.isBetterModelAvailable();
+        }
+        return true;
     }
 
     /**
@@ -123,7 +126,7 @@ public final class BetterModelIntegration {
 
         final var modelOpt = kr.toxicity.model.api.BetterModel.model(modelId);
         if (modelOpt.isEmpty()) {
-            LOGGER.warning("[BetterModel] Model ID '" + modelId + "' not found in BetterModel registry.");
+            MMOBlockLogger.warning("[BetterModel] Model ID '" + modelId + "' not found in BetterModel registry.");
             return false;
         }
 
@@ -154,7 +157,7 @@ public final class BetterModelIntegration {
             ACTIVE_TRACKERS.put(blockUuid, tracker);
             return true;
         } catch (final Exception ex) {
-            LOGGER.log(Level.WARNING, "[BetterModel] Failed to create tracker for model '" + modelId + "' on block " + blockUuid + ": " + ex.getMessage(), ex);
+            MMOBlockLogger.warning("[BetterModel] Failed to create tracker for model '" + modelId + "' on block " + blockUuid + ": " + ex.getMessage(), ex);
             return false;
         }
     }
@@ -205,7 +208,7 @@ public final class BetterModelIntegration {
         try {
             return ((kr.toxicity.model.api.tracker.Tracker) tracker).animate(animationName, kr.toxicity.model.api.animation.AnimationModifier.DEFAULT_WITH_PLAY_ONCE);
         } catch (final Exception ex) {
-            LOGGER.log(Level.WARNING, "[BetterModel] Exception playing animation '" + animationName + "' for block " + blockUuid + ": " + ex.getMessage(), ex);
+            MMOBlockLogger.warning("[BetterModel] Exception playing animation '" + animationName + "' for block " + blockUuid + ": " + ex.getMessage(), ex);
             return false;
         }
     }

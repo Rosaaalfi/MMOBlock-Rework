@@ -19,6 +19,7 @@ import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 
 /**
  * Handles application and removal of third-party block models (Schematics, BDEngine,
@@ -133,12 +134,12 @@ public final class BlockModelApplier {
         if (!ModelEngineIntegration.isAvailable()) return;
         final Entity entity = world.getEntity(block.interactionEntityId());
         if (entity == null) {
-            this.plugin.getLogger().warning("[ModelEngine] Entity not found for block " + block.uniqueId()
+            MMOBlockLogger.warning("[ModelEngine] Entity not found for block " + block.uniqueId()
                     + " (id=" + block.interactionEntityId() + ")");
             return;
         }
         if (!(entity instanceof org.bukkit.entity.Interaction)) {
-            this.plugin.getLogger().warning("[ModelEngine] Entity " + block.interactionEntityId()
+            MMOBlockLogger.warning("[ModelEngine] Entity " + block.interactionEntityId()
                     + " is not an Interaction: " + entity.getType());
             return;
         }
@@ -157,7 +158,7 @@ public final class BlockModelApplier {
                     definition.modelEngineOnSpawnSpeed()
             );
         } catch (final Throwable ex) {
-            this.plugin.getLogger().warning("[ModelEngine] Failed to show model '" + definition.modelEngineModelId()
+            MMOBlockLogger.warning("[ModelEngine] Failed to show model '" + definition.modelEngineModelId()
                     + "' on " + block.interactionEntityId() + ": " + ex.getMessage());
         }
     }
@@ -171,8 +172,8 @@ public final class BlockModelApplier {
             ModelEngineIntegration.removeModel(entity);
         } catch (final Throwable ex) {
             /*
-            ** this.plugin.getLogger().warning("[ModelEngine] Failed to remove model from "
-            **         + block.interactionEntityId() + ": " + ex.getMessage());
+            MMOBlockLogger.warning("[ModelEngine] Failed to remove model from "
+                    + block.interactionEntityId() + ": " + ex.getMessage());
             */
         }
     }
@@ -188,7 +189,7 @@ public final class BlockModelApplier {
         try {
             ModelEngineIntegration.playAnimation(entity, definition.modelEngineModelId(), animationName, lerpIn, lerpOut, speed);
         } catch (final Throwable ex) {
-            this.plugin.getLogger().warning("[ModelEngine] Failed to play animation '" + animationName
+            MMOBlockLogger.warning("[ModelEngine] Failed to play animation '" + animationName
                     + "' on " + block.interactionEntityId() + ": " + ex.getMessage());
         }
     }
@@ -252,7 +253,7 @@ public final class BlockModelApplier {
                     definition.betterModelModelSize()
             );
         } catch (final Throwable ex) {
-            this.plugin.getLogger().warning("[BetterModel] Failed to show model '" + definition.betterModelModelId()
+            MMOBlockLogger.warning("[BetterModel] Failed to show model '" + definition.betterModelModelId()
                     + FOR_BLOCK_SUFFIX + block.uniqueId() + ": " + ex.getMessage());
         }
     }
@@ -263,7 +264,7 @@ public final class BlockModelApplier {
         try {
             BetterModelIntegration.removeModel(block.uniqueId());
         } catch (final Throwable ex) {
-            this.plugin.getLogger().warning("[BetterModel] Failed to remove model for block "
+            MMOBlockLogger.warning("[BetterModel] Failed to remove model for block "
                     + block.uniqueId() + ": " + ex.getMessage());
         }
     }
@@ -277,12 +278,12 @@ public final class BlockModelApplier {
                     block.uniqueId(), animationName
             );
             if (!played) {
-                this.plugin.getLogger().warning("[BetterModel] Could not play animation '"
+                MMOBlockLogger.warning("[BetterModel] Could not play animation '"
                         + animationName + FOR_BLOCK_SUFFIX + block.uniqueId()
                         + " — model '" + definition.betterModelModelId() + "' may not be attached");
             }
         } catch (final Throwable ex) {
-            this.plugin.getLogger().warning("[BetterModel] Failed to play animation '" + animationName
+            MMOBlockLogger.warning("[BetterModel] Failed to play animation '" + animationName
                     + FOR_BLOCK_SUFFIX + block.uniqueId() + ": " + ex.getMessage());
         }
     }

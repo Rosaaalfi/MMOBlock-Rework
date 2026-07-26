@@ -107,11 +107,11 @@ public final class BlockMiningOrchestrator {
         final ItemStack item = player.getInventory().getItemInMainHand();
         final ToolAction action = this.blockConfigService.resolveToolAction(definition, item, clickType);
         if (action == null) {
-            return this.blockConfigService.messageComponent("blocks.tool_not_allowed", "&c[MMOBlock] Tool is not allowed for this block.");
+            return this.blockConfigService.messageComponent("blocks.tool_not_allowed", "&cTool is not allowed for this block.");
         }
 
         if (isThrottled(block.uniqueId(), player.getUniqueId())) {
-            return this.blockConfigService.messageComponent("blocks.too_fast", "&c[MMOBlock] Slow down a bit.");
+            return this.blockConfigService.messageComponent("blocks.too_fast", "&eHey slow down a bit.");
         }
 
         playConfiguredSound(player.getWorld(), block, definition.soundOnClick());
@@ -147,11 +147,7 @@ public final class BlockMiningOrchestrator {
 
         this.miningSystem.clearProgress(block.uniqueId(), player.getUniqueId());
         handleBlockBreak(block, definition, action, player);
-        return this.blockConfigService.messageComponent(
-                "blocks.broken",
-                "&a[MMOBlock] Block broken. Respawning in {respawn}s",
-                Map.of("{respawn}", String.valueOf(definition.respawnTimeSeconds()))
-        );
+        return Component.empty();
     }
 
     public void playConfiguredSound(final World world, final PlacedBlockModel block, final Sound sound) {
@@ -177,11 +173,7 @@ public final class BlockMiningOrchestrator {
         placeholders.put("{progress}", String.valueOf(progress));
         placeholders.put("{needed}", String.valueOf(needed));
         placeholders.put("{progress_bar}", progressBar);
-        return this.blockConfigService.messageComponent(
-                "blocks.mining_progress",
-                "&e[MMOBlock] Mining progress: {progress}/{needed} &7[{progress_bar}&7]",
-                placeholders
-        );
+        return Component.empty();
     }
 
     private boolean checkConditions(final BlockDefinitionModel definition, final Player player) {
@@ -293,16 +285,32 @@ public final class BlockMiningOrchestrator {
             return;
         }
 
-        if (me.chyxelmc.mmoblock.api.integration.MMOItemsIntegration.applyCustomDurability(item, decreaseDurability)) {
-            return;
+        // Wrap integration durability calls in try-catch(Throwable) so that even
+        // if a NoClassDefFoundError or other LinkageError occurs during JVM class
+        // resolution, the error is caught and we fall through to the next option
+        // instead of crashing the event handler.
+        try {
+            if (me.chyxelmc.mmoblock.api.integration.MMOItemsIntegration.applyCustomDurability(item, decreaseDurability)) {
+                return;
+            }
+        } catch (final Throwable ignored) {
+            // Integration class not available or incompatible
         }
 
-        if (me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.applyCustomDurability(item, decreaseDurability)) {
-            return;
+        try {
+            if (me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.applyCustomDurability(item, decreaseDurability)) {
+                return;
+            }
+        } catch (final Throwable ignored) {
+            // Integration class not available or incompatible
         }
 
-        if (me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.applyCustomDurability(item, decreaseDurability)) {
-            return;
+        try {
+            if (me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.applyCustomDurability(item, decreaseDurability)) {
+                return;
+            }
+        } catch (final Throwable ignored) {
+            // Integration class not available or incompatible
         }
 
         if (item.getType().getMaxDurability() <= 0) {

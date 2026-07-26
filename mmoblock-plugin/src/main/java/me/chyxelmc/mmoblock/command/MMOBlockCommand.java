@@ -2,7 +2,6 @@ package me.chyxelmc.mmoblock.command;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.command.sub.BlockCommand;
-import me.chyxelmc.mmoblock.command.sub.DbCommand;
 import me.chyxelmc.mmoblock.command.sub.DebugCommand;
 import me.chyxelmc.mmoblock.command.sub.NodeCommand;
 import me.chyxelmc.mmoblock.command.sub.ReloadCommand;
@@ -12,6 +11,7 @@ import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
 import me.chyxelmc.mmoblock.runtime.NodeRuntimeService;
 import me.chyxelmc.mmoblock.runtime.RuntimeCoordinator;
 import me.chyxelmc.mmoblock.utils.CustomItemUtil;
+import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -69,7 +69,6 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
         this.manager.register(new BlockCommand(ctx), "block");
         this.manager.register(new NodeCommand(ctx), "node");
         this.manager.register(new ReloadCommand(ctx), "reload");
-        this.manager.register(new DbCommand(ctx), "db");
         this.manager.register(new DebugCommand(ctx), "debug");
     }
 
@@ -87,7 +86,7 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
 
         final boolean handled = this.manager.execute(sender, args);
         if (!handled) {
-            sender.sendMessage(Component.text("§cUnknown subcommand: " + args[0]));
+            sender.sendMessage(TextColor.toComponent("&cUnknown subcommand: " + args[0]));
             showUsage(sender);
         }
         return true;
@@ -122,10 +121,6 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(this.configService.messageComponent(
                 "commands.usage.reload",
                 "§7/mmoblock reload §8- Reload subsystems (config, blocks, drops, lang, tools, nodes)"
-        ));
-        sender.sendMessage(this.configService.messageComponent(
-                "commands.usage.db",
-                "§7/mmoblock db §8- Database info (password only via config.yml + restart)"
         ));
         sender.sendMessage(this.configService.messageComponent(
                 "commands.usage.debug",

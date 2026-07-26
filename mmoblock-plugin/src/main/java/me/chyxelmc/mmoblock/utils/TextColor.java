@@ -73,8 +73,27 @@ public final class TextColor {
         return out.toString();
     }
 
+    /**
+     * Converts a legacy color-coded string (supports both {@code &} and {@code §} codes)
+     * into an Adventure {@link Component} using MiniMessage.
+     * <p>
+     * Both {@code &7} and {@code §7} are accepted and converted to the appropriate
+     * MiniMessage tags before deserialization. This prevents
+     * {@link net.kyori.adventure.text.minimessage.MiniMessage} from throwing
+     * {@code ParsingException} when it encounters legacy section-sign formatting.
+     * </p>
+     *
+     * @param input the string with legacy color codes (may be null)
+     * @return the parsed Component, or {@link Component#empty()} if input is null/blank
+     */
     public static Component toComponent(final String input) {
-        return MINI_MESSAGE.deserialize(ampersandToMiniMessage(input));
+        if (input == null || input.isBlank()) {
+            return Component.empty();
+        }
+        // Normalize section sign to & so ampersandToMiniMessage can process it.
+        // This prevents MiniMessage ParsingException when encountering legacy § codes.
+        final String normalized = input.replace((char) 0x00A7, '&');
+        return MINI_MESSAGE.deserialize(ampersandToMiniMessage(normalized));
     }
 
     public static String toLegacySection(final String input) {

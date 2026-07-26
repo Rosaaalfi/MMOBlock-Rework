@@ -1,8 +1,5 @@
 package me.chyxelmc.mmoblock.utils;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 /**
  * Utility for safe class resolution when interacting with optional
  * third-party plugins (e.g., ModelEngine, ItemsAdder, BetterModel).
@@ -12,8 +9,6 @@ import java.util.logging.Logger;
  * This avoids the boilerplate of try-catch blocks throughout the codebase.</p>
  */
 public final class SafeClassLoader {
-
-    private static final Logger LOGGER = Logger.getLogger(SafeClassLoader.class.getName());
 
     private SafeClassLoader() {
         throw new UnsupportedOperationException("Utility class");
@@ -49,7 +44,7 @@ public final class SafeClassLoader {
         try {
             return (Class<T>) Class.forName(className);
         } catch (final ClassNotFoundException e) {
-            LOGGER.fine("[" + context + "] Class not available: " + className);
+            MMOBlockLogger.debug("[" + context + "] Class not available: " + className);
             return null;
         }
     }
@@ -81,7 +76,7 @@ public final class SafeClassLoader {
             Class.forName(className);
             return true;
         } catch (final ClassNotFoundException e) {
-            LOGGER.fine("[" + context + "] Plugin not available: " + className);
+            MMOBlockLogger.debug("[" + context + "] Plugin not available: " + className);
             return false;
         }
     }

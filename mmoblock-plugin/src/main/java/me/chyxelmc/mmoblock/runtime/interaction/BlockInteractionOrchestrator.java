@@ -18,6 +18,7 @@ import me.chyxelmc.mmoblock.ecs.component.PositionComponent;
 import me.chyxelmc.mmoblock.ecs.system.VisualSyncSystem;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 
 public final class BlockInteractionOrchestrator {
 
@@ -223,7 +224,7 @@ public final class BlockInteractionOrchestrator {
             final World world,
             final NmsAdapter.SpawnResult spawnResult
     ) {
-        this.plugin.getLogger().warning(
+        MMOBlockLogger.warning(
                 "Failed to spawn interaction for block " + placedBlock.uniqueId()
                         + " at " + world.getName() + " "
                         + placedBlock.x() + "," + placedBlock.y() + "," + placedBlock.z()

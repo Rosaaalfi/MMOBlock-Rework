@@ -23,9 +23,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.bukkit.Bukkit;
+import me.chyxelmc.mmoblock.nms.utils.NmsLogger;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.Material;
@@ -58,7 +57,6 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
     private final WeakReference<Player> playerRef;
     private final String pipelineName;
 
-    private static final Logger LOG = Bukkit.getLogger();
 
     public FakeBlockPacketHandler(final Player player) {
         this.playerRef = new WeakReference<>(player);
@@ -135,7 +133,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                 }
             }
         } catch (final Exception t) {
-            LOG.log(Level.FINE, "Failed to schedule resend for chunk", t);
+            NmsLogger.debug("Failed to schedule resend for chunk", t);
         }
     }
 
@@ -162,7 +160,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                 }
             }
         } catch (final Exception t) {
-            LOG.log(Level.FINE, "Failed to schedule resend for world", t);
+            NmsLogger.debug("Failed to schedule resend for world", t);
         }
     }
 
@@ -184,7 +182,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
         try {
             return level.getBlockState(pos);
         } catch (final Exception t) {
-            LOG.log(Level.FINE, "Failed to get level block state for " + pos, t);
+            NmsLogger.debug("Failed to get level block state for " + pos, t);
             return null;
         }
     }
@@ -241,7 +239,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                 REG_CLASS = null;
                 REG_CONTAINS = null;
                 REG_GET_MATERIAL = null;
-                LOG.log(Level.FINE, "Failed to initialize FakeBlockRegistry reflective accessors", t);
+                NmsLogger.debug("Failed to initialize FakeBlockRegistry reflective accessors", t);
             }
         }
     }
@@ -260,7 +258,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             final Object res = m.invoke(null, world, x, y, z);
             return res instanceof Boolean b && b;
         } catch (final Exception t) {
-            LOG.log(Level.FINE, "FakeBlockRegistry reflective contains() failed", t);
+            NmsLogger.debug("FakeBlockRegistry reflective contains() failed", t);
             return false;
         }
     }
@@ -278,7 +276,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             final Object res = m.invoke(null, world, x, y, z);
             return res instanceof String s ? s : null;
         } catch (final Exception t) {
-            LOG.log(Level.FINE, "FakeBlockRegistry reflective getMaterial() failed", t);
+            NmsLogger.debug("FakeBlockRegistry reflective getMaterial() failed", t);
             return null;
         }
     }
@@ -296,7 +294,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             if (res instanceof Set) return extractStringSet((Set<?>) res);
             return Collections.emptySet();
         } catch (final Exception t) {
-            LOG.log(Level.FINE, "FakeBlockRegistry reflective positionsForWorld() failed", t);
+            NmsLogger.debug("FakeBlockRegistry reflective positionsForWorld() failed", t);
             return Collections.emptySet();
         }
     }
@@ -317,7 +315,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
             if (b != null) NMS_BLOCK_CACHE.put(material, b);
             return b;
         } catch (final Exception t) {
-            LOG.log(Level.FINE, "Failed to convert Material to NMS Block: " + material, t);
+            NmsLogger.debug("Failed to convert Material to NMS Block: " + material, t);
             return null;
         }
     }
@@ -386,7 +384,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                 // expected - reflection fallback
             }
         } catch (final Exception t) {
-            LOG.log(Level.FINE, "Error sending fake refresh", t);
+            NmsLogger.debug("Error sending fake refresh", t);
         }
     }
 
@@ -456,9 +454,9 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                         pipelineChannel.pipeline().addLast(pipelineName, this);
                         try {
                             final org.bukkit.plugin.Plugin pl = Bukkit.getPluginManager().getPlugin(PLUGIN_NAME);
-                            if (pl != null) pl.getLogger().fine("Injected FakeBlockPacketHandler for " + player.getName());
+                            if (pl != null) NmsLogger.debug("Injected FakeBlockPacketHandler for " + player.getName());
                         } catch (final Exception ignored) {
-                            LOG.log(Level.FINE, "Exception while logging injection for " + player.getName(), ignored);
+                            NmsLogger.debug("Exception while logging injection for " + player.getName(), ignored);
                         }
 
                         // Attach a closeFuture listener to ensure we remove the handler from
@@ -487,11 +485,11 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                         }
                     }
                 } catch (final Exception t) {
-                    LOG.log(Level.WARNING, "Error while injecting pipeline handler for " + player.getName(), t);
+                    NmsLogger.warning("Error while injecting pipeline handler for " + player.getName(), t);
                 }
             });
         } catch (final Exception ignored) {
-            LOG.log(Level.WARNING, "Failed to inject FakeBlockPacketHandler for player " + (player != null ? player.getName() : "<null>"), ignored);
+            NmsLogger.warning("Failed to inject FakeBlockPacketHandler for player " + (player != null ? player.getName() : "<null>"), ignored);
         }
     }
 
@@ -512,17 +510,17 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                         pipelineChannel.pipeline().remove(pipelineName);
                         try {
                             final org.bukkit.plugin.Plugin pl = Bukkit.getPluginManager().getPlugin(PLUGIN_NAME);
-                            if (pl != null) pl.getLogger().fine("Uninjected FakeBlockPacketHandler for " + player.getName());
+                            if (pl != null) NmsLogger.debug("Uninjected FakeBlockPacketHandler for " + player.getName());
                         } catch (final Exception ignored) {
-                            LOG.log(Level.FINE, "Exception while logging uninjection for " + player.getName(), ignored);
+                            NmsLogger.debug("Exception while logging uninjection for " + player.getName(), ignored);
                         }
                     } catch (final Exception ignored) {
-                        LOG.log(Level.WARNING, "Error while removing pipeline handler for " + player.getName(), ignored);
+                        NmsLogger.warning("Error while removing pipeline handler for " + player.getName(), ignored);
                     }
                 }
             });
         } catch (final Exception ignored) {
-            LOG.log(Level.WARNING, "Failed to uninject FakeBlockPacketHandler for player " + (player != null ? player.getName() : "<null>"), ignored);
+            NmsLogger.warning("Failed to uninject FakeBlockPacketHandler for player " + (player != null ? player.getName() : "<null>"), ignored);
         }
     }
 
@@ -553,7 +551,7 @@ public final class FakeBlockPacketHandler extends ChannelDuplexHandler {
                 handleUseItemPacket(player);
             }
         } catch (final Exception t) {
-            LOG.log(Level.WARNING, "Error while handling intercepted packet for " + player.getName(), t);
+            NmsLogger.warning("Error while handling intercepted packet for " + player.getName(), t);
         }
     }
 

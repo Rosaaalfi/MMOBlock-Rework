@@ -31,6 +31,7 @@ import com.google.gson.JsonObject;
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 
 public final class BdEngineService {
 
@@ -71,7 +72,7 @@ public final class BdEngineService {
 
         final BdEngineModel model = loadModel(definition.bdengineModel());
         if (model == null || model.parts().isEmpty()) {
-            this.plugin.getLogger().warning("BDEngine model '" + definition.bdengineModel() + "' has no supported display parts.");
+            MMOBlockLogger.warning("BDEngine model '" + definition.bdengineModel() + "' has no supported display parts.");
             return;
         }
 
@@ -124,7 +125,7 @@ public final class BdEngineService {
             return;
         }
         this.warnedUnsupportedAdapter = true;
-        this.plugin.getLogger().warning("BDEngine packet models are not implemented for NMS adapter " + this.nmsAdapter.targetMinecraftVersion() + ".");
+        MMOBlockLogger.warning("BDEngine packet models are not implemented for NMS adapter " + this.nmsAdapter.targetMinecraftVersion() + ".");
     }
 
     public void clearModel(final UUID blockUniqueId, final World world) {
@@ -180,7 +181,7 @@ public final class BdEngineService {
         final String normalized = animationName.toLowerCase(Locale.ROOT);
         final BdEngineAnimation animation = resolveAnimation(state.animations(), normalized);
         if (animation == null || animation.frames().isEmpty()) {
-            this.plugin.getLogger().warning("BDEngine animation '" + animationName + "' was not found. Available animations: " + state.animations().keySet());
+            MMOBlockLogger.warning("BDEngine animation '" + animationName + "' was not found. Available animations: " + state.animations().keySet());
             return;
         }
         final long sequence = state.animationSequence() + 1L;
@@ -384,7 +385,7 @@ public final class BdEngineService {
         final File modelsDir = new File(this.plugin.getDataFolder(), BDENGINE_FOLDER);
         final File file = resolveModelFile(modelsDir, modelName);
         if (file == null) {
-            this.plugin.getLogger().warning("BDEngine model not found: " + modelName);
+            MMOBlockLogger.warning("BDEngine model not found: " + modelName);
             return null;
         }
 
@@ -394,7 +395,7 @@ public final class BdEngineService {
             this.modelCache.put(cacheKey, model);
             return model;
         } catch (final IOException | RuntimeException exception) {
-            this.plugin.getLogger().warning("Failed to load BDEngine model " + modelName + ": " + exception.getMessage());
+            MMOBlockLogger.warning("Failed to load BDEngine model " + modelName + ": " + exception.getMessage());
             return null;
         }
     }

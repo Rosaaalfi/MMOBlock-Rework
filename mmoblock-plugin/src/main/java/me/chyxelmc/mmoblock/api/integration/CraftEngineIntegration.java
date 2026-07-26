@@ -1,9 +1,9 @@
 package me.chyxelmc.mmoblock.api.integration;  
   
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;  
-  
+
+import me.chyxelmc.mmoblock.utils.DependencyChecker;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 import org.bukkit.Location;  
 import org.bukkit.Material;  
 import org.bukkit.block.Block;  
@@ -27,7 +27,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 public final class CraftEngineIntegration {  
   
     private static final boolean AVAILABLE;  
-    private static final Logger LOGGER = Logger.getLogger(CraftEngineIntegration.class.getName());  
   
     static {  
         boolean available = false;  
@@ -35,8 +34,8 @@ public final class CraftEngineIntegration {
             Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineItems");  
             Class.forName("net.momirealms.craftengine.bukkit.api.CraftEngineBlocks");
             available = true;  
-        } catch (final ClassNotFoundException ignored) {  
-            LOGGER.fine("CraftEngine is not installed.");
+        } catch (final ReflectiveOperationException | LinkageError ignored) {  
+            MMOBlockLogger.debug("CraftEngine is not installed or incompatible.");
         }  
         AVAILABLE = available;  
     }  
@@ -52,7 +51,11 @@ public final class CraftEngineIntegration {
      * @return {@code true} if CraftEngine is installed and its API classes are resolvable  
      */  
     public static boolean isAvailable() {  
-        return AVAILABLE;  
+        if (!AVAILABLE) return false;
+        if (DependencyChecker.isInitialized()) {
+            return DependencyChecker.isCraftEngineAvailable();
+        }
+        return true;
     }  
   
     /**  
@@ -154,10 +157,10 @@ public final class CraftEngineIntegration {
             if (def != null) {  
                 return def.buildBukkitItem();  
             }  
-            LOGGER.warning("[CraftEngine] Item not found: '" + craftEngineId  
+            MMOBlockLogger.warning("[CraftEngine] Item not found: '" + craftEngineId  
                     + "'. Check that the item exists in CraftEngine with this exact namespace and ID.");  
         } catch (final Exception ex) {  
-            LOGGER.log(Level.WARNING, "[CraftEngine] Failed to get item stack for '" + craftEngineId + "'", ex);  
+            MMOBlockLogger.warning("[CraftEngine] Failed to get item stack for '" + craftEngineId + "'", ex);  
         }  
         return null;  
     }  
@@ -217,7 +220,7 @@ public final class CraftEngineIntegration {
              */
             return false;  
         } catch (final Exception ex) {  
-            LOGGER.log(Level.WARNING, "[CraftEngine] Failed to match item '" + craftEngineId + "'", ex);  
+            MMOBlockLogger.warning("[CraftEngine] Failed to match item '" + craftEngineId + "'", ex);  
             return false;  
         }  
     }  
@@ -252,8 +255,9 @@ public final class CraftEngineIntegration {
             }
             item.setAmount(Math.max(0, item.getAmount() - 1));
             return true;
-        } catch (final Exception ex) {
-            LOGGER.fine("[CraftEngine] Failed to apply durability: " + ex.getMessage());
+        } catch (final Throwable ex) {
+            // Catch Throwable to safely handle NoClassDefFoundError/LinkageError
+            MMOBlockLogger.debug("[CraftEngine] Failed to apply durability: " + ex.getMessage());
             return false;
         }
     }
@@ -447,7 +451,7 @@ public final class CraftEngineIntegration {
         try {  
             final net.momirealms.craftengine.core.util.Key blockKey = resolveBlockKey(craftEngineBlockId);
             if (blockKey == null) {
-                LOGGER.warning("[CraftEngine] Block not found: '" + craftEngineBlockId
+                MMOBlockLogger.warning("[CraftEngine] Block not found: '" + craftEngineBlockId
                         + "'. Check that the block exists in CraftEngine with this namespace and ID.");
                 return false;
             }
@@ -462,12 +466,12 @@ public final class CraftEngineIntegration {
             final boolean success = net.momirealms.craftengine.bukkit.api.CraftEngineBlocks.place(  
                     location, blockKey, true);  
             if (!success) {  
-                LOGGER.warning("[CraftEngine] Failed to place block '" + craftEngineBlockId  
+                MMOBlockLogger.warning("[CraftEngine] Failed to place block '" + craftEngineBlockId  
                         + "'. Check that the block exists in CraftEngine's registry (namespace:id must match exactly).");  
             }  
             return success;  
         } catch (final Exception ex) {  
-            LOGGER.log(Level.WARNING, "[CraftEngine] Failed to place custom block '" + craftEngineBlockId + "'", ex);  
+            MMOBlockLogger.warning("[CraftEngine] Failed to place custom block '" + craftEngineBlockId + "'", ex);  
             return false;  
         }  
     }  

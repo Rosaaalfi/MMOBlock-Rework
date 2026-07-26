@@ -1,7 +1,7 @@
 package me.chyxelmc.mmoblock.api.integration;
 
-import java.util.logging.Logger;
-
+import me.chyxelmc.mmoblock.utils.DependencyChecker;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 import org.bukkit.Location;
 import org.bukkit.inventory.ItemStack;
 
@@ -22,15 +22,14 @@ import org.bukkit.inventory.ItemStack;
 public final class ItemsAdderIntegration {
 
     private static final boolean AVAILABLE;
-    private static final Logger LOGGER = Logger.getLogger(ItemsAdderIntegration.class.getName());
 
     static {
         boolean available = false;
         try {
             Class.forName("dev.lone.itemsadder.api.CustomStack");
             available = true;
-        } catch (final ClassNotFoundException ignored) {
-            // ItemsAdder not installed
+        } catch (final ReflectiveOperationException | LinkageError ignored) {
+            // ItemsAdder not installed or incompatible
         }
         AVAILABLE = available;
     }
@@ -46,7 +45,11 @@ public final class ItemsAdderIntegration {
      * @return {@code true} if ItemsAdder is installed and its API classes are resolvable
      */
     public static boolean isAvailable() {
-        return AVAILABLE;
+        if (!AVAILABLE) return false;
+        if (DependencyChecker.isInitialized()) {
+            return DependencyChecker.isItemsAdderAvailable();
+        }
+        return true;
     }
 
     /**
@@ -103,7 +106,7 @@ public final class ItemsAdderIntegration {
                 return ((dev.lone.itemsadder.api.CustomStack) customStack).getItemStack();
             }
         } catch (final Exception ex) {
-            LOGGER.fine("[ItemsAdder] Failed to get item stack for '" + itemsAdderId + "': " + ex.getMessage());
+            MMOBlockLogger.debug("[ItemsAdder] Failed to get item stack for '" + itemsAdderId + "': " + ex.getMessage());
         }
         return null;
     }
@@ -180,7 +183,7 @@ public final class ItemsAdderIntegration {
             }
             return false;
         } catch (final Exception ex) {
-            LOGGER.fine("[ItemsAdder] Failed to match item '" + itemsAdderId + "': " + ex.getMessage());
+            MMOBlockLogger.debug("[ItemsAdder] Failed to match item '" + itemsAdderId + "': " + ex.getMessage());
             return false;
         }
     }
@@ -216,8 +219,9 @@ public final class ItemsAdderIntegration {
                 dev.lone.itemsadder.api.ItemsAdder.setCustomItemDurability(item, newDurability);
             }
             return true;
-        } catch (final Exception ex) {
-            LOGGER.fine("[ItemsAdder] Failed to apply durability: " + ex.getMessage());
+        } catch (final Throwable ex) {
+            // Catch Throwable to safely handle NoClassDefFoundError/LinkageError
+            MMOBlockLogger.debug("[ItemsAdder] Failed to apply durability: " + ex.getMessage());
             return false;
         }
     }
@@ -258,12 +262,12 @@ public final class ItemsAdderIntegration {
                 placed = dev.lone.itemsadder.api.CustomBlock.place(stripped, location);
             }
             if (placed == null) {
-                LOGGER.fine("[ItemsAdder] Custom block '" + itemsAdderBlockId + "' not found in registry.");
+                MMOBlockLogger.debug("[ItemsAdder] Custom block '" + itemsAdderBlockId + "' not found in registry.");
                 return false;
             }
             return true;
         } catch (final Exception ex) {
-            LOGGER.fine("[ItemsAdder] Failed to place custom block '" + itemsAdderBlockId + "': " + ex.getMessage());
+            MMOBlockLogger.debug("[ItemsAdder] Failed to place custom block '" + itemsAdderBlockId + "': " + ex.getMessage());
             return false;
         }
     }

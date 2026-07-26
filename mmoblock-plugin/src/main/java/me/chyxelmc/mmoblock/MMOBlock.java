@@ -39,7 +39,10 @@ import me.chyxelmc.mmoblock.ecs.system.PersistenceReadSystem;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
 import me.chyxelmc.mmoblock.utils.DatabaseUtils;
 import me.chyxelmc.mmoblock.utils.InternalPlaceholderResolver;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 import me.chyxelmc.mmoblock.utils.analytics.Metrics;
+import me.chyxelmc.mmoblock.utils.DependencyChecker;
+import me.chyxelmc.mmoblock.utils.UpdateChecker;
 
 public final class MMOBlock extends JavaPlugin{
 
@@ -75,9 +78,21 @@ public final class MMOBlock extends JavaPlugin{
     public void onEnable() {
 
         saveDefaultConfig();
+
+        // ── Initialize custom logger ───────────────────────────────
+        MMOBlockLogger.init(this);
+
+        // ── Soft-dependency check ──────────────────────────────────
+        // Runs first so all integration code can safely query flags.
+        DependencyChecker.check(this);
+
+        // ── Update check (async) ───────────────────────────────────
+        if (getConfig().getBoolean("updateChecker", true)) {
+            UpdateChecker.checkAsync(getDescription().getVersion());
+        }
+
         this.scheduler = PlatformSchedulerProvider.createScheduler(this);
-        me.chyxelmc.mmoblock.nms.utils.ReflectionUtil.init(getLogger());
-        this.nmsAdapter = NmsAdapterRegistry.resolveCurrent(getLogger());
+        this.nmsAdapter = NmsAdapterRegistry.resolveCurrent();
         this.nmsAdapter.validateNms();
 
         this.blockConfigService = new BlockConfigLoader(this);

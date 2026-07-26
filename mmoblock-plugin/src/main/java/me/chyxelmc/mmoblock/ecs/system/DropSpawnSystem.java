@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Bukkit;
@@ -31,7 +32,9 @@ import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
 import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.ToolAction;
 import me.chyxelmc.mmoblock.utils.TextColor;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
+import me.chyxelmc.mmoblock.nms.NmsAdapter.HologramLine;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 
 /**
  * Handles drop resolution and dispatch for mined blocks.
@@ -100,19 +103,31 @@ public final class DropSpawnSystem implements Listener {
         if (amount <= 0) {
             return;
         }
-        final ItemStack stack;
+        ItemStack stack = null;
         if (entry.mmoItemsId() != null) {
-            stack = me.chyxelmc.mmoblock.api.integration.MMOItemsIntegration.getItemStack(entry.mmoItemsId(), amount);
+            try {
+                stack = me.chyxelmc.mmoblock.api.integration.MMOItemsIntegration.getItemStack(entry.mmoItemsId(), amount);
+            } catch (final Throwable ignored) {
+                stack = null;
+            }
             if (stack == null) {
                 return;
             }
         } else if (entry.craftEngineId() != null) {
-            stack = me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.getItemStack(entry.craftEngineId(), amount);
+            try {
+                stack = me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.getItemStack(entry.craftEngineId(), amount);
+            } catch (final Throwable ignored) {
+                stack = null;
+            }
             if (stack == null) {
                 return;
             }
         } else if (entry.itemsAdderId() != null) {
-            stack = me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.getItemStack(entry.itemsAdderId(), amount);
+            try {
+                stack = me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.getItemStack(entry.itemsAdderId(), amount);
+            } catch (final Throwable ignored) {
+                stack = null;
+            }
             if (stack == null) {
                 return;
             }
@@ -309,7 +324,7 @@ public final class DropSpawnSystem implements Listener {
                 }
             }
         } catch (final Exception e) {
-            this.plugin.getLogger().warning("Failed to spawn drop beam particle '" + particle.name() + "': " + e.getMessage());
+            MMOBlockLogger.warning("Failed to spawn drop beam particle '" + particle.name() + "': " + e.getMessage());
         }
     }
 
@@ -332,7 +347,7 @@ public final class DropSpawnSystem implements Listener {
             } catch (final IllegalArgumentException ignored) {
             }
         }
-        this.plugin.getLogger().warning("Unknown beam particle '" + particleName + "', skipping beam effect.");
+        MMOBlockLogger.warning("Unknown beam particle '" + particleName + "', skipping beam effect.");
         return null;
     }
 
@@ -449,40 +464,55 @@ public final class DropSpawnSystem implements Listener {
                 ThreadLocalRandom.current().nextDouble() * 1.0D - 0.5D
         );
 
-        // Use a marker entity with Paper per-player visibility API so the popup
-        // is ONLY visible to the player who received the drop.
-        // The entity is invisible by default, then explicitly shown to the target player.
+        // Use NMS client-side packet hologram so the popup is rendered via TextDisplay
+        // (1.19.4+) or ArmorStand (legacy < 1.19.4) — entirely client-side, no server entities.
+        // The hologram is only sent to the player who received the drop.
         final World world = loc.getWorld();
         if (world == null) return;
 
-        // Spawn first, then configure — avoids NoSuchMethodError on Paper 1.21.11+
-        // where World.spawn(Location, Class, Consumer) with org.bukkit.util.Consumer was removed.
-        final org.bukkit.entity.ArmorStand stand = world.spawn(loc, org.bukkit.entity.ArmorStand.class);
-        if (stand == null) return;
-        stand.setMarker(true);
-        stand.setInvisible(true);
-        stand.setSmall(true);
-        stand.setInvulnerable(true);
-        stand.setSilent(true);
-        stand.setGravity(false);
-        stand.setCustomNameVisible(true);
-        stand.setCustomName(legacyText);
-        // Paper API: invisible to all players by default
-        try {
-            stand.setVisibleByDefault(false);
-        } catch (final NoSuchMethodError ignored) {
-            // Spigot fallback — entity is visible but positioned at player's face
-        }
+        if (this.nmsAdapter.supportsPacketHolograms()) {
+            // Use the NMS packet hologram system — creates TextDisplay for modern clients,
+            // ArmorStand for legacy clients (< 1.19.4 via ViaVersion). All client-side.
+            final UUID popupId = UUID.randomUUID();
+            final Location holoLoc = loc.clone();
+            // Set the location's yaw so the TextDisplay faces the player's direction
+            holoLoc.setYaw(player.getEyeLocation().getYaw());
+            holoLoc.setPitch(0.0F);
+            final List<HologramLine> lines = List.of(
+                    HologramLine.text(legacyText, 0.0D)
+            );
+            this.nmsAdapter.upsertPacketHologram(player, popupId, holoLoc, lines);
 
-        // Only show this entity to the player who received the drop
-        try {
-            player.showEntity(this.plugin, stand);
-        } catch (final NoSuchMethodError ignored) {
-            // Spigot fallback — entity is visible but positioned at player's face
+            // Remove the popup after 2 seconds (40 ticks)
+            this.scheduler.runLater(() ->
+                    this.nmsAdapter.removePacketHologram(player, popupId),
+                    40L
+            );
+        } else {
+            // Fallback: spawn a server-side marker ArmorStand for legacy servers
+            // that don't support packet holograms.
+            final org.bukkit.entity.ArmorStand stand = world.spawn(loc, org.bukkit.entity.ArmorStand.class);
+            if (stand == null) return;
+            stand.setMarker(true);
+            stand.setInvisible(true);
+            stand.setSmall(true);
+            stand.setInvulnerable(true);
+            stand.setSilent(true);
+            stand.setGravity(false);
+            stand.setCustomNameVisible(true);
+            stand.setCustomName(legacyText);
+            try {
+                stand.setVisibleByDefault(false);
+            } catch (final NoSuchMethodError ignored) {
+                // Spigot fallback
+            }
+            try {
+                player.showEntity(this.plugin, stand);
+            } catch (final NoSuchMethodError ignored) {
+                // Spigot fallback
+            }
+            this.scheduler.runForEntityLater(stand, stand::remove, null, 40L);
         }
-
-        // Remove the popup after 2 seconds (40 ticks)
-        this.scheduler.runForEntityLater(stand, stand::remove, null, 40L);
     }
 
     /**
