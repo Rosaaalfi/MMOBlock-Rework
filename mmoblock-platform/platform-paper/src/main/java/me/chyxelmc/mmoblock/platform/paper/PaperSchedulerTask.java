@@ -19,7 +19,7 @@ final class PaperSchedulerTask implements SchedulerTask {
         try {
             this.handle.cancel();
         } catch (final Exception ignored) {
-        // expected - reflection fallback
+            // expected - task may already be cancelled
         }
     }
 

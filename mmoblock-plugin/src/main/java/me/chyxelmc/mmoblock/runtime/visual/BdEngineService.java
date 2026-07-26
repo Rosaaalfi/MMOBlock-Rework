@@ -29,7 +29,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 

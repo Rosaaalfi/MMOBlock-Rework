@@ -21,15 +21,15 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.ConditionDefinition;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.ToolAction;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
-import me.chyxelmc.mmoblock.ecs.system.BlockMiningSystem;
-import me.chyxelmc.mmoblock.ecs.system.DropSpawnSystem;
-import me.chyxelmc.mmoblock.ecs.system.LifecycleSystem;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ConditionDefinition;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ToolAction;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.runtime.block.MiningProgressTracker;
+import me.chyxelmc.mmoblock.runtime.block.DropService;
+import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
-import me.chyxelmc.mmoblock.ecs.system.VisualSyncSystem;
+import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
 import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
@@ -43,10 +43,10 @@ public final class BlockMiningOrchestrator {
     private final MMOBlock plugin;
     private final BlockConfigLoader blockConfigService;
     private final PersistenceSystem persistenceSystem;
-    private final BlockMiningSystem miningSystem;
-    private final DropSpawnSystem dropSystem;
-    private final LifecycleSystem lifecycleSystem;
-    private final VisualSyncSystem visualSyncSystem;
+    private final MiningProgressTracker miningSystem;
+    private final DropService dropSystem;
+    private final BlockLifecycleState lifecycleSystem;
+    private final BlockVisualSyncService visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
     private final BlockModelApplier modelApplier;
     private final BlockInteractionOrchestrator interactionOrchestrator;
@@ -60,10 +60,10 @@ public final class BlockMiningOrchestrator {
             final MMOBlock plugin,
             final BlockConfigLoader blockConfigService,
             final PersistenceSystem persistenceSystem,
-            final BlockMiningSystem miningSystem,
-            final DropSpawnSystem dropSystem,
-            final LifecycleSystem lifecycleSystem,
-            final VisualSyncSystem visualSyncSystem,
+            final MiningProgressTracker miningSystem,
+            final DropService dropSystem,
+            final BlockLifecycleState lifecycleSystem,
+            final BlockVisualSyncService visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService,
             final BlockModelApplier modelApplier,
             final BlockInteractionOrchestrator interactionOrchestrator,

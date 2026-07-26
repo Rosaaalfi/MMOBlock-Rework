@@ -1,8 +1,8 @@
 package me.chyxelmc.mmoblock.runtime.hologram;
 
 import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.utils.HologramAnimationUtil;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;

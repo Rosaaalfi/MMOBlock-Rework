@@ -88,7 +88,7 @@ public final class FoliaScheduler implements Scheduler {
                 try {
                     retired.run();
                 } catch (final Exception ignored) {
-                // expected - reflection fallback
+                    // expected - entity was retired, callback may fail
                 }
             }
             return new NoopTask();
@@ -112,7 +112,7 @@ public final class FoliaScheduler implements Scheduler {
                 try {
                     retired.run();
                 } catch (final Exception ignored) {
-                // expected - reflection fallback
+                    // expected - entity was retired, callback may fail
                 }
             }
             return new NoopTask();

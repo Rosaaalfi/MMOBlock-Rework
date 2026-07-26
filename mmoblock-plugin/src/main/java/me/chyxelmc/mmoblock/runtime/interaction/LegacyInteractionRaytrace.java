@@ -1,10 +1,10 @@
 package me.chyxelmc.mmoblock.runtime.interaction;
 
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
-import me.chyxelmc.mmoblock.ecs.BlockEcsState;
-import me.chyxelmc.mmoblock.ecs.system.LifecycleSystem;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
+import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -14,16 +14,16 @@ import org.bukkit.util.Vector;
 
 public final class LegacyInteractionRaytrace {
 
-    private final BlockEcsState ecsState;
+    private final BlockStateRegistry stateRegistry;
     private final BlockConfigLoader blockConfigService;
-    private final LifecycleSystem lifecycleSystem;
+    private final BlockLifecycleState lifecycleSystem;
 
     public LegacyInteractionRaytrace(
-            final BlockEcsState ecsState,
+            final BlockStateRegistry stateRegistry,
             final BlockConfigLoader blockConfigService,
-            final LifecycleSystem lifecycleSystem
+            final BlockLifecycleState lifecycleSystem
     ) {
-        this.ecsState = ecsState;
+        this.stateRegistry = stateRegistry;
         this.blockConfigService = blockConfigService;
         this.lifecycleSystem = lifecycleSystem;
     }
@@ -40,7 +40,7 @@ public final class LegacyInteractionRaytrace {
         final double maxDistanceSquared = maxDistance * maxDistance;
 
         Hit nearest = null;
-        for (final PlacedBlockModel block : this.ecsState.blocks()) {
+        for (final PlacedBlockModel block : this.stateRegistry.blocks()) {
             if (!world.getName().equals(block.world())) {
                 continue;
             }

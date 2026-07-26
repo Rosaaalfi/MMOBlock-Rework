@@ -60,7 +60,7 @@ public final class PaperScheduler implements Scheduler {
                 try {
                     retired.run();
                 } catch (final Exception ignored) {
-                // expected - reflection fallback
+                    // expected - entity was invalid, retired callback may fail
                 }
             }
             return new NoopTask();
@@ -75,7 +75,7 @@ public final class PaperScheduler implements Scheduler {
                 try {
                     retired.run();
                 } catch (final Exception ignored) {
-                // expected - reflection fallback
+                    // expected - entity was invalid, retired callback may fail
                 }
             }
             return new NoopTask();

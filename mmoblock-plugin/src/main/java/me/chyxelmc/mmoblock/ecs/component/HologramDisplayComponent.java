@@ -1,6 +1,6 @@
 package me.chyxelmc.mmoblock.ecs.component;
 
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.DisplayLine;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.DisplayLine;
 
 import java.util.List;
 import java.util.UUID;

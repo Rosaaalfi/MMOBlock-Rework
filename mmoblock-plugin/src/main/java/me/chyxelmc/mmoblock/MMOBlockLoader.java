@@ -55,6 +55,12 @@ public final class MMOBlockLoader implements PluginLoader {
                     "com/mysql/mysql-connector-j/9.2.0/mysql-connector-j-9.2.0.jar",
                     "mysql-connector-j-9.2.0.jar",
                     "7e9941bbdcca244d878ea95bfff788fd9ba6a65af757f24be6c632930d61c7ed"
+            ),
+            new ExternalLibrary(
+                    "io.netty:netty-all:4.2.16.Final",
+                    "io/netty/netty-all/4.2.16.Final/netty-all-4.2.16.Final.jar",
+                    "netty-all-4.2.16.Final.jar",
+                    "b27c6ad392d2186c2f29c263dd0fa2d832a3929666d51c2f080286a18acf81e0"
             )
     );
 

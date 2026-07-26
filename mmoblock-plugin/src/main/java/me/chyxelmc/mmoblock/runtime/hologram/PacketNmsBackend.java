@@ -1,8 +1,10 @@
 package me.chyxelmc.mmoblock.runtime.hologram;
 
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
 import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
@@ -193,10 +195,9 @@ final class PacketNmsBackend implements HologramRuntimeService.HologramBackend {
                     if (this.visibilityPolicy.isViewerInRange(player, world, session)) {
                         enqueueSync(player.getUniqueId(), hologramUniqueId, HologramSyncAction.UPSERT);
                     }
-                } catch (final Exception ignored) {
-                    // expected - reflection fallback
-                }
-            }
+                } catch (final Exception e) {
+                    MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+                }          }
         }
 
         private void enqueueSync(final UUID playerUniqueId, final UUID hologramUniqueId, final HologramSyncAction action) {

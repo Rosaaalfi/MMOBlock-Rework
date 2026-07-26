@@ -1,4 +1,5 @@
 package me.chyxelmc.mmoblock.command.sub;
+import me.chyxelmc.mmoblock.runtime.block.ReconcileResult;
 
 import me.chyxelmc.mmoblock.command.CommandArgs;
 import me.chyxelmc.mmoblock.command.CommandContext;
@@ -71,7 +72,7 @@ public final class ReloadCommand implements SubCommand {
         if (ctx.nodeRuntimeService() != null) {
             ctx.nodeRuntimeService().reloadNodes();
         }
-        final BlockRuntimeService.ReconcileResult result = ctx.runtimeCoordinator().reconcileAfterConfigReload(true);
+        final ReconcileResult result = ctx.runtimeCoordinator().reconcileAfterConfigReload(true);
         sender.sendMessage(ctx.configService().messageComponent(
                 "commands.reload.all", "Reloaded config, blocks, drops, lang, and tools."
         ));
@@ -130,7 +131,7 @@ public final class ReloadCommand implements SubCommand {
                 + ", warnings=" + report.warningCount());
     }
 
-    private Component formatReconcileResult(final BlockRuntimeService.ReconcileResult result) {
+    private Component formatReconcileResult(final ReconcileResult result) {
         return Component.text("Runtime sync -> rebound=" + result.reboundInteractions()
                 + ", cleaned=" + result.cleanedMissingDefinitions()
                 + ", rescheduled=" + result.rescheduledRespawns()

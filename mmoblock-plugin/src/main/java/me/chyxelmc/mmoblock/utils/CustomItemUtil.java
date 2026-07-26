@@ -1,8 +1,8 @@
 package me.chyxelmc.mmoblock.utils;
 
 import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedNodeModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedNodeModel;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;

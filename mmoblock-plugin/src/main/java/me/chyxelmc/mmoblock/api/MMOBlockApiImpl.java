@@ -74,7 +74,7 @@ public final class MMOBlockApiImpl implements BlockService, NodeService, me.chyx
 
     @Override
     public PlaceResult placeBlock(final String type, final World world, final double x, final double y, final double z, final String facing) {
-        final BlockRuntimeService.PlaceResult result = this.blockRuntimeService.place(type, world, x, y, z, facing);
+        final me.chyxelmc.mmoblock.runtime.block.PlaceResult result = this.blockRuntimeService.place(type, world, x, y, z, facing);
         if (result.success()) {
             return PlaceResult.success(result.placedBlock());
         }

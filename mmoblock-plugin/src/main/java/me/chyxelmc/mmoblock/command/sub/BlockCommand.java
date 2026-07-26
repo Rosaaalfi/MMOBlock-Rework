@@ -1,9 +1,10 @@
 package me.chyxelmc.mmoblock.command.sub;
+import me.chyxelmc.mmoblock.runtime.block.PlaceResult;
 
 import me.chyxelmc.mmoblock.command.CommandArgs;
 import me.chyxelmc.mmoblock.command.CommandContext;
 import me.chyxelmc.mmoblock.command.SubCommand;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
 import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;
@@ -79,7 +80,7 @@ public final class BlockCommand implements SubCommand {
         final String facing = CommandArgs.resolveFacing(sender, args.length >= 8 ? args[7] : null);
         if (facing == null) return true;
 
-        final BlockRuntimeService.PlaceResult result = ctx.runtimeService().place(blockId, world, xyz[0], xyz[1], xyz[2], facing);
+        final PlaceResult result = ctx.runtimeService().place(blockId, world, xyz[0], xyz[1], xyz[2], facing);
         if (!result.success()) {
             sender.sendMessage(ctx.configService().messageComponent(
                     "commands.place.failed",

@@ -1,7 +1,9 @@
 package me.chyxelmc.mmoblock.runtime.visual;
 
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
 import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.nms.SchematicData;
 import me.chyxelmc.mmoblock.nms.SchematicData.SchematicBlock;

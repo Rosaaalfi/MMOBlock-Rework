@@ -1,6 +1,6 @@
 package me.chyxelmc.mmoblock.ecs.system;
 
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.persistence.BlockRepository;
 import me.chyxelmc.mmoblock.persistence.RespawnRepository;
 import me.chyxelmc.mmoblock.persistence.cache.DataCache;

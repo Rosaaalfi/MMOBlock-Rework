@@ -10,12 +10,12 @@ import org.bukkit.entity.Interaction;
 import org.bukkit.persistence.PersistentDataType;
 
 import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.ecs.EntityManager;
 import me.chyxelmc.mmoblock.ecs.component.InteractionComponent;
 import me.chyxelmc.mmoblock.ecs.component.PositionComponent;
-import me.chyxelmc.mmoblock.ecs.system.VisualSyncSystem;
+import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
@@ -24,7 +24,7 @@ public final class BlockInteractionOrchestrator {
 
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
-    private final VisualSyncSystem visualSyncSystem;
+    private final BlockVisualSyncService visualSyncSystem;
     private final BlockModelApplier modelApplier;
     private final NamespacedKey uniqueIdKey;
     private EntityManager entityManager;
@@ -32,7 +32,7 @@ public final class BlockInteractionOrchestrator {
     public BlockInteractionOrchestrator(
             final MMOBlock plugin,
             final NmsAdapter nmsAdapter,
-            final VisualSyncSystem visualSyncSystem,
+            final BlockVisualSyncService visualSyncSystem,
             final BlockModelApplier modelApplier,
             final NamespacedKey uniqueIdKey
     ) {
@@ -153,10 +153,9 @@ public final class BlockInteractionOrchestrator {
     ) {
         try {
             this.visualSyncSystem.applyRealBlockModel(placedBlock, definition, world);
-        } catch (final Exception ignored) {
-            // expected - reflection fallback
-        }
-        this.modelApplier.applySchematicModel(placedBlock, definition, world, false);
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }      this.modelApplier.applySchematicModel(placedBlock, definition, world, false);
         this.modelApplier.applyBdEngineModel(placedBlock, definition, world);
     }
 

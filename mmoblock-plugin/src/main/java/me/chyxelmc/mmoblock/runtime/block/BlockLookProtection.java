@@ -1,6 +1,8 @@
 package me.chyxelmc.mmoblock.runtime.block;
 
-import me.chyxelmc.mmoblock.ecs.BlockEcsState;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -15,11 +17,11 @@ import java.util.UUID;
 
 public final class BlockLookProtection implements Listener {
 
-    private final BlockEcsState ecsState;
+    private final BlockStateRegistry stateRegistry;
     private final Set<UUID> protectedPlayers = new HashSet<>();
 
-    public BlockLookProtection(final BlockEcsState ecsState) {
-        this.ecsState = ecsState;
+    public BlockLookProtection(final BlockStateRegistry stateRegistry) {
+        this.stateRegistry = stateRegistry;
     }
 
     public void protect(final UUID playerUniqueId) {
@@ -50,13 +52,12 @@ public final class BlockLookProtection implements Listener {
 
     private void cancelIfPlacedBlock(final Block block, final CancelAction cancelAction) {
         try {
-            if (this.ecsState.containsAt(block.getWorld().getName(), block.getX(), block.getY(), block.getZ())) {
+            if (this.stateRegistry.containsAt(block.getWorld().getName(), block.getX(), block.getY(), block.getZ())) {
                 cancelAction.cancel(true);
             }
-        } catch (final Exception ignored) {
-            // expected - reflection fallback
-        }
-    }
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }  }
 
     @FunctionalInterface
     private interface CancelAction {

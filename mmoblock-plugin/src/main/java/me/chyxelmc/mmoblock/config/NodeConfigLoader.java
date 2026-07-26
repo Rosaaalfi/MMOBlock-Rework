@@ -14,9 +14,9 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.DisplayLine;
-import me.chyxelmc.mmoblock.domain.PlacedNodeModel;
-import me.chyxelmc.mmoblock.domain.PlacedNodeModel.NodeDefinition;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.DisplayLine;
+import me.chyxelmc.mmoblock.model.PlacedNodeModel;
+import me.chyxelmc.mmoblock.model.PlacedNodeModel.NodeDefinition;
 
 /**
  * Loads and parses node configuration files.

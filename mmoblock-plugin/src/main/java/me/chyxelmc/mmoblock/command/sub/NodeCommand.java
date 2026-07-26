@@ -3,7 +3,7 @@ package me.chyxelmc.mmoblock.command.sub;
 import me.chyxelmc.mmoblock.command.CommandArgs;
 import me.chyxelmc.mmoblock.command.CommandContext;
 import me.chyxelmc.mmoblock.command.SubCommand;
-import me.chyxelmc.mmoblock.domain.PlacedNodeModel;
+import me.chyxelmc.mmoblock.model.PlacedNodeModel;
 import me.chyxelmc.mmoblock.runtime.NodeRuntimeService;
 import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;

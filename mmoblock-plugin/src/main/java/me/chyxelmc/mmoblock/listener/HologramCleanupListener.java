@@ -1,5 +1,7 @@
 package me.chyxelmc.mmoblock.listener;
 
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
@@ -48,10 +50,9 @@ public final class HologramCleanupListener implements Listener {
         if (this.onPlayerQuit != null) {
             try {
                 this.onPlayerQuit.accept(playerId);
-            } catch (final Exception ignored) {
-            // expected - reflection fallback
-            }
-        }
+            } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+            }      }
         // Uninject netty handler for this player to avoid leaks (best-effort)
         try {
             if (this.plugin instanceof MMOBlock mmob) {
@@ -63,8 +64,7 @@ public final class HologramCleanupListener implements Listener {
                     uninject.invoke(null, event.getPlayer());
                 }
             }
-        } catch (final Exception ignored) {
-        // expected - reflection fallback
-        }
-    }
+        } catch (final Exception e) {
+        MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }  }
 }

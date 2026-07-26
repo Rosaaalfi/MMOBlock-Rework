@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-import me.chyxelmc.mmoblock.nms.utils.ReflectionUtil;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -133,128 +132,22 @@ public interface NmsAdapter {
             return false;
         }
         try {
-            final Object handle = player.getClass().getMethod("getHandle").invoke(player);
-            final Object connection = handle.getClass().getField("connection").get(handle);
-            sendGlowMetadataPacket(connection, entity);
-            sendGlowTeamPackets(connection, entity, teamName, chatColor);
+            final Object connection = me.chyxelmc.mmoblock.nms.utils.GlowReflectionCache.getConnection(
+                    me.chyxelmc.mmoblock.nms.utils.GlowReflectionCache.getHandle(player));
+            me.chyxelmc.mmoblock.nms.utils.GlowReflectionCache.sendGlowMetadataPacket(connection, entity);
+            me.chyxelmc.mmoblock.nms.utils.GlowReflectionCache.sendGlowTeamPackets(connection, entity, teamName, chatColor);
             return true;
         } catch (final ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             return false;
         }
     }
 
-    private void sendGlowMetadataPacket(final Object connection, final Entity entity) throws ReflectiveOperationException {
-        final Object nmsEntity = entity.getClass().getMethod("getHandle").invoke(entity);
-        final Class<?> nmsEntityClass = Class.forName("net.minecraft.world.entity.Entity");
-        final Class<?> entityDataAccessorClass = Class.forName("net.minecraft.network.syncher.EntityDataAccessor");
-        final Class<?> synchedEntityDataClass = Class.forName("net.minecraft.network.syncher.SynchedEntityData");
-        final Class<?> dataValueClass = Class.forName("net.minecraft.network.syncher.SynchedEntityData$DataValue");
-        final Class<?> metadataPacketClass = Class.forName("net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket");
-
-        final java.lang.reflect.Field sharedFlagsField = nmsEntityClass.getDeclaredField("DATA_SHARED_FLAGS_ID");
-        // NMS internal field — no public API to read entity data accessors; reflection required for cross-version compatibility
-        ReflectionUtil.safeSetAccessible(sharedFlagsField, "NMS DATA_SHARED_FLAGS_ID field");
-        final Object sharedFlags = sharedFlagsField.get(null);
-        final Object entityData = nmsEntityClass.getMethod("getEntityData").invoke(nmsEntity);
-        final byte currentFlags = (byte) synchedEntityDataClass.getMethod("get", entityDataAccessorClass).invoke(entityData, sharedFlags);
-        final byte glowingFlags = (byte) ((currentFlags & 0xff) | (1 << 6));
-        final Object dataValue = dataValueClass.getMethod("create", entityDataAccessorClass, Object.class).invoke(null, sharedFlags, glowingFlags);
-        final java.lang.reflect.Constructor<?> metadataConstructor = metadataPacketClass.getDeclaredConstructor(int.class, List.class);
-        // NMS packet constructor is package-private; no public API for constructing ClientboundSetEntityDataPacket with custom data
-        ReflectionUtil.safeSetAccessible(metadataConstructor, "NMS ClientboundSetEntityDataPacket constructor");
-        sendPacket(connection, metadataConstructor.newInstance(entity.getEntityId(), List.of(dataValue)));
-    }
-
-    @SuppressWarnings({"deprecation", "unchecked", "rawtypes"})
-    private void sendGlowTeamPackets(final Object connection, final Entity entity, final String teamName, final ChatColor chatColor)
-            throws ReflectiveOperationException {
-            final Class<?> scoreboardClass = Class.forName("net.minecraft.world.scores.Scoreboard");
-            final Class<?> playerTeamClass = Class.forName("net.minecraft.world.scores.PlayerTeam");
-            final Class<?> chatFormattingClass = Class.forName("net.minecraft.ChatFormatting");
-            final Class<?> teamPacketClass = Class.forName("net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket");
-            final Class<?> collisionRuleClass = Class.forName("net.minecraft.world.scores.Team$CollisionRule");
-            final Class<?> actionClass = Class.forName("net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Action");
-
-            final Object scoreboard = scoreboardClass.getConstructor().newInstance();
-            final java.lang.reflect.Constructor<?> playerTeamConstructor = playerTeamClass.getDeclaredConstructor(scoreboardClass, String.class);
-            // NMS PlayerTeam constructor is package-private; no public API for constructing team packets with custom data
-            ReflectionUtil.safeSetAccessible(playerTeamConstructor, "NMS PlayerTeam constructor");
-            final Object playerTeam = playerTeamConstructor.newInstance(scoreboard, teamName);
-            final Object formatting = chatFormattingClass.getMethod("getByCode", char.class).invoke(null, chatColor.getChar());
-            playerTeamClass.getMethod("setColor", chatFormattingClass).invoke(playerTeam, formatting);
-            playerTeamClass.getMethod("setCollisionRule", collisionRuleClass)
-                    .invoke(playerTeam, Enum.valueOf((Class<Enum>) collisionRuleClass.asSubclass(Enum.class), "NEVER"));
-            final String entry = entity.getUniqueId().toString();
-
-            final Object createTeamPacket = teamPacketClass
-                    .getMethod("createAddOrModifyPacket", playerTeamClass, boolean.class)
-                    .invoke(null, playerTeam, true);
-            sendPacket(connection, createTeamPacket);
-
-            final Enum<?> addAction = Enum.valueOf(actionClass.asSubclass(Enum.class), "ADD");
-            final Object addEntityPacket = teamPacketClass
-                    .getMethod("createPlayerPacket", playerTeamClass, String.class, actionClass)
-                    .invoke(null, playerTeam, entry, addAction);
-            sendPacket(connection, addEntityPacket);
-    }
-
-    private void sendPacket(final Object connection, final Object packet) throws ReflectiveOperationException {
-        if (connection == null || packet == null) {
-            return;
-        }
-        for (final java.lang.reflect.Method method : connection.getClass().getMethods()) {
-            if (!"send".equals(method.getName()) || method.getParameterCount() != 1) {
-                continue;
-            }
-            if (method.getParameterTypes()[0].isInstance(packet)) {
-                method.invoke(connection, packet);
-                return;
-            }
-        }
-    }
-
     /**
      * Maps a color name string to a Bukkit ChatColor.
+     * Delegates to {@link me.chyxelmc.mmoblock.nms.utils.ColorResolver}.
      */
-    @SuppressWarnings("deprecation")
     static ChatColor resolveGlowChatColor(final String raw) {
-        if (raw == null || raw.isBlank()) {
-            return ChatColor.WHITE;
-        }
-        final String normalized = raw.trim()
-                .toLowerCase(Locale.ROOT)
-                .replace('-', '_')
-                .replace(' ', '_');
-        try {
-            return ChatColor.valueOf(normalized.toUpperCase(Locale.ROOT));
-        } catch (final IllegalArgumentException ignored) {
-            return switch (normalized) {
-                case "black" -> ChatColor.BLACK;
-                case "navy" -> ChatColor.DARK_BLUE;
-                case "dark_blue" -> ChatColor.DARK_BLUE;
-                case "dark_green" -> ChatColor.DARK_GREEN;
-                case "teal" -> ChatColor.DARK_AQUA;
-                case "dark_aqua", "dark_cyan" -> ChatColor.DARK_AQUA;
-                case "maroon" -> ChatColor.DARK_RED;
-                case "dark_red" -> ChatColor.DARK_RED;
-                case "purple" -> ChatColor.DARK_PURPLE;
-                case "dark_purple" -> ChatColor.DARK_PURPLE;
-                case "orange" -> ChatColor.GOLD;
-                case "gold" -> ChatColor.GOLD;
-                case "silver" -> ChatColor.GRAY;
-                case "gray", "grey" -> ChatColor.GRAY;
-                case "dark_gray", "dark_grey" -> ChatColor.DARK_GRAY;
-                case "blue" -> ChatColor.BLUE;
-                case "lime" -> ChatColor.GREEN;
-                case "green" -> ChatColor.GREEN;
-                case "cyan", "aqua" -> ChatColor.AQUA;
-                case "red" -> ChatColor.RED;
-                case "pink", "fuchsia", "magenta", "light_purple" -> ChatColor.LIGHT_PURPLE;
-                case "yellow", "olive" -> ChatColor.YELLOW;
-                case "white" -> ChatColor.WHITE;
-                default -> ChatColor.WHITE;
-            };
-        }
+        return me.chyxelmc.mmoblock.nms.utils.ColorResolver.resolveChatColor(raw);
     }
 
     record BdEngineDisplayPart(BdEngineDisplayType type, Material material, String text, float[] matrix, int skyLight, int blockLight) {

@@ -7,14 +7,14 @@ import org.bukkit.World;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
-import me.chyxelmc.mmoblock.ecs.BlockEcsState;
-import me.chyxelmc.mmoblock.ecs.system.BlockRespawnSystem;
-import me.chyxelmc.mmoblock.ecs.system.LifecycleSystem;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
+import me.chyxelmc.mmoblock.runtime.block.RespawnScheduler;
+import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
-import me.chyxelmc.mmoblock.ecs.system.VisualSyncSystem;
-import me.chyxelmc.mmoblock.runtime.BlockRuntimeService.PlaceResult;
+import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
+import me.chyxelmc.mmoblock.runtime.block.PlaceResult;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
 import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
@@ -24,10 +24,10 @@ public final class BlockLifecycleOrchestrator {
     private final MMOBlock plugin;
     private final BlockConfigLoader blockConfigService;
     private final PersistenceSystem persistenceSystem;
-    private final BlockEcsState ecsState;
-    private final BlockRespawnSystem respawnSystem;
-    private final LifecycleSystem lifecycleSystem;
-    private final VisualSyncSystem visualSyncSystem;
+    private final BlockStateRegistry stateRegistry;
+    private final RespawnScheduler respawnSystem;
+    private final BlockLifecycleState lifecycleSystem;
+    private final BlockVisualSyncService visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
     private final BlockModelApplier modelApplier;
     private final BlockInteractionOrchestrator interactionOrchestrator;
@@ -39,10 +39,10 @@ public final class BlockLifecycleOrchestrator {
             final MMOBlock plugin,
             final BlockConfigLoader blockConfigService,
             final PersistenceSystem persistenceSystem,
-            final BlockEcsState ecsState,
-            final BlockRespawnSystem respawnSystem,
-            final LifecycleSystem lifecycleSystem,
-            final VisualSyncSystem visualSyncSystem,
+            final BlockStateRegistry stateRegistry,
+            final RespawnScheduler respawnSystem,
+            final BlockLifecycleState lifecycleSystem,
+            final BlockVisualSyncService visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService,
             final BlockModelApplier modelApplier,
             final BlockInteractionOrchestrator interactionOrchestrator,
@@ -53,7 +53,7 @@ public final class BlockLifecycleOrchestrator {
         this.plugin = plugin;
         this.blockConfigService = blockConfigService;
         this.persistenceSystem = persistenceSystem;
-        this.ecsState = ecsState;
+        this.stateRegistry = stateRegistry;
         this.respawnSystem = respawnSystem;
         this.lifecycleSystem = lifecycleSystem;
         this.visualSyncSystem = visualSyncSystem;
@@ -80,17 +80,17 @@ public final class BlockLifecycleOrchestrator {
             return PlaceResult.error("Unknown block id: " + type);
         }
 
-        if (this.ecsState.containsAt(world.getName(), x, y, z)) {
+        if (this.stateRegistry.containsAt(world.getName(), x, y, z)) {
             return PlaceResult.error("Block already exists at that position");
         }
 
         final UUID uniqueId = UUID.randomUUID();
-        final PlacedBlockModel placedBlock = new PlacedBlockModel(uniqueId, definition.id(), world.getName(), x, y, z, facing, LifecycleSystem.STATUS_ACTIVE);
+        final PlacedBlockModel placedBlock = new PlacedBlockModel(uniqueId, definition.id(), world.getName(), x, y, z, facing, BlockLifecycleState.STATUS_ACTIVE);
 
-        this.ecsState.putBlock(placedBlock);
+        this.stateRegistry.putBlock(placedBlock);
 
         if (isChunkLoaded(world, x, z) && !this.interactionOrchestrator.spawn(placedBlock, definition, world)) {
-            this.ecsState.removeBlock(placedBlock.uniqueId());
+            this.stateRegistry.removeBlock(placedBlock.uniqueId());
             return PlaceResult.error("Failed to spawn interaction entity");
         }
 
@@ -110,7 +110,7 @@ public final class BlockLifecycleOrchestrator {
     }
 
     public boolean remove(final String type, final World world, final double x, final double y, final double z) {
-        final PlacedBlockModel placedBlock = this.ecsState.blockAt(world.getName(), x, y, z);
+        final PlacedBlockModel placedBlock = this.stateRegistry.blockAt(world.getName(), x, y, z);
         if (placedBlock == null) {
             return false;
         }
@@ -121,7 +121,7 @@ public final class BlockLifecycleOrchestrator {
         clearVisuals(placedBlock);
         this.interactionOrchestrator.despawn(placedBlock);
         this.respawnSystem.cancel(placedBlock.uniqueId());
-        this.ecsState.removeBlock(placedBlock.uniqueId());
+        this.stateRegistry.removeBlock(placedBlock.uniqueId());
         this.eventDispatcher.callRemove(placedBlock);
         this.hologramRuntimeService.remove(placedBlock);
         if (!this.transientBlocks.contains(placedBlock.uniqueId())) {
@@ -136,7 +136,7 @@ public final class BlockLifecycleOrchestrator {
         this.respawnSystem.cancel(block.uniqueId());
         clearVisuals(block);
         this.interactionOrchestrator.despawn(block);
-        this.ecsState.removeBlock(block.uniqueId());
+        this.stateRegistry.removeBlock(block.uniqueId());
         this.hologramRuntimeService.remove(block);
         this.persistenceSystem.deleteBlockAsync(block.uniqueId());
         this.persistenceSystem.deleteRespawnAsync(block.uniqueId());

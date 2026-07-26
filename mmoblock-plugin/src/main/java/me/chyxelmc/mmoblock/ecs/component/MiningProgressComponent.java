@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Component that tracks per-player mining progress for a block entity.
- * Pure data storage — thinning logic is in {@code BlockMiningSystem}.
+ * Pure data storage — thinning logic is in {@link me.chyxelmc.mmoblock.runtime.block.MiningProgressTracker MiningProgressTracker}.
  */
 public class MiningProgressComponent {
 

@@ -1,5 +1,7 @@
 package me.chyxelmc.mmoblock.runtime.hologram;
 
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.ecs.EntityManager;
 import me.chyxelmc.mmoblock.ecs.component.PacketHologramComponent;
@@ -124,22 +126,23 @@ final class EcsHologramBridge {
         if (this.entityManager == null) {
             return;
         }
-        final Map<UUID, UUID> requested = new ConcurrentHashMap<>();
+        final List<UUID> entityIds = new java.util.ArrayList<>();
         for (final UUID hologramUniqueId : hologramUniqueIds) {
             final UUID entityId = this.hologramEntities.get(hologramUniqueId);
             if (entityId != null) {
-                requested.put(hologramUniqueId, entityId);
+                entityIds.add(entityId);
             }
         }
-        this.entityManager.submit(entityManager -> requested.values().forEach(entityId -> {
+        final List<UUID> snapshot = List.copyOf(entityIds);
+        this.entityManager.submit(entityManager -> snapshot.forEach(entityId -> {
             final PacketHologramComponent component = entityManager.getComponent(entityId, PacketHologramComponent.class);
             if (component == null || component.lines() == null || component.lines().isEmpty()) {
                 return;
             }
             try {
                 this.nmsAdapter.upsertPacketHologram(player, component.hologramUniqueId(), component.baseLocation(), component.lines());
-            } catch (final Exception ignored) {
-                // expected - reflection fallback
+            } catch (final Exception e) {
+                MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
             }
         }));
     }
@@ -157,10 +160,9 @@ final class EcsHologramBridge {
         for (final Player player : world.getPlayers()) {
             try {
                 this.nmsAdapter.upsertPacketHologram(player, hologramUniqueId, location, packetLines);
-            } catch (final Exception ignored) {
-                // expected - reflection fallback
-            }
-        }
+            } catch (final Exception e) {
+                MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+            }      }
     }
 
     private void removePacketHologramForViewers(
@@ -172,9 +174,8 @@ final class EcsHologramBridge {
         for (final Player player : component.baseLocation().getWorld().getPlayers()) {
             try {
                 this.nmsAdapter.removePacketHologram(player, component.hologramUniqueId());
-            } catch (final Exception ignored) {
-                // expected - reflection fallback
-            }
-        }
+            } catch (final Exception e) {
+                MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+            }      }
     }
 }

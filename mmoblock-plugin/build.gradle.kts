@@ -26,18 +26,13 @@ dependencies {
 
     //Compability with other Plugins
     compileOnly(libs.papi)
-    compileOnly(libs.modelEngineApi)
-    compileOnly(libs.betterModelApi)
-    compileOnly(libs.betterModelBukkitApi)
-    compileOnly(libs.itemsAdderApi)
-    compileOnly(libs.craftEngineBukkitApi)
-    compileOnly(libs.craftEngineCoreApi)
-    compileOnly(libs.mmoitemsApi)
-    compileOnly(libs.mythiclibApi)
-    compileOnly(libs.mmocoreApi)
+    implementation(project(":mmoblock-integration"))
 
     //implementation("me.chyxelmc:mmoblock-api:3.0.0-SNAPSHOT")
     implementation(project(":mmoblock-api"))
+    implementation(project(":mmoblock-domain"))
+    implementation(project(":mmoblock-utils"))
+    implementation(project(":mmoblock-persistence"))
     implementation(project(":mmoblock-ecs"))
     implementation(project(":nms-common"))
     runtimeOnly(project(":nms-common"))

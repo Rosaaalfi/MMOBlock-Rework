@@ -1,7 +1,10 @@
 package me.chyxelmc.mmoblock.runtime.block;
+import me.chyxelmc.mmoblock.runtime.block.RandomLocationContext;
 
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
-import me.chyxelmc.mmoblock.ecs.BlockEcsState;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -23,15 +26,15 @@ public final class BlockRandomLocationResolver {
     private static final int RANDOM_LOCATION_MAX_ATTEMPTS = 48;
     private static final Set<Material> VEGETATION_MATERIALS = buildVegetationMaterials();
 
-    private final BlockEcsState ecsState;
+    private final BlockStateRegistry stateRegistry;
 
-    public BlockRandomLocationResolver(final BlockEcsState ecsState) {
-        this.ecsState = ecsState;
+    public BlockRandomLocationResolver(final BlockStateRegistry stateRegistry) {
+        this.stateRegistry = stateRegistry;
     }
 
     public Location resolveRandomContextLocation(
             final World world,
-            final BlockRuntimeService.RandomLocationContext context,
+            final RandomLocationContext context,
             final UUID excludingBlockId
     ) {
         if (world == null || context == null) {
@@ -290,7 +293,7 @@ public final class BlockRandomLocationResolver {
         final double minDistanceSquared = NODE_RANDOM_MIN_BLOCK_DISTANCE * NODE_RANDOM_MIN_BLOCK_DISTANCE;
         final double centerX = blockX + 0.5D;
         final double centerZ = blockZ + 0.5D;
-        for (final PlacedBlockModel placedBlock : this.ecsState.blocks()) {
+        for (final PlacedBlockModel placedBlock : this.stateRegistry.blocks()) {
             if (excludingBlockId != null && excludingBlockId.equals(placedBlock.uniqueId())) {
                 continue;
             }

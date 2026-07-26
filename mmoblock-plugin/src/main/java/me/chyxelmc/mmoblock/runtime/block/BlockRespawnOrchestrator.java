@@ -9,14 +9,14 @@ import org.bukkit.Location;
 import org.bukkit.World;
 
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
-import me.chyxelmc.mmoblock.ecs.BlockEcsState;
-import me.chyxelmc.mmoblock.ecs.system.BlockRespawnSystem;
-import me.chyxelmc.mmoblock.ecs.system.LifecycleSystem;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
+import me.chyxelmc.mmoblock.runtime.block.RespawnScheduler;
+import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
-import me.chyxelmc.mmoblock.ecs.system.VisualSyncSystem;
-import me.chyxelmc.mmoblock.runtime.BlockRuntimeService.RandomLocationContext;
+import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
+import me.chyxelmc.mmoblock.runtime.block.RandomLocationContext;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
 import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
 
@@ -27,10 +27,10 @@ public final class BlockRespawnOrchestrator {
 
     private final BlockConfigLoader blockConfigService;
     private final PersistenceSystem persistenceSystem;
-    private final BlockEcsState ecsState;
-    private final BlockRespawnSystem respawnSystem;
-    private final LifecycleSystem lifecycleSystem;
-    private final VisualSyncSystem visualSyncSystem;
+    private final BlockStateRegistry stateRegistry;
+    private final RespawnScheduler respawnSystem;
+    private final BlockLifecycleState lifecycleSystem;
+    private final BlockVisualSyncService visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
     private final BlockRandomLocationResolver randomLocationResolver;
     private final BlockInteractionOrchestrator interactionOrchestrator;
@@ -44,10 +44,10 @@ public final class BlockRespawnOrchestrator {
     public BlockRespawnOrchestrator(
             final BlockConfigLoader blockConfigService,
             final PersistenceSystem persistenceSystem,
-            final BlockEcsState ecsState,
-            final BlockRespawnSystem respawnSystem,
-            final LifecycleSystem lifecycleSystem,
-            final VisualSyncSystem visualSyncSystem,
+            final BlockStateRegistry stateRegistry,
+            final RespawnScheduler respawnSystem,
+            final BlockLifecycleState lifecycleSystem,
+            final BlockVisualSyncService visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService,
             final BlockRandomLocationResolver randomLocationResolver,
             final BlockInteractionOrchestrator interactionOrchestrator,
@@ -60,7 +60,7 @@ public final class BlockRespawnOrchestrator {
     ) {
         this.blockConfigService = blockConfigService;
         this.persistenceSystem = persistenceSystem;
-        this.ecsState = ecsState;
+        this.stateRegistry = stateRegistry;
         this.respawnSystem = respawnSystem;
         this.lifecycleSystem = lifecycleSystem;
         this.visualSyncSystem = visualSyncSystem;
@@ -151,7 +151,7 @@ public final class BlockRespawnOrchestrator {
             // If PlacedBlockModel#setFacing(String) is added, set the computed facing here:
             // block.setFacing(respawnTarget.facing());
         }
-        this.ecsState.updateBlockPosition(block, oldX, oldY, oldZ);
+        this.stateRegistry.updateBlockPosition(block, oldX, oldY, oldZ);
     }
 
     private void markActiveAndPersist(final PlacedBlockModel block) {

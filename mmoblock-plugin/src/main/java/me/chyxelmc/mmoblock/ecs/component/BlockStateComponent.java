@@ -1,6 +1,6 @@
 package me.chyxelmc.mmoblock.ecs.component;
 
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 
 /**
  * Component that wraps a {@link PlacedBlockModel} instance for ECS tracking.

@@ -1,5 +1,7 @@
 package me.chyxelmc.mmoblock.listener;
 
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
 import org.bukkit.entity.Player;

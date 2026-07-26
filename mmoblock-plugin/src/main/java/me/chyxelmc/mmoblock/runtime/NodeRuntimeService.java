@@ -1,5 +1,6 @@
 package me.chyxelmc.mmoblock.runtime;
 
+import me.chyxelmc.mmoblock.runtime.block.RandomLocationContext;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -16,18 +17,18 @@ import org.bukkit.entity.Player;
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
 import me.chyxelmc.mmoblock.config.NodeConfigLoader;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.DisplayLine;
-import me.chyxelmc.mmoblock.domain.PlacedNodeModel.NodeDefinition;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
-import me.chyxelmc.mmoblock.domain.PlacedNodeModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.DisplayLine;
+import me.chyxelmc.mmoblock.model.PlacedNodeModel.NodeDefinition;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.model.PlacedNodeModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.persistence.NodeRepository;
 import me.chyxelmc.mmoblock.persistence.cache.DataCache;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
-import me.chyxelmc.mmoblock.ecs.system.LifecycleSystem;
+import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
 
 public final class NodeRuntimeService {
 
@@ -340,7 +341,7 @@ public final class NodeRuntimeService {
             final String blockName = blockDefinition != null
                     ? blockDefinition.itemName() != null ? blockDefinition.itemName() : blockDefinition.displayName()
                     : entry.blockType();
-            final boolean active = LifecycleSystem.STATUS_ACTIVE.equalsIgnoreCase(placedBlock.status());
+            final boolean active = BlockLifecycleState.STATUS_ACTIVE.equalsIgnoreCase(placedBlock.status());
             final String template = active ? activeTemplate : deadTemplate;
             final long remaining = resolveRemainingSeconds(placedBlock, blockDefinition, now);
             lines.add(template
@@ -352,7 +353,7 @@ public final class NodeRuntimeService {
     }
 
     private long resolveRemainingSeconds(final PlacedBlockModel placedBlock, final BlockDefinitionModel blockDefinition, final long now) {
-        if (LifecycleSystem.STATUS_ACTIVE.equalsIgnoreCase(placedBlock.status())) {
+        if (BlockLifecycleState.STATUS_ACTIVE.equalsIgnoreCase(placedBlock.status())) {
             return 0L;
         }
         if (placedBlock.respawnAt() != null) {
@@ -409,7 +410,7 @@ public final class NodeRuntimeService {
                 node.y(),
                 node.z(),
                 FACING_NORTH,
-                LifecycleSystem.STATUS_ACTIVE
+                BlockLifecycleState.STATUS_ACTIVE
         );
     }
 
@@ -418,7 +419,7 @@ public final class NodeRuntimeService {
             return;
         }
         final int targetCount = Math.max(1, definition.maxBlocks());
-        final BlockRuntimeService.RandomLocationContext randomLocationContext = new BlockRuntimeService.RandomLocationContext(
+        final RandomLocationContext randomLocationContext = new RandomLocationContext(
                 node.x(),
                 node.y(),
                 node.z(),
@@ -430,7 +431,7 @@ public final class NodeRuntimeService {
         java.util.UUID lastPlacedBlockId = null;
         for (int i = 0; i < targetCount; i++) {
             final String blockId = pickBlockId(definition.listBlocks());
-            final BlockRuntimeService.PlaceResult result = this.blockRuntimeService.placeRandomNodeBlock(
+            final me.chyxelmc.mmoblock.runtime.block.PlaceResult result = this.blockRuntimeService.placeRandomNodeBlock(
                     blockId,
                     world,
                     FACING_NORTH,

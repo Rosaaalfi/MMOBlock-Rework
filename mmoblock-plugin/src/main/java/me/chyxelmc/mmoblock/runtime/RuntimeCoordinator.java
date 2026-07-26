@@ -1,6 +1,7 @@
 package me.chyxelmc.mmoblock.runtime;
+import me.chyxelmc.mmoblock.runtime.block.ReconcileResult;
 
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceReadSystem;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public final class RuntimeCoordinator {
         }
     }
 
-    public BlockRuntimeService.ReconcileResult reconcileAfterConfigReload(final boolean rebindActiveInteractions) {
+    public ReconcileResult reconcileAfterConfigReload(final boolean rebindActiveInteractions) {
         return this.blockRuntimeService.reconcileAfterConfigReload(rebindActiveInteractions);
     }
 

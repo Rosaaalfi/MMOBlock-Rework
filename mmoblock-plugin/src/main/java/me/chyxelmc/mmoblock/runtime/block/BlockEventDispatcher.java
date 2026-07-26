@@ -7,8 +7,8 @@ import me.chyxelmc.mmoblock.api.event.BlockMineEvent;
 import me.chyxelmc.mmoblock.api.event.BlockPlaceEvent;
 import me.chyxelmc.mmoblock.api.event.BlockRemoveEvent;
 import me.chyxelmc.mmoblock.api.event.BlockRespawnEvent;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 
 public final class BlockEventDispatcher {
 

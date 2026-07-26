@@ -27,11 +27,11 @@ import me.chyxelmc.mmoblock.api.model.DropBeam;
 import me.chyxelmc.mmoblock.api.model.DropGlow;
 import me.chyxelmc.mmoblock.api.model.DropPopup;
 import me.chyxelmc.mmoblock.api.model.DropType;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.ConditionDefinition;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.DisplayLine;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.DropEntry;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.ToolAction;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ConditionDefinition;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.DisplayLine;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.DropEntry;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ToolAction;
 import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;
 

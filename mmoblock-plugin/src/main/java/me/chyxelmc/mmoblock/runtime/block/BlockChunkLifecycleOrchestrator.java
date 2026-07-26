@@ -11,13 +11,13 @@ import org.bukkit.entity.Player;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
-import me.chyxelmc.mmoblock.ecs.BlockEcsState;
-import me.chyxelmc.mmoblock.ecs.system.LifecycleSystem;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
+import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceReadSystem;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
-import me.chyxelmc.mmoblock.ecs.system.VisualSyncSystem;
+import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
 import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
@@ -35,9 +35,9 @@ public final class BlockChunkLifecycleOrchestrator {
     private final BlockConfigLoader blockConfigService;
     private final PersistenceReadSystem persistenceReadSystem;
     private final PersistenceSystem persistenceSystem;
-    private final BlockEcsState ecsState;
-    private final LifecycleSystem lifecycleSystem;
-    private final VisualSyncSystem visualSyncSystem;
+    private final BlockStateRegistry stateRegistry;
+    private final BlockLifecycleState lifecycleSystem;
+    private final BlockVisualSyncService visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
     private final BlockModelApplier modelApplier;
     private final SchematicService schematicService;
@@ -51,9 +51,9 @@ public final class BlockChunkLifecycleOrchestrator {
             final BlockConfigLoader blockConfigService,
             final PersistenceReadSystem persistenceReadSystem,
             final PersistenceSystem persistenceSystem,
-            final BlockEcsState ecsState,
-            final LifecycleSystem lifecycleSystem,
-            final VisualSyncSystem visualSyncSystem,
+            final BlockStateRegistry stateRegistry,
+            final BlockLifecycleState lifecycleSystem,
+            final BlockVisualSyncService visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService,
             final BlockModelApplier modelApplier,
             final SchematicService schematicService,
@@ -66,7 +66,7 @@ public final class BlockChunkLifecycleOrchestrator {
         this.blockConfigService = blockConfigService;
         this.persistenceReadSystem = persistenceReadSystem;
         this.persistenceSystem = persistenceSystem;
-        this.ecsState = ecsState;
+        this.stateRegistry = stateRegistry;
         this.lifecycleSystem = lifecycleSystem;
         this.visualSyncSystem = visualSyncSystem;
         this.hologramRuntimeService = hologramRuntimeService;
@@ -89,7 +89,7 @@ public final class BlockChunkLifecycleOrchestrator {
                 continue;
             }
 
-            this.ecsState.putBlock(block);
+            this.stateRegistry.putBlock(block);
             if (this.lifecycleSystem.isActive(block)) {
                 if (isChunkLoaded(world, block.x(), block.z())) {
                     scheduleRestoreActiveBlock(block, definition, world);
@@ -145,14 +145,14 @@ public final class BlockChunkLifecycleOrchestrator {
     public void syncFakeBlocksForPlayer(final Player player) {
         this.visualSyncSystem.syncFakeBlocksForPlayer(
                 player,
-                this.ecsState.blocks(),
+                this.stateRegistry.blocks(),
                 this.blockConfigService::findBlock,
-                LifecycleSystem.STATUS_ACTIVE,
+                BlockLifecycleState.STATUS_ACTIVE,
                 FAKE_BLOCK_SYNC_RADIUS_SQUARED
         );
-        this.hologramRuntimeService.syncForPlayer(player, this.ecsState.blocks());
-        syncSchematicsForPlayer(player, this.ecsState.blocks());
-        for (final PlacedBlockModel block : this.ecsState.blocks()) {
+        this.hologramRuntimeService.syncForPlayer(player, this.stateRegistry.blocks());
+        syncSchematicsForPlayer(player, this.stateRegistry.blocks());
+        for (final PlacedBlockModel block : this.stateRegistry.blocks()) {
             this.bdEngineService.syncForPlayer(player, block.uniqueId());
         }
     }
@@ -160,7 +160,7 @@ public final class BlockChunkLifecycleOrchestrator {
     public void syncFakeBlocksForPlayerChunkWindow(final Player player) {
         final int chunkX = player.getLocation().getChunk().getX();
         final int chunkZ = player.getLocation().getChunk().getZ();
-        final Collection<PlacedBlockModel> candidateBlocks = this.ecsState.blocksInChunkWindow(
+        final Collection<PlacedBlockModel> candidateBlocks = this.stateRegistry.blocksInChunkWindow(
                 player.getWorld().getName(),
                 chunkX,
                 chunkZ,
@@ -170,7 +170,7 @@ public final class BlockChunkLifecycleOrchestrator {
                 player,
                 candidateBlocks,
                 this.blockConfigService::findBlock,
-                LifecycleSystem.STATUS_ACTIVE,
+                BlockLifecycleState.STATUS_ACTIVE,
                 FAKE_BLOCK_SYNC_RADIUS_SQUARED
         );
         this.hologramRuntimeService.syncForPlayer(player, candidateBlocks);
@@ -181,7 +181,7 @@ public final class BlockChunkLifecycleOrchestrator {
     }
 
     public void handleChunkLoad(final World world, final int chunkX, final int chunkZ) {
-        for (final PlacedBlockModel block : this.ecsState.blocksInChunk(world.getName(), chunkX, chunkZ)) {
+        for (final PlacedBlockModel block : this.stateRegistry.blocksInChunk(world.getName(), chunkX, chunkZ)) {
             final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
             if (definition == null) {
                 continue;
@@ -206,7 +206,7 @@ public final class BlockChunkLifecycleOrchestrator {
     }
 
     public void handleChunkUnload(final World world, final int chunkX, final int chunkZ) {
-        for (final PlacedBlockModel block : this.ecsState.blocksInChunk(world.getName(), chunkX, chunkZ)) {
+        for (final PlacedBlockModel block : this.stateRegistry.blocksInChunk(world.getName(), chunkX, chunkZ)) {
             this.interactionOrchestrator.despawn(block);
             this.hologramRuntimeService.remove(block);
             this.visualSyncSystem.clearBreakAnimation(world, block);
@@ -230,7 +230,7 @@ public final class BlockChunkLifecycleOrchestrator {
             final World world
     ) {
         this.scheduler.runAtLocationLater(blockLocation(world, block), () -> {
-            if (!this.ecsState.containsBlock(block.uniqueId())) {
+            if (!this.stateRegistry.containsBlock(block.uniqueId())) {
                 return;
             }
             if (!isChunkLoaded(world, block.x(), block.z())) {
@@ -263,8 +263,8 @@ public final class BlockChunkLifecycleOrchestrator {
             try {
                 final World w = this.plugin.getServer().getWorld(worldName);
                 if (w == null) return;
-                if (!this.ecsState.containsBlock(blockId)) return;
-                final PlacedBlockModel current = this.ecsState.getBlock(blockId);
+                if (!this.stateRegistry.containsBlock(blockId)) return;
+                final PlacedBlockModel current = this.stateRegistry.getBlock(blockId);
                 if (current == null || !this.lifecycleSystem.isActive(current)) return;
                 final BlockDefinitionModel def = this.blockConfigService.findBlock(current.type());
                 if (def == null) return;

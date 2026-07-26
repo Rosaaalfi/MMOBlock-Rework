@@ -1,5 +1,7 @@
 package me.chyxelmc.mmoblock.runtime.hologram;
 
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
 import me.chyxelmc.mmoblock.MMOBlock;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -86,10 +88,9 @@ final class HologramScanScheduler {
                             && this.visibilityPolicy.isViewerInRange(player, world, session)) {
                         this.enqueueSync.enqueue(player.getUniqueId(), hologramId, HologramSyncAction.UPSERT);
                     }
-                } catch (final Exception ignored) {
-                    // expected - reflection fallback
-                }
-            }
+                } catch (final Exception e) {
+                    MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+                }          }
         }
     }
 

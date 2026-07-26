@@ -16,6 +16,18 @@ project(":mmoblock-plugin").projectDir = file("mmoblock-plugin")
 
 include("mmoblock-api")
 
+include("mmoblock-domain")
+project(":mmoblock-domain").projectDir = file("mmoblock-domain")
+
+include("mmoblock-persistence")
+project(":mmoblock-persistence").projectDir = file("mmoblock-persistence")
+
+include("mmoblock-utils")
+project(":mmoblock-utils").projectDir = file("mmoblock-utils")
+
+include("mmoblock-integration")
+project(":mmoblock-integration").projectDir = file("mmoblock-integration")
+
 include("nms-common")
 project(":nms-common").projectDir = file("mmoblock-nms/nms-common")
 include("nms-v1_21_1")

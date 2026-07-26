@@ -1,6 +1,6 @@
 package me.chyxelmc.mmoblock.runtime.hologram;
 
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.DisplayLine;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.DisplayLine;
 import org.bukkit.Material;
 
 import java.util.Comparator;

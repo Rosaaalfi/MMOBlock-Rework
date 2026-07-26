@@ -1,7 +1,7 @@
 package me.chyxelmc.mmoblock.utils;
 
 import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.ConditionDefinition;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ConditionDefinition;
 import org.bukkit.entity.Player;
 
 public final class ConditionEvaluator {

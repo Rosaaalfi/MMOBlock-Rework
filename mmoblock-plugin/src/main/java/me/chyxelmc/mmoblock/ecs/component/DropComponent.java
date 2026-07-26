@@ -1,6 +1,6 @@
 package me.chyxelmc.mmoblock.ecs.component;
 
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel.DropEntry;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel.DropEntry;
 
 import java.util.List;
 

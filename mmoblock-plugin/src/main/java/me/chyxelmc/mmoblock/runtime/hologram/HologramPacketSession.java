@@ -1,6 +1,6 @@
 package me.chyxelmc.mmoblock.runtime.hologram;
 
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import org.bukkit.Location;
 

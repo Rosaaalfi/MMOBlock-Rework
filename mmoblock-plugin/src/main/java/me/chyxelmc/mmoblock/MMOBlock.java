@@ -32,6 +32,7 @@ import me.chyxelmc.mmoblock.platform.PlatformSchedulerProvider;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
+import me.chyxelmc.mmoblock.runtime.BlockServiceFactory;
 import me.chyxelmc.mmoblock.runtime.RuntimeCoordinator;
 import me.chyxelmc.mmoblock.ecs.system.InteractionSpawnSystem;
 import me.chyxelmc.mmoblock.ecs.system.PacketHologramSyncSystem;
@@ -66,6 +67,8 @@ public final class MMOBlock extends JavaPlugin{
     private MMOBlockPlaceholderExpansion placeholderExpansion;
     private Method placeholderApiSetMethod;
     private MMOBlockApiImpl apiImpl;
+    private PersistenceReadSystem persistenceReadSystem;
+    private PersistenceSystem persistenceSystem;
     private volatile boolean ready;
     private static final String PERMISSION = "mmoblock.admin";
     private static final String CMD_NAME = "mmoblock";
@@ -74,33 +77,50 @@ public final class MMOBlock extends JavaPlugin{
         return this.ready;
     }
 
+    // ============================================================
+    // Bootstrap phases
+    // ============================================================
+
     @Override
     public void onEnable() {
+        initLogger();
+        checkDependencies();
+        initCoreServices();
+        loadConfigs();
+        initDatabase();
+        initRuntime();
+        initPlaceholders();
+        setupFakeBlockChecker();
+        finalizeBootstrap();
+        this.ready = true;
+    }
 
+    private void initLogger() {
         saveDefaultConfig();
-
-        // ── Initialize custom logger ───────────────────────────────
         MMOBlockLogger.init(this);
+    }
 
-        // ── Soft-dependency check ──────────────────────────────────
-        // Runs first so all integration code can safely query flags.
+    private void checkDependencies() {
         DependencyChecker.check(this);
-
-        // ── Update check (async) ───────────────────────────────────
         if (getConfig().getBoolean("updateChecker", true)) {
             UpdateChecker.checkAsync(getDescription().getVersion());
         }
+    }
 
+    private void initCoreServices() {
         this.scheduler = PlatformSchedulerProvider.createScheduler(this);
         this.nmsAdapter = NmsAdapterRegistry.resolveCurrent();
         this.nmsAdapter.validateNms();
+    }
 
+    private void loadConfigs() {
         this.blockConfigService = new BlockConfigLoader(this);
         this.blockConfigService.reloadAll();
-
         this.nodeConfigService = new me.chyxelmc.mmoblock.config.NodeConfigLoader(this);
         this.nodeConfigService.reloadNodes();
+    }
 
+    private void initDatabase() {
         this.databaseUtils = new DatabaseUtils();
         this.databaseManager = new DatabaseManager(this, this.databaseUtils);
         this.databaseManager.initialize();
@@ -108,30 +128,29 @@ public final class MMOBlock extends JavaPlugin{
         this.blockRepository = new BlockRepository(this.databaseManager, this.dataCache);
         this.respawnRepository = new RespawnRepository(this.databaseManager, this.dataCache);
         this.nodeRepository = new me.chyxelmc.mmoblock.persistence.NodeRepository(this.databaseManager, this.dataCache);
-        final PersistenceReadSystem persistenceReadSystem = new PersistenceReadSystem(this.blockRepository, this.respawnRepository, this.dataCache);
-        final PersistenceSystem persistenceSystem = new PersistenceSystem(this, this.scheduler, this.blockRepository, this.respawnRepository, this.dataCache);
-        this.blockRuntimeService = new BlockRuntimeService(
-            this,
-            this.nmsAdapter,
-            this.scheduler,
-            this.blockConfigService,
-            persistenceReadSystem,
-            persistenceSystem,
-            this.dataCache
-        );
+        this.persistenceReadSystem = new me.chyxelmc.mmoblock.ecs.system.PersistenceReadSystem(
+                this.blockRepository, this.respawnRepository, this.dataCache);
+        this.persistenceSystem = new me.chyxelmc.mmoblock.ecs.system.PersistenceSystem(
+                this, this.scheduler, this.blockRepository, this.respawnRepository, this.dataCache);
+    }
+
+    private void initRuntime() {
+        this.blockRuntimeService = new BlockRuntimeService(new BlockServiceFactory(
+                this, this.nmsAdapter, this.scheduler, this.blockConfigService,
+                this.persistenceReadSystem, this.persistenceSystem, this.dataCache
+        ), this);
         this.nodeRuntimeService = new me.chyxelmc.mmoblock.runtime.NodeRuntimeService(
-                this,
-                this.nmsAdapter,
-                this.scheduler,
-                this.blockConfigService,
-                this.nodeConfigService,
-                this.blockRuntimeService,
-                this.nodeRepository,
-                this.dataCache
+                this, this.nmsAdapter, this.scheduler, this.blockConfigService,
+                this.nodeConfigService, this.blockRuntimeService, this.nodeRepository, this.dataCache
         );
+    }
+
+    private void initPlaceholders() {
         this.placeholderContextStore = new HologramPlaceholderContextStore();
         initializePlaceholderApiBridge();
-        // Register FakeBlockPacketHandler checker if available (best-effort via reflection).
+    }
+
+    private void setupFakeBlockChecker() {
         try {
             final String handlerPkg = this.nmsAdapter.getClass().getPackage().getName();
             final String handlerClassName = handlerPkg + ".FakeBlockPacketHandler";
@@ -159,10 +178,13 @@ public final class MMOBlock extends JavaPlugin{
             );
             final java.lang.reflect.Method setChecker = handlerClass.getMethod("setFakeChecker", checkerIface);
             setChecker.invoke(null, proxy);
-        } catch (final Exception ignored) {
-        // expected - reflection fallback
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
         }
-        this.runtimeCoordinator = new RuntimeCoordinator(persistenceReadSystem, this.blockRuntimeService, this.nodeRuntimeService);
+    }
+
+    private void finalizeBootstrap() {
+        this.runtimeCoordinator = new RuntimeCoordinator(this.persistenceReadSystem, this.blockRuntimeService, this.nodeRuntimeService);
 
         this.apiImpl = new MMOBlockApiImpl(
                 this.blockRuntimeService,
@@ -184,65 +206,68 @@ public final class MMOBlock extends JavaPlugin{
                 this.nodeRuntimeService,
                 this.runtimeCoordinator
         );
+        registerCommands(commandExecutor);
+        registerListeners();
+
+        this.runtimeCoordinator.restoreFromPersistence();
+
+        setupEcs();
+        syncOnlinePlayers();
+    }
+
+    private void registerCommands(final MMOBlockCommand commandExecutor) {
         if (!tryRegisterPaperCommand(commandExecutor)) {
             final PluginCommand mmoblockCommand = resolveOrRegisterMmoBlockCommand();
-                if (mmoblockCommand != null) {
+            if (mmoblockCommand != null) {
                 mmoblockCommand.setExecutor(commandExecutor);
                 mmoblockCommand.setTabCompleter(commandExecutor);
                 mmoblockCommand.setPermission(PERMISSION);
-            } else {
-                // logging removed
             }
-        } else {
-            // logging removed
         }
+    }
 
+    private void registerListeners() {
         getServer().getPluginManager().registerEvents(
                 new InteractionListener(this, this.blockRuntimeService, this.nodeRuntimeService, this.blockConfigService, this.nodeConfigService),
                 this
         );
-        getServer().getPluginManager().registerEvents(new PlatformSyncListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService), this);
-        getServer().getPluginManager().registerEvents(new ChunkLifecycleListener(this.blockRuntimeService, this.nodeRuntimeService), this);
+        getServer().getPluginManager().registerEvents(
+                new PlatformSyncListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService), this);
+        getServer().getPluginManager().registerEvents(
+                new ChunkLifecycleListener(this.blockRuntimeService, this.nodeRuntimeService), this);
         final java.util.function.Consumer<java.util.UUID> hologramCleanup = playerId -> {
-                    if (this.systemManager == null) {
-                        return;
-                    }
-                    final PacketHologramSyncSystem holo = this.systemManager.getSystem(PacketHologramSyncSystem.class);
-                    if (holo != null) holo.removePlayerEntries(playerId);
-                };
-        getServer().getPluginManager().registerEvents(new HologramCleanupListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService, hologramCleanup), this);
+            if (this.systemManager == null) return;
+            final PacketHologramSyncSystem holo = this.systemManager.getSystem(PacketHologramSyncSystem.class);
+            if (holo != null) holo.removePlayerEntries(playerId);
+        };
+        getServer().getPluginManager().registerEvents(
+                new HologramCleanupListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService, hologramCleanup), this);
+    }
 
-        this.runtimeCoordinator.restoreFromPersistence();
-
-        // Setup ECS integration: create managers/systems and schedule ticking every server tick
+    private void setupEcs() {
         try {
             this.entityManager = new EntityManager();
-            // Provide a callback so that when the ECS InteractionSpawnSystem successfully
-            // spawns an NMS interaction, the plugin updates the corresponding PlacedBlock
-            // with the spawned interaction UUID.
             this.systemManager = new SystemManager();
             this.systemManager.register(new InteractionSpawnSystem(this.nmsAdapter, (blockId, nmsEntityId) -> {
                 try {
                     if (this.blockRuntimeService != null) {
                         this.blockRuntimeService.onInteractionSpawned(blockId, nmsEntityId);
                     }
-                } catch (final Exception ignored) {
-                    // expected - reflection fallback
+                } catch (final Exception e) {
+                    MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
                 }
             }));
             this.systemManager.register(new PacketHologramSyncSystem(this.nmsAdapter));
-            // Provide the entity manager to BlockRuntimeService so it can create ECS entities
             try {
                 this.blockRuntimeService.setEntityManager(this.entityManager);
-            } catch (final Exception ignored) {
-            // expected - reflection fallback
+            } catch (final Exception e) {
+                MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
             }
             try {
                 this.nodeRuntimeService.setEntityManager(this.entityManager);
-            } catch (final Exception ignored) {
-            // expected - reflection fallback
+            } catch (final Exception e) {
+                MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
             }
-        // schedule tick at 1 tick interval
             this.ecsTask = this.scheduler.runTimer(() -> {
                 try {
                     this.systemManager.tick(this.entityManager, System.currentTimeMillis());
@@ -251,16 +276,14 @@ public final class MMOBlock extends JavaPlugin{
                 }
             }, 1L, 1L);
         } catch (final RuntimeException ex) {
-            // logging removed
             this.entityManager = null;
             this.systemManager = null;
         }
+    }
 
+    private void syncOnlinePlayers() {
         for (final Player player : Bukkit.getOnlinePlayers()) {
             this.nmsAdapter.sendSystemMessage(player, "MMOBlock active on NMS " + this.nmsAdapter.targetMinecraftVersion());
-            // Ensure the per-player Netty handler is injected for players already online when the
-            // plugin enables. FakeBlockSyncListener injects on join, but this covers the case
-            // where the plugin was (re)loaded while players were online.
             try {
                 final String clsName = fakePacketHandlerClassName();
                 if (clsName != null) {
@@ -269,13 +292,11 @@ public final class MMOBlock extends JavaPlugin{
                     final java.lang.reflect.Method inject = cls.getMethod("inject", org.bukkit.entity.Player.class);
                     inject.invoke(null, player);
                 }
-            } catch (final Exception ignored) {
-            // expected - reflection fallback
+            } catch (final Exception e) {
+                MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
             }
             syncPlayerVisualsNowAndDelayed(player);
         }
-
-        this.ready = true;
     }
 
     /**
@@ -305,13 +326,26 @@ public final class MMOBlock extends JavaPlugin{
     }
 
 
+    // ============================================================
+    // Shutdown phases
+    // ============================================================
+
     @Override
     public void onDisable() {
+        shutdownPlaceholders();
+        shutdownRuntime();
+        shutdownEcs();
+        shutdownDatabase();
+        uninjectPlayers();
+        clearRegistries();
+    }
+
+    private void shutdownPlaceholders() {
         if (this.placeholderExpansion != null) {
             try {
                 this.placeholderExpansion.unregister();
-            } catch (final Exception ignored) {
-            // expected - reflection fallback
+            } catch (final Exception e) {
+                MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
             }
         }
         this.placeholderExpansion = null;
@@ -320,12 +354,36 @@ public final class MMOBlock extends JavaPlugin{
             this.placeholderContextStore.clear();
             this.placeholderContextStore = null;
         }
+    }
+
+    private void shutdownRuntime() {
         if (this.blockRuntimeService != null) {
-            this.runtimeCoordinator.shutdown();
+            if (this.runtimeCoordinator != null) {
+                this.runtimeCoordinator.shutdown();
+            }
             this.blockRuntimeService = null;
             this.nodeRuntimeService = null;
         }
         this.runtimeCoordinator = null;
+    }
+
+    private void shutdownEcs() {
+        try {
+            if (this.ecsTask != null) {
+                this.ecsTask.cancel();
+                this.ecsTask = null;
+            }
+            if (this.entityManager != null && this.nmsAdapter != null) {
+                this.systemManager.tick(this.entityManager, System.currentTimeMillis());
+            }
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }
+        this.entityManager = null;
+        this.systemManager = null;
+    }
+
+    private void shutdownDatabase() {
         if (this.databaseManager != null) {
             this.databaseManager.close();
             this.databaseManager = null;
@@ -345,20 +403,9 @@ public final class MMOBlock extends JavaPlugin{
         this.nodeConfigService = null;
         ApiProvider.register(null);
         this.apiImpl = null;
-        // Cleanup ECS-managed NMS entities and holograms
-        try {
-            if (this.ecsTask != null) {
-                this.ecsTask.cancel();
-                this.ecsTask = null;
-            }
-            if (this.entityManager != null && this.nmsAdapter != null) {
-                this.systemManager.tick(this.entityManager, System.currentTimeMillis());
-            }
-        } catch (final Exception ignored) {
-        // expected - reflection fallback
-        }
+    }
 
-        // Best-effort cleanup: uninject per-player handlers to avoid lingering pipeline state.
+    private void uninjectPlayers() {
         try {
             final String clsName = fakePacketHandlerClassName();
             if (clsName != null) {
@@ -368,16 +415,17 @@ public final class MMOBlock extends JavaPlugin{
                 for (final Player p : Bukkit.getOnlinePlayers()) {
                     try {
                         uninject.invoke(null, p);
-                    } catch (final Exception ignored) {
-                    // expected - reflection fallback
+                    } catch (final Exception e) {
+                        MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
                     }
                 }
             }
-        } catch (final Exception ignored) {
-        // expected - reflection fallback
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
         }
-        this.entityManager = null;
-        this.systemManager = null;
+    }
+
+    private void clearRegistries() {
         this.nmsAdapter = null;
         me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.clear();
     }

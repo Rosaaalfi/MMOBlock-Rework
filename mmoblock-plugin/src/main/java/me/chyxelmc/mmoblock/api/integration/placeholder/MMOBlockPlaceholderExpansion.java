@@ -1,5 +1,7 @@
 package me.chyxelmc.mmoblock.api.integration.placeholder;
 
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
@@ -78,7 +80,7 @@ public final class MMOBlockPlaceholderExpansion extends PlaceholderExpansion {
             if (key.startsWith("max_progress_")) {
                 final String uuidPart = key.substring("max_progress_".length());
                 final java.util.UUID uid = java.util.UUID.fromString(uuidPart);
-                final me.chyxelmc.mmoblock.domain.PlacedBlockModel block = findPlacedBlockByUuid(uid);
+                final me.chyxelmc.mmoblock.model.PlacedBlockModel block = findPlacedBlockByUuid(uid);
                 if (block == null) return null;
                 final int max = computeMaxProgressForBlock(block);
                 return String.valueOf(max);
@@ -95,7 +97,7 @@ public final class MMOBlockPlaceholderExpansion extends PlaceholderExpansion {
                 final double z = Double.parseDouble(m.group(6));
 
                 // Prefer lookup by UUID; fallback to positional lookup.
-                me.chyxelmc.mmoblock.domain.PlacedBlockModel block = findPlacedBlockByUuid(uid);
+                me.chyxelmc.mmoblock.model.PlacedBlockModel block = findPlacedBlockByUuid(uid);
                 if (block == null) {
                     block = findPlacedBlockByPosition(world, x, y, z);
                 }
@@ -121,31 +123,29 @@ public final class MMOBlockPlaceholderExpansion extends PlaceholderExpansion {
 
     // Internal helpers -------------------------------------------------
 
-    private me.chyxelmc.mmoblock.domain.PlacedBlockModel findPlacedBlockByUuid(final java.util.UUID uid) {
+    private me.chyxelmc.mmoblock.model.PlacedBlockModel findPlacedBlockByUuid(final java.util.UUID uid) {
         try {
             final var brs = this.plugin.blockRuntimeService();
             if (brs == null) return null;
             for (final var pb : brs.placedBlocks()) {
                 if (pb.uniqueId().equals(uid)) return pb;
             }
-        } catch (final Exception ignored) {
-        // expected - reflection fallback
-        }
-        return null;
+        } catch (final Exception e) {
+        MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }      return null;
     }
 
-    private me.chyxelmc.mmoblock.domain.PlacedBlockModel findPlacedBlockByPosition(final String world, final double x, final double y, final double z) {
+    private me.chyxelmc.mmoblock.model.PlacedBlockModel findPlacedBlockByPosition(final String world, final double x, final double y, final double z) {
         try {
             final var brs = this.plugin.blockRuntimeService();
             if (brs == null) return null;
-            return brs.ecsState().blockAt(world, x, y, z);
-        } catch (final Exception ignored) {
-        // expected - reflection fallback
-        }
-        return null;
+            return brs.stateRegistry().blockAt(world, x, y, z);
+        } catch (final Exception e) {
+        MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }      return null;
     }
 
-    private int computeMaxProgressForBlock(final me.chyxelmc.mmoblock.domain.PlacedBlockModel block) {
+    private int computeMaxProgressForBlock(final me.chyxelmc.mmoblock.model.PlacedBlockModel block) {
         try {
             final var cfg = this.plugin.blockConfigService();
             if (cfg == null) return 0;
@@ -162,10 +162,9 @@ public final class MMOBlockPlaceholderExpansion extends PlaceholderExpansion {
                     try {
                         final int needed = a.clickNeeded();
                         max = Math.max(max, needed);
-                    } catch (final Exception ignored) {
-            // expected - reflection fallback
-        }
-                }
+                    } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }              }
             }
             return max;
         } catch (final Exception ignored) {
@@ -173,11 +172,11 @@ public final class MMOBlockPlaceholderExpansion extends PlaceholderExpansion {
         }
     }
 
-    private int computeCurrentProgressForBlock(final me.chyxelmc.mmoblock.domain.PlacedBlockModel block) {
+    private int computeCurrentProgressForBlock(final me.chyxelmc.mmoblock.model.PlacedBlockModel block) {
         try {
             final var brs = this.plugin.blockRuntimeService();
             if (brs == null) return 0;
-            final var ecs = brs.ecsState();
+            final var ecs = brs.stateRegistry();
             final var miningComp = ecs.mining(block.uniqueId());
             if (miningComp == null) return 0;
             final var map = miningComp.perPlayerProgress();

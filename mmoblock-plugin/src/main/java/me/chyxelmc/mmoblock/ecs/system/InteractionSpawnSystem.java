@@ -1,5 +1,7 @@
 package me.chyxelmc.mmoblock.ecs.system;
 
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
 import me.chyxelmc.mmoblock.ecs.EntityManager;
 import me.chyxelmc.mmoblock.ecs.SystemBase;
 import me.chyxelmc.mmoblock.ecs.component.InteractionComponent;

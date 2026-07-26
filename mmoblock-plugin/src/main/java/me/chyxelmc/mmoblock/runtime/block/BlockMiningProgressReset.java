@@ -1,13 +1,15 @@
 package me.chyxelmc.mmoblock.runtime.block;
 
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
-import me.chyxelmc.mmoblock.domain.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.domain.PlacedBlockModel;
-import me.chyxelmc.mmoblock.ecs.BlockEcsState;
-import me.chyxelmc.mmoblock.ecs.system.BlockMiningSystem;
-import me.chyxelmc.mmoblock.ecs.system.LifecycleSystem;
-import me.chyxelmc.mmoblock.ecs.system.VisualSyncSystem;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
+import me.chyxelmc.mmoblock.runtime.block.MiningProgressTracker;
+import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
+import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
@@ -24,10 +26,10 @@ public final class BlockMiningProgressReset {
     private final MMOBlock plugin;
     private final Scheduler scheduler;
     private final BlockConfigLoader blockConfigService;
-    private final BlockEcsState ecsState;
-    private final BlockMiningSystem miningSystem;
-    private final LifecycleSystem lifecycleSystem;
-    private final VisualSyncSystem visualSyncSystem;
+    private final BlockStateRegistry stateRegistry;
+    private final MiningProgressTracker miningSystem;
+    private final BlockLifecycleState lifecycleSystem;
+    private final BlockVisualSyncService visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
     private SchedulerTask task;
 
@@ -35,16 +37,16 @@ public final class BlockMiningProgressReset {
             final MMOBlock plugin,
             final Scheduler scheduler,
             final BlockConfigLoader blockConfigService,
-            final BlockEcsState ecsState,
-            final BlockMiningSystem miningSystem,
-            final LifecycleSystem lifecycleSystem,
-            final VisualSyncSystem visualSyncSystem,
+            final BlockStateRegistry stateRegistry,
+            final MiningProgressTracker miningSystem,
+            final BlockLifecycleState lifecycleSystem,
+            final BlockVisualSyncService visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService
     ) {
         this.plugin = plugin;
         this.scheduler = scheduler;
         this.blockConfigService = blockConfigService;
-        this.ecsState = ecsState;
+        this.stateRegistry = stateRegistry;
         this.miningSystem = miningSystem;
         this.lifecycleSystem = lifecycleSystem;
         this.visualSyncSystem = visualSyncSystem;
@@ -66,7 +68,7 @@ public final class BlockMiningProgressReset {
     private void resetInactiveProgress() {
         final long now = System.currentTimeMillis();
         for (final UUID blockId : this.miningSystem.activeMiningBlockIds()) {
-            final PlacedBlockModel block = this.ecsState.getBlock(blockId);
+            final PlacedBlockModel block = this.stateRegistry.getBlock(blockId);
             if (block == null) {
                 this.miningSystem.clearAllProgress(blockId);
                 continue;
@@ -88,10 +90,9 @@ public final class BlockMiningProgressReset {
                 this.scheduler.runAtLocation(location, () -> {
                     try {
                         this.visualSyncSystem.clearBreakAnimation(world, block);
-                    } catch (final Exception ignored) {
-                        // expected - reflection fallback
-                    }
-                    this.hologramRuntimeService.showActive(block, definition);
+                    } catch (final Exception e) {
+                        MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+                    }                  this.hologramRuntimeService.showActive(block, definition);
                 });
             }
         }

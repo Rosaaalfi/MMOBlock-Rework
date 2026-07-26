@@ -4,7 +4,7 @@ import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 
 /**
  * Component that holds pending respawn task references for a block entity.
- * Pure data — the scheduling logic is in {@code BlockRespawnSystem}.
+ * Pure data — the scheduling logic is in {@link me.chyxelmc.mmoblock.runtime.block.RespawnScheduler RespawnScheduler}.
  */
 public class RespawnTimerComponent {
 
