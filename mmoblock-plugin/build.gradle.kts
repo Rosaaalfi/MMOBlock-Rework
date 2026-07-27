@@ -54,6 +54,41 @@ java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
 }
 
+// ── Bytecode downgrade: shadowJar → Java 21 bytecode ──────
+val downgradeBytecode by tasks.registering {
+    dependsOn(tasks.shadowJar)
+    doLast {
+        val shadowJar = tasks.shadowJar.get().archiveFile.get().asFile
+        val tempDir = layout.buildDirectory.dir("bytecode-downgrade").get().asFile
+        tempDir.deleteRecursively()
+        // Extract JAR using Gradle API
+        copy {
+            from(zipTree(shadowJar))
+            into(tempDir)
+        }
+        // Downgrade class files from >Java21 to Java21
+        var count = 0
+        tempDir.walk().filter { it.name.endsWith(".class") }.forEach { cf ->
+            val data = cf.readBytes()
+            if (data.size >= 8) {
+                val major = ((data[6].toInt() and 0xFF) shl 8) or (data[7].toInt() and 0xFF)
+                if (major > 65) {
+                    data[6] = 0
+                    data[7] = 65
+                    cf.writeBytes(data)
+                    count++
+                }
+            }
+        }
+        // Rebuild JAR using Ant (always available in Gradle)
+        shadowJar.delete()
+        ant.withGroovyBuilder {
+            "jar"("destfile" to shadowJar.absolutePath, "basedir" to tempDir.absolutePath)
+        }
+        logger.lifecycle("Downgraded {} class files to Java 21 bytecode", count)
+    }
+}
+
 tasks.withType<AbstractRun>().configureEach {
     jvmArgs("-Xms2G", "-Xmx2G")
 }
@@ -139,5 +174,5 @@ val obfuscatedJar by tasks.registering(JavaExec::class) {
 }
 
 tasks.assemble {
-    dependsOn(tasks.shadowJar)
+    dependsOn(tasks.shadowJar, downgradeBytecode)
 }
