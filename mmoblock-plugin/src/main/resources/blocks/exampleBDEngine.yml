@@ -1,7 +1,7 @@
 exampleBDEngine:
   item:
     name: "Example BDEngine"
-    material: diamond_ore
+    material: oak_sapling
   respawnTime: 1 # Time in seconds for the block to respawn after being broken
   deadDelay: 5 # Time in seconds for the block to disappear after being broken
   randomLocation: # Whether the block should respawn at a random location around the original spawn location. If false, the block will respawn at the original spawn location.

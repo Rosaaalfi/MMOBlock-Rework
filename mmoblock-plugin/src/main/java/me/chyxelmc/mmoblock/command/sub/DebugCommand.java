@@ -13,6 +13,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Handles the {@code /mmoblock debug} command branch.
@@ -22,7 +23,7 @@ import java.util.List;
  */
 public final class DebugCommand implements SubCommand {
 
-    private static final List DEBUG_ACTIONS = List.of("placeholder");
+    private static final List DEBUG_ACTIONS = List.of("placeholder", "extractDefaultAssets");
 
     private final CommandContext ctx;
 
@@ -40,8 +41,9 @@ public final class DebugCommand implements SubCommand {
             ));
             return true;
         }
-        return switch (args[1].toLowerCase(java.util.Locale.ROOT)) {
+        return switch (args[1].toLowerCase(Locale.ROOT)) {
             case "placeholder" -> handlePlaceholder(sender, args);
+            case "extractdefaultassets" -> handleExtractDefaultAssets(sender);
             default -> {
                 sender.sendMessage(ctx.configService().messageComponent(
                         "commands.debug.usage",
@@ -50,6 +52,19 @@ public final class DebugCommand implements SubCommand {
                 yield true;
             }
         };
+    }
+
+    private boolean handleExtractDefaultAssets(@NotNull final CommandSender sender) {
+        sender.sendMessage(ctx.configService().messageComponent(
+                "commands.debug.extracting",
+                "&7Extracting default assets..."
+        ));
+        ctx.configService().extractAllDefaultAssets();
+        sender.sendMessage(ctx.configService().messageComponent(
+                "commands.debug.extracted",
+                "&aDefault assets extracted successfully. Run &7/mmoblock reload&a to apply."
+        ));
+        return true;
     }
 
     private boolean handlePlaceholder(@NotNull final CommandSender sender, @NotNull final String[] args) {

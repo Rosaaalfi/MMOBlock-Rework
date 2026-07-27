@@ -131,7 +131,11 @@ public final class BlockModelApplier {
 
     public void applyModelEngineModel(final PlacedBlockModel block, final BlockDefinitionModel definition, final World world) {
         if (definition == null || !definition.modelEngineEnabled()) return;
-        if (!ModelEngineIntegration.isAvailable()) return;
+        try {
+            if (!ModelEngineIntegration.isAvailable()) return;
+        } catch (final Throwable ignored) {
+            return;
+        }
         final Entity entity = world.getEntity(block.interactionEntityId());
         if (entity == null) {
             MMOBlockLogger.warning("[ModelEngine] Entity not found for block " + block.uniqueId()
@@ -165,7 +169,11 @@ public final class BlockModelApplier {
 
     public void clearModelEngineModel(final PlacedBlockModel block, final World world) {
         if (block == null || block.interactionEntityId() == null) return;
-        if (!ModelEngineIntegration.isAvailable()) return;
+        try {
+            if (!ModelEngineIntegration.isAvailable()) return;
+        } catch (final Throwable ignored) {
+            return;
+        }
         final Entity entity = world.getEntity(block.interactionEntityId());
         if (entity == null) return;
         try {
@@ -181,7 +189,11 @@ public final class BlockModelApplier {
     public void playModelEngineAnimation(final PlacedBlockModel block, final BlockDefinitionModel definition, final String animationName, final double lerpIn, final double lerpOut, final double speed) {
         if (block == null || animationName == null || animationName.isBlank()) return;
         if (definition == null || !definition.modelEngineEnabled()) return;
-        if (!ModelEngineIntegration.isAvailable()) return;
+        try {
+            if (!ModelEngineIntegration.isAvailable()) return;
+        } catch (final Throwable ignored) {
+            return;
+        }
         final World world = this.plugin.getServer().getWorld(block.world());
         if (world == null) return;
         final Entity entity = world.getEntity(block.interactionEntityId());
@@ -241,7 +253,11 @@ public final class BlockModelApplier {
 
     public void applyBetterModelModel(final PlacedBlockModel block, final BlockDefinitionModel definition, final World world) {
         if (definition == null || !definition.betterModelEnabled()) return;
-        if (!BetterModelIntegration.isAvailable()) return;
+        try {
+            if (!BetterModelIntegration.isAvailable()) return;
+        } catch (final Throwable ignored) {
+            return;
+        }
         final Entity entity = world.getEntity(block.interactionEntityId());
         final Location location = new Location(world, block.x() + 0.5D, block.y(), block.z() + 0.5D);
         try {
@@ -260,7 +276,11 @@ public final class BlockModelApplier {
 
     public void clearBetterModelModel(final PlacedBlockModel block, final World world) {
         if (block == null) return;
-        if (!BetterModelIntegration.isAvailable()) return;
+        try {
+            if (!BetterModelIntegration.isAvailable()) return;
+        } catch (final Throwable ignored) {
+            return;
+        }
         try {
             BetterModelIntegration.removeModel(block.uniqueId());
         } catch (final Throwable ex) {
@@ -272,7 +292,11 @@ public final class BlockModelApplier {
     public void playBetterModelAnimation(final PlacedBlockModel block, final BlockDefinitionModel definition, final String animationName) {
         if (block == null || animationName == null || animationName.isBlank()) return;
         if (definition == null || !definition.betterModelEnabled()) return;
-        if (!BetterModelIntegration.isAvailable()) return;
+        try {
+            if (!BetterModelIntegration.isAvailable()) return;
+        } catch (final Throwable ignored) {
+            return;
+        }
         try {
             final boolean played = BetterModelIntegration.playAnimation(
                     block.uniqueId(), animationName

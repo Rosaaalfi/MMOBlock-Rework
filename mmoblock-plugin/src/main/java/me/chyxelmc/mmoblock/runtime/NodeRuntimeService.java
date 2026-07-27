@@ -29,6 +29,7 @@ import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
 import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
+import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 
 public final class NodeRuntimeService {
 
@@ -429,6 +430,7 @@ public final class NodeRuntimeService {
                 definition.randomLocationCenterDistance()
         );
         java.util.UUID lastPlacedBlockId = null;
+        int spawned = 0;
         for (int i = 0; i < targetCount; i++) {
             final String blockId = pickBlockId(definition.listBlocks());
             final me.chyxelmc.mmoblock.runtime.block.PlaceResult result = this.blockRuntimeService.placeRandomNodeBlock(
@@ -441,7 +443,21 @@ public final class NodeRuntimeService {
             if (result.success()) {
                 lastPlacedBlockId = result.placedBlock().uniqueId();
                 node.blocks().add(new PlacedNodeModel.NodeBlockEntryModel(result.placedBlock().uniqueId(), blockId));
+                spawned++;
+            } else if (MMOBlockLogger.isDebugEnabled()) {
+                MMOBlockLogger.debug("Node '" + definition.id() + "' at ("
+                        + world.getName() + ", " + (int) Math.floor(node.x()) + ", "
+                        + (int) Math.floor(node.y()) + ", " + (int) Math.floor(node.z())
+                        + ") failed to spawn block #" + (i + 1) + " (type='" + blockId + "'): " + result.message());
             }
+        }
+        if (spawned == 0 && MMOBlockLogger.isDebugEnabled()) {
+            MMOBlockLogger.debug("Node '" + definition.id() + "' at ("
+                    + world.getName() + ", " + (int) Math.floor(node.x()) + ", "
+                    + (int) Math.floor(node.y()) + ", " + (int) Math.floor(node.z())
+                    + ") failed to spawn ANY of its " + targetCount + " blocks. "
+                    + "Check randomLocation.radius and ensure there is valid terrain "
+                    + "(solid ground with air above) within the search area.");
         }
     }
 

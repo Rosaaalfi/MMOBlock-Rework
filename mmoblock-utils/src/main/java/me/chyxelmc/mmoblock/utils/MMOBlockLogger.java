@@ -69,7 +69,7 @@ public final class MMOBlockLogger {
         debug = plugin.getConfig().getBoolean("debug", false);
         final String rawPrefix = plugin.getConfig().getString(
                 "log-prefix",
-                "<cyan>MMO</cyan><yellow>Block</yellow> <reset>|</reset> "
+                "[MMOBlock] "
         );
         parsedPrefix = ColorLogger.parseColorTags(rawPrefix);
         clearHistory();
@@ -166,10 +166,10 @@ public final class MMOBlockLogger {
 
     private static String formatMessage(final Level level, final String message) {
         return switch (level) {
-            case DEBUG -> colorLogger.brightBlack("[≠] " + message);
+            case DEBUG -> colorLogger.brightBlack("[DEBUG] " + message);
             case INFO -> colorLogger.brightBlue("[+] " + message);
             case WARNING -> colorLogger.brightYellow("[!] " + message);
-            case ERROR, SEVERE -> colorLogger.brightRed("[×] " + message);
+            case ERROR, SEVERE -> colorLogger.brightRed("[ERROR] " + message);
         };
     }
 

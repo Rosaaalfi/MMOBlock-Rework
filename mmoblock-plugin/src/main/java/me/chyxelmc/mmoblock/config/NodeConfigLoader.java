@@ -224,10 +224,6 @@ public final class NodeConfigLoader {
             folder.mkdirs();
         }
 
-        if (!this.plugin.getConfig().getBoolean("extractDefaultAssets", true)) {
-            return;
-        }
-
         if ("nodes".equals(folderName)) {
             saveResourceWithReplace("nodes/exampleNodes.yml");
         }

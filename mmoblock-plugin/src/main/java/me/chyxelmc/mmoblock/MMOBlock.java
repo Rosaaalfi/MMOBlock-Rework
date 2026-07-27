@@ -154,7 +154,9 @@ public final class MMOBlock extends JavaPlugin{
         try {
             final String handlerPkg = this.nmsAdapter.getClass().getPackage().getName();
             final String handlerClassName = handlerPkg + ".FakeBlockPacketHandler";
-            final String checkerClassName = handlerPkg + ".FakeBlockPacketHandler$FakeBlockChecker";
+            // FakeBlockChecker is defined as an inner interface of AbstractFakeBlockPacketHandler
+            // in the nms-common module, NOT in version-specific subclasses.
+            final String checkerClassName = "me.chyxelmc.mmoblock.nms.AbstractFakeBlockPacketHandler$FakeBlockChecker";
             validateFakeHandlerClassName(handlerClassName);
             validateFakeHandlerClassName(checkerClassName);
             final Class<?> handlerClass = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(handlerClassName);

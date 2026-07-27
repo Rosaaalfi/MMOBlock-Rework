@@ -1,12 +1,11 @@
 package me.chyxelmc.mmoblock.runtime.block;
 import me.chyxelmc.mmoblock.runtime.block.RandomLocationContext;
 
-import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
-
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
 import org.bukkit.Bukkit;
+import org.bukkit.HeightMap;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -24,6 +23,8 @@ public final class BlockRandomLocationResolver {
 
     private static final double NODE_RANDOM_MIN_BLOCK_DISTANCE = 1.5D;
     private static final int RANDOM_LOCATION_MAX_ATTEMPTS = 48;
+    private static final int VERTICAL_RANGE_DEFAULT = 5;
+    private static final int VERTICAL_RANGE_MIN = 5;
     private static final Set<Material> VEGETATION_MATERIALS = buildVegetationMaterials();
 
     private final BlockStateRegistry stateRegistry;
@@ -49,7 +50,7 @@ public final class BlockRandomLocationResolver {
             // If an excludingBlockId is provided (previous block already at origin),
             // spread subsequent blocks around the origin.
             if (excludingBlockId == null) {
-                return findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, null, context.closest());
+                return findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, null, context.closest(), VERTICAL_RANGE_DEFAULT);
             }
             // Try positions with increasing distance from the origin.
             // Skip {0,0} since a block already occupies the exact origin.
@@ -67,7 +68,8 @@ public final class BlockRandomLocationResolver {
                         originBlockY,
                         originBlockZ + offset[1],
                         excludingBlockId,
-                        context.closest()
+                        context.closest(),
+                        VERTICAL_RANGE_DEFAULT
                 );
                 if (loc != null) {
                     return loc;
@@ -78,6 +80,11 @@ public final class BlockRandomLocationResolver {
 
         final double radius = Math.max(0.0D, context.radius());
         final double centerDistance = Math.max(0.0D, context.centerDistance());
+        // Compute a vertical search range proportional to the horizontal radius.
+        // This prevents spawning blocks far above or below the origin (e.g. on a
+        // mountain or at the bottom of an ocean 30+ blocks away) while still allowing
+        // terrain-height variations within a reasonable range.
+        final int verticalRange = Math.max(VERTICAL_RANGE_MIN, (int) Math.ceil(radius));
         for (int attempt = 0; attempt < RANDOM_LOCATION_MAX_ATTEMPTS; attempt++) {
             final double angle = ThreadLocalRandom.current().nextDouble(0.0D, Math.PI * 2.0D);
             final double minDistance = Math.min(radius, centerDistance);
@@ -88,10 +95,16 @@ public final class BlockRandomLocationResolver {
                 continue;
             }
 
-            final Location safe = findSafeBlockLocation(world, targetBlockX, originBlockY, targetBlockZ, excludingBlockId, context.closest());
-            if (safe != null) {
-                return safe;
-            }
+        // Use the terrain height at the TARGET coordinates, not the origin Y.
+        // The origin Y may be on a hill/mountain while the random target is in a
+        // valley (or vice versa), so anchoring the vertical scan to origin Y would
+        // miss the ground entirely.
+        final int targetMotionBlocking = world.getHighestBlockYAt(targetBlockX, targetBlockZ, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+        final int targetBaseY = Math.max(world.getMinHeight(), targetMotionBlocking + 1);
+        final Location safe = findSafeBlockLocation(world, targetBlockX, targetBaseY, targetBlockZ, excludingBlockId, context.closest(), verticalRange);
+        if (safe != null) {
+            return safe;
+        }
         }
         return null;
     }
@@ -102,7 +115,8 @@ public final class BlockRandomLocationResolver {
             final int baseY,
             final int blockZ,
             final UUID excludingBlockId,
-            final boolean requireClosestHorizontalBlock
+            final boolean requireClosestHorizontalBlock,
+            final int verticalRange
     ) {
         if (!isOwnedByCurrentRegion(new Location(world, blockX, baseY, blockZ))) {
             return null;
@@ -110,33 +124,74 @@ public final class BlockRandomLocationResolver {
         final int minY = world.getMinHeight();
         final int maxY = world.getMaxHeight();
         final int startY = Math.max(minY, baseY);
-        final int topY = maxY - 2;
+        final int topY = Math.min(maxY - 2, baseY + verticalRange);
+        final int bottomY = Math.max(minY, baseY - verticalRange);
+
+        // Compute both height map values once here and pass them down to avoid
+        // redundant O(1) queries within the same (blockX, blockZ) call.
+        final int motionBlockingHeight = world.getHighestBlockYAt(blockX, blockZ, HeightMap.MOTION_BLOCKING_NO_LEAVES);
+        final int oceanFloorHeight = world.getHighestBlockYAt(blockX, blockZ, HeightMap.OCEAN_FLOOR);
 
         // First pass: try normal safe positions (solid ground below)
-        Location result = scanNormalUpward(world, blockX, blockZ, minY, startY, topY, excludingBlockId, requireClosestHorizontalBlock);
+        Location result = scanNormalUpward(world, blockX, blockZ, minY, startY, topY, excludingBlockId, requireClosestHorizontalBlock, motionBlockingHeight);
         if (result != null) return result;
 
         // Second pass: try water/lava positions (replace water/lava with the block).
-        result = scanLiquidDownward(world, blockX, blockZ, minY, startY, excludingBlockId, requireClosestHorizontalBlock);
+        result = scanLiquidDownward(world, blockX, blockZ, bottomY, startY, excludingBlockId, requireClosestHorizontalBlock, oceanFloorHeight);
         if (result != null) return result;
 
         // Third pass + Fourth pass: retry WITHOUT closest check (fallback for flat terrain)
         if (requireClosestHorizontalBlock) {
-            result = scanNormalUpward(world, blockX, blockZ, minY, startY, topY, excludingBlockId, false);
+            result = scanNormalUpward(world, blockX, blockZ, minY, startY, topY, excludingBlockId, false, motionBlockingHeight);
             if (result != null) return result;
-            result = scanLiquidDownward(world, blockX, blockZ, minY, startY, excludingBlockId, false);
+            result = scanLiquidDownward(world, blockX, blockZ, bottomY, startY, excludingBlockId, false, oceanFloorHeight);
             if (result != null) return result;
         }
 
         return null;
     }
 
-    /** Scan upward for normal positions (feet & head passable, solid ground below). */
+    /** Scan upward for normal positions (feet & head passable, solid ground below).
+     * Uses pre-computed {@code motionBlockingHeight} (from MOTION_BLOCKING_NO_LEAVES
+     * height map) for O(1) surface lookup, falling back to Y-level scan for edge cases.
+     *
+     * @param motionBlockingHeight pre-computed result of
+     *        {@code world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES)}
+     *        for the current (blockX, blockZ), or -1 if not yet known
+     */
     private Location scanNormalUpward(
             final World world, final int blockX, final int blockZ,
             final int minY, final int startY, final int topY,
-            final UUID excludingBlockId, final boolean requireClosest
+            final UUID excludingBlockId, final boolean requireClosest,
+            final int motionBlockingHeight
     ) {
+        // Fast path: use pre-computed height map value to jump directly to the surface.
+        // HeightMap.MOTION_BLOCKING_NO_LEAVES returns the highest block that
+        // blocks motion (excluding leaves). The air block above it is the spawn
+        // candidate. This avoids scanning every Y level one by one.
+        final int candidateY = motionBlockingHeight + 1;
+            if (candidateY >= startY && candidateY <= topY) {
+                // Only use height map result for solid ground — skip if the surface is
+                // liquid (water/lava) since those are handled by scanLiquidDownward.
+                final Block surfaceBlock = world.getBlockAt(blockX, motionBlockingHeight, blockZ);
+                if (!isLiquid(surfaceBlock)) {
+                    final Block feet = world.getBlockAt(blockX, candidateY, blockZ);
+                    final Block head = world.getBlockAt(blockX, candidateY + 1, blockZ);
+                    if (feet.isPassable() && head.isPassable()) {
+                        final int groundedY = resolveGroundedSpawnY(world, blockX, candidateY, blockZ, minY);
+                        if (groundedY >= 0
+                                && !isHemmedIn(world, blockX, groundedY, blockZ)
+                                && (!requireClosest || hasHorizontalClosestBlock(world, blockX, groundedY, blockZ))
+                                && !isTooCloseToPlacedBlock(world.getName(), blockX, groundedY, blockZ, excludingBlockId)
+                                && !hasBlockingEntityAt(world, blockX, groundedY, blockZ)) {
+                            return new Location(world, blockX, groundedY, blockZ);
+                        }
+                    }
+                }
+            }
+
+        // Fallback: scan Y levels one by one for edge cases (slabs, fences,
+        // partial blocks, etc. that the height map may not represent accurately).
         for (int y = startY; y <= topY; y++) {
             final Block feet = world.getBlockAt(blockX, y, blockZ);
             final Block head = world.getBlockAt(blockX, y + 1, blockZ);
@@ -155,17 +210,48 @@ public final class BlockRandomLocationResolver {
         return null;
     }
 
-    /** Scan downward for water/lava positions (feet is liquid, solid ground below). */
+    /** Scan downward for water/lava positions (feet is liquid, solid ground below).
+     * Uses pre-computed {@code oceanFloorHeight} (from OCEAN_FLOOR height map) for
+     * O(1) lookup, falling back to Y-level scan for edge cases.
+     *
+     * @param oceanFloorHeight pre-computed result of
+     *        {@code world.getHighestBlockYAt(x, z, HeightMap.OCEAN_FLOOR)}
+     *        for the current (blockX, blockZ), or -1 if not yet known
+     */
     private Location scanLiquidDownward(
             final World world, final int blockX, final int blockZ,
-            final int minY, final int startY,
-            final UUID excludingBlockId, final boolean requireClosest
+            final int bottomY, final int startY,
+            final UUID excludingBlockId, final boolean requireClosest,
+            final int oceanFloorHeight
     ) {
-        for (int y = startY; y >= minY; y--) {
+        // Fast path: use pre-computed ocean-floor height map value to find the
+        // highest solid block below water/lava. The block above it (candidateY)
+        // should be a liquid with solid ground support — exactly what we need.
+        final int candidateY = oceanFloorHeight + 1;
+        if (candidateY >= bottomY && candidateY <= startY) {
+            final Block feet = world.getBlockAt(blockX, candidateY, blockZ);
+            final Block head = world.getBlockAt(blockX, candidateY + 1, blockZ);
+            if (isLiquid(feet) && head.isPassable()) {
+                final Block support = world.getBlockAt(blockX, candidateY - 1, blockZ);
+                if (!support.getType().isAir() && !isLiquid(support)
+                        && !VEGETATION_MATERIALS.contains(support.getType())
+                        && support.getType() != Material.SNOW) {
+                    if (!isHemmedIn(world, blockX, candidateY, blockZ)
+                            && (!requireClosest || hasHorizontalClosestBlock(world, blockX, candidateY, blockZ))
+                            && !isTooCloseToPlacedBlock(world.getName(), blockX, candidateY, blockZ, excludingBlockId)
+                            && !hasBlockingEntityAt(world, blockX, candidateY, blockZ)) {
+                        return new Location(world, blockX, candidateY, blockZ);
+                    }
+                }
+            }
+        }
+
+        // Fallback: scan Y levels one by one
+        for (int y = startY; y >= bottomY; y--) {
             final Block feet = world.getBlockAt(blockX, y, blockZ);
             final Block head = world.getBlockAt(blockX, y + 1, blockZ);
             if (!isLiquid(feet) || !head.isPassable()) continue;
-            if (y - 1 >= minY) {
+            if (y - 1 >= bottomY) {
                 final Block support = world.getBlockAt(blockX, y - 1, blockZ);
                 if (support.getType().isAir() || isLiquid(support) || VEGETATION_MATERIALS.contains(support.getType()) || support.getType() == Material.SNOW) {
                     continue;

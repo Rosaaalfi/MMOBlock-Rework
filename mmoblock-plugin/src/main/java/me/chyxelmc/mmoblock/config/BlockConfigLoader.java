@@ -52,7 +52,6 @@ public final class BlockConfigLoader {
     private ValidationReport lastToolReport = ValidationReport.empty();
     private ValidationReport lastDropReport = ValidationReport.empty();
     private long interactionThrottleMs;
-    private boolean extractDefaultAssets;
 
     public java.util.Map<String, List<ToolAction>> tools() {
         return this.tools;
@@ -67,13 +66,12 @@ public final class BlockConfigLoader {
 
         this.interactionThrottleMs = this.plugin.getConfig()
                 .getLong("interactionThrottleMs", 1000L);
-        this.extractDefaultAssets = this.plugin.getConfig()
-                .getBoolean("extractDefaultAssets", true);
 
         reloadBlocks();
         reloadDrops();
         reloadTools();
         reloadLanguages();
+        reloadModels();
     }
 
     public int reloadBlocks() {
@@ -405,6 +403,11 @@ public final class BlockConfigLoader {
     public int reloadLanguages() {
         this.languages.clear();
         return loadFolder("lang", this.languages);
+    }
+
+    public int reloadModels() {
+        ensureResourceFolder("models");
+        return 0;
     }
 
     public BlockDefinitionModel findBlock(final String id) {
@@ -1045,46 +1048,43 @@ public final class BlockConfigLoader {
         if (!folder.exists()) {
             folder.mkdirs();
         }
-
-        if (!this.extractDefaultAssets) {
-            return;
-        }
-
-        if ("blocks".equals(folderName)) {
-            saveResourceWithReplace("blocks/exampleBlock.yml");
-            saveResourceWithReplace("blocks/exampleNodes.yml");
-            saveResourceWithReplace("blocks/exampleSchematics.yml");
-            saveResourceWithReplace("blocks/exampleBDEngine.yml");
-        }
-        if ("drops".equals(folderName)) {
-            saveResourceWithReplace("drops/exampleDrops.yml");
-            saveResourceWithReplace("drops/exampleDropsWood.yml");
-            saveResourceWithReplace("drops/exampleDropsCustom.yml");
-        }
-        if ("tools".equals(folderName)) {
-            saveResourceWithReplace("tools/exampleTools.yml");
-            saveResourceWithReplace("tools/exampleToolsAxe.yml");
-        }
-        if ("lang".equals(folderName)) {
-            saveResourceWithReplace("lang/en-us.yml");
-            saveResourceWithReplace("lang/id-id.yml");
-            saveResourceWithReplace("lang/ja-jp.yml");
-            saveResourceWithReplace("lang/zh-cn.yml");
-            saveResourceWithReplace("lang/zh-tw.yml");
-        }
-        if ("nodes".equals(folderName)) {
-            saveResourceWithReplace("nodes/exampleNodes.yml");
-        }
-        if ("models".equals(folderName)) {
-            saveResourceWithReplace("models/bdengine/iron_ore.bdengine");
-            saveResourceWithReplace("models/bdengine/tree.bdengine");
-            saveResourceWithReplace("models/schematics/tree.schem");
-            saveResourceWithReplace("models/schematics/dead/dead_tree.schem");
-        }
     }
 
-    private void saveResourceWithReplace(final String resourcePath) {
-        // extractDefaultAssets is true, so overwrite existing files per config comment
+    /**
+     * Extracts all default asset files from the plugin jar to the plugin data folder.
+     * This is invoked by the {@code /mmoblock debug extractDefaultAssets} command.
+     * Existing files with the same name will be overwritten.
+     */
+    public void extractAllDefaultAssets() {
+        // Force-overwrite: the user explicitly invoked this command
+        final boolean forceReplace = true;
+        extractResource("blocks/exampleBlock.yml", forceReplace);
+        extractResource("blocks/exampleNodes.yml", forceReplace);
+        extractResource("blocks/exampleSchematics.yml", forceReplace);
+        extractResource("blocks/exampleBDEngine.yml", forceReplace);
+        extractResource("drops/exampleDrops.yml", forceReplace);
+        extractResource("drops/exampleDropsWood.yml", forceReplace);
+        extractResource("drops/exampleDropsCustom.yml", forceReplace);
+        extractResource("tools/exampleTools.yml", forceReplace);
+        extractResource("tools/exampleToolsAxe.yml", forceReplace);
+        extractResource("lang/en-us.yml", forceReplace);
+        extractResource("lang/id-id.yml", forceReplace);
+        extractResource("lang/ja-jp.yml", forceReplace);
+        extractResource("lang/zh-cn.yml", forceReplace);
+        extractResource("lang/zh-tw.yml", forceReplace);
+        extractResource("nodes/exampleNodes.yml", forceReplace);
+        extractResource("models/bdengine/iron_ore.bdengine", forceReplace);
+        extractResource("models/bdengine/tree.bdengine", forceReplace);
+        extractResource("models/schematics/tree.schem", forceReplace);
+        extractResource("models/schematics/dead/dead_tree.schem", forceReplace);
+    }
+
+    private void extractResource(final String resourcePath, final boolean replace) {
+        final File targetFile = new File(this.plugin.getDataFolder(), resourcePath);
+        if (!replace && targetFile.exists()) {
+            return;
+        }
+        targetFile.getParentFile().mkdirs();
         this.plugin.saveResource(resourcePath, true);
     }
 

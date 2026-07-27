@@ -2,7 +2,6 @@ package me.chyxelmc.mmoblock.runtime.block;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Predicate;
 
 import org.bukkit.Location;
@@ -23,7 +22,7 @@ import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
 public final class BlockRespawnOrchestrator {
 
     private static final double DEAD_UPDATE_NEARBY_RADIUS = 16.0D;
-    private static final int RANDOM_LOCATION_MAX_ATTEMPTS = 48;
+    private static final int DEFAULT_VERTICAL_RANGE = 10;
 
     private final BlockConfigLoader blockConfigService;
     private final PersistenceSystem persistenceSystem;
@@ -182,9 +181,12 @@ public final class BlockRespawnOrchestrator {
             final int originBlockY = (int) Math.floor(nodeContext.originY());
             final int originBlockZ = (int) Math.floor(nodeContext.originZ());
 
+            // Compute vertical range from the node context radius
+            final int nodeVerticalRange = Math.max(DEFAULT_VERTICAL_RANGE, (int) Math.ceil(nodeContext.radius()));
+
             // First try: origin without closest requirement
             final Location originSafe = this.randomLocationResolver.findSafeBlockLocation(
-                    world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false
+                    world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false, nodeVerticalRange
             );
             if (originSafe != null
                     && !isWithinHorizontalDistance(originSafe, originBlockX, originBlockZ, 1.0D)) {
@@ -207,7 +209,8 @@ public final class BlockRespawnOrchestrator {
                         originBlockY,
                         originBlockZ + offset[1],
                         block.uniqueId(),
-                        false
+                        false,
+                        nodeVerticalRange
                 );
                 if (offsetLoc != null) {
                     final String facing = this.randomLocationResolver.resolveRandomFacing(world,
@@ -228,28 +231,30 @@ public final class BlockRespawnOrchestrator {
         final int originBlockZ = (int) Math.floor(block.originZ());
 
         if (!definition.randomLocationEnabled() || definition.randomLocationRadius() <= 0.0D) {
-            final Location safeOrigin = this.randomLocationResolver.findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false);
+            final Location safeOrigin = this.randomLocationResolver.findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false, DEFAULT_VERTICAL_RANGE);
             final Location loc = safeOrigin != null
                     ? safeOrigin
                     : new Location(world, originBlockX, originBlockY, originBlockZ);
             return new RespawnTarget(loc, block.facing());
         }
 
-        final double radius = definition.randomLocationRadius();
-        for (int attempt = 0; attempt < RANDOM_LOCATION_MAX_ATTEMPTS; attempt++) {
-            final double angle = ThreadLocalRandom.current().nextDouble(0.0D, Math.PI * 2.0D);
-            final double distance = Math.sqrt(ThreadLocalRandom.current().nextDouble()) * radius;
-            final int targetBlockX = originBlockX + (int) Math.round(Math.cos(angle) * distance);
-            final int targetBlockZ = originBlockZ + (int) Math.round(Math.sin(angle) * distance);
-
-            final Location safe = this.randomLocationResolver.findSafeBlockLocation(world, targetBlockX, originBlockY, targetBlockZ, block.uniqueId(), false);
-            if (safe != null) {
-                final String facing = this.randomLocationResolver.resolveRandomFacing(world, (int) safe.getX(), (int) safe.getY(), (int) safe.getZ());
-                return new RespawnTarget(safe, facing);
-            }
+        // Reuse resolveRandomContextLocation instead of duplicating random angle/distance logic.
+        // Block definitions don't have closest/centerDistance config, so use safe defaults.
+        final RandomLocationContext blockContext = new RandomLocationContext(
+                block.originX(), block.originY(), block.originZ(),
+                true,
+                definition.randomLocationRadius(),
+                false,
+                1.0D
+        );
+        final Location location = this.randomLocationResolver.resolveRandomContextLocation(world, blockContext, block.uniqueId());
+        if (location != null) {
+            final String facing = this.randomLocationResolver.resolveRandomFacing(world, location.getBlockX(), location.getBlockY(), location.getBlockZ());
+            return new RespawnTarget(location, facing);
         }
 
-        final Location safeOrigin = this.randomLocationResolver.findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false);
+        // Fallback: try the origin
+        final Location safeOrigin = this.randomLocationResolver.findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false, DEFAULT_VERTICAL_RANGE);
         final Location loc = safeOrigin != null
                 ? safeOrigin
                 : new Location(world, originBlockX, originBlockY, originBlockZ);

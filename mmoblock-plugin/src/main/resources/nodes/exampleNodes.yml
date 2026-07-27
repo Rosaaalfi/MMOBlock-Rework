@@ -3,12 +3,12 @@ exampleNodes:
     name: "&7Example Nodes"
     material: iron_ore
   listBlocks:
-    - exampleEntityNodes
-    # - exampleEntity1
+    - exampleNodes
+    # - exampleBlock
   maxBlocks: 4 # The maximum number of entities that can be spawned at the same time. If the number of entities exceeds this limit, the oldest entity will be removed to make room for the new one.
   randomLocation:
     enabled: true
-    radius: 3
+    radius: 4 # The radius in blocks around the original spawn location where the entity can respawn. The entity will respawn at a random location within this radius.
     closest: true # If true, spawn only when there is at least one solid block beside the spawn location on N/S/E/W.
     center: 1 # Minimum horizontal distance from the node hologram center.
   blockList: # customize block list placeholder {block_lists} for the hologram display. This will display the list of blocks that can be spawned in this node. You can also use {block_lists} to display the list of blocks, and it will automatically update when the block is spawned or removed.

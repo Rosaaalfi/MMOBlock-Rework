@@ -76,10 +76,14 @@ public final class DropService implements Listener {
                     case EXPERIENCE -> {
                         if ("mmocore".equalsIgnoreCase(expSource)) {
                             final String profession = entry.mmocoreProfession();
-                            if (profession != null && !"main".equalsIgnoreCase(profession)) {
-                                me.chyxelmc.mmoblock.api.integration.MMOCoreIntegration.giveProfessionExperience(player, profession, finalAmount);
-                            } else {
-                                me.chyxelmc.mmoblock.api.integration.MMOCoreIntegration.giveExperience(player, finalAmount);
+                            try {
+                                if (profession != null && !"main".equalsIgnoreCase(profession)) {
+                                    me.chyxelmc.mmoblock.api.integration.MMOCoreIntegration.giveProfessionExperience(player, profession, finalAmount);
+                                } else {
+                                    me.chyxelmc.mmoblock.api.integration.MMOCoreIntegration.giveExperience(player, finalAmount);
+                                }
+                            } catch (final Throwable ignored) {
+                                // MMOCore not installed or class loading failed
                             }
                         } else {
                             player.giveExp(finalAmount);

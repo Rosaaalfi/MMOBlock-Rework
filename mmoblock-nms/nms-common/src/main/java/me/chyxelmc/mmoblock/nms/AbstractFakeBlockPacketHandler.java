@@ -200,8 +200,71 @@ public abstract class AbstractFakeBlockPacketHandler extends ChannelDuplexHandle
         final Player player = this.playerRef.get();
         if (player == null) { super.write(ctx, msg, promise); return; }
         if (trySuppressBlockUpdate(ctx, msg, promise, player)) return;
-        resendForChunkPackets(msg, player);
-        super.write(ctx, msg, promise);
+        if (isChunkDataPacket(msg)) {
+            // For chunk data: send the chunk data FIRST via pipeline, then
+            // schedule fake block re-sends on the next tick. This ensures the
+            // client receives the chunk terrain/data before the fake block
+            // overrides, preventing the chunk data from overwriting fake
+            // blocks and baking incorrect pre-computed lighting.
+            super.write(ctx, msg, promise);
+            scheduleDelayedChunkResend(player, msg);
+        } else {
+            super.write(ctx, msg, promise);
+        }
+    }
+
+    /**
+     * Returns true if the outgoing message is a chunk-related packet that
+     * contains block/light data (e.g. SectionBlocksUpdate, MultiBlockChange,
+     * Chunk, LevelChunk).
+     */
+    private static boolean isChunkDataPacket(final Object msg) {
+        if (msg == null) return false;
+        final String cls = msg.getClass().getSimpleName();
+        // Use longer class-name checks to avoid matching unrelated packet types
+        return cls.contains("SectionBlocksUpdate") || cls.contains("MultiBlockChange")
+            || cls.contains("Chunk") || cls.contains("LevelChunk");
+    }
+
+    /**
+     * Schedule a delayed fake-block resend for the given chunk, running 1 tick
+     * later to ensure the chunk data packet arrives at the client first.
+     */
+    private void scheduleDelayedChunkResend(final Player player, final Object msg) {
+        try {
+            final Player refPlayer = this.playerRef.get();
+            if (refPlayer == null) return;
+            final Plugin plugin = Bukkit.getPluginManager().getPlugin(PLUGIN_NAME);
+            if (plugin == null) return;
+            final String worldName = refPlayer.getWorld().getName();
+            final int[] chunk = tryExtractChunkCoords(msg);
+            final int chunkX, chunkZ;
+            if (chunk != null) {
+                chunkX = chunk[0];
+                chunkZ = chunk[1];
+            } else {
+                // Fallback: resend ALL fake blocks for this player's world
+                FoliaSafeScheduler.runTaskLater(plugin, () -> {
+                    try {
+                        final Player p = AbstractFakeBlockPacketHandler.this.playerRef.get();
+                        if (p == null) return;
+                        scheduleResendForWorld(p, worldName);
+                    } catch (final Exception ignored) {
+                    }
+                }, 1L);
+                return;
+            }
+            FoliaSafeScheduler.runTaskLater(plugin, () -> {
+                try {
+                    final Player p = AbstractFakeBlockPacketHandler.this.playerRef.get();
+                    if (p == null) return;
+                    scheduleResendForChunk(p, worldName, chunkX, chunkZ);
+                } catch (final Exception ignored) {
+                }
+            }, 1L);
+        } catch (final Exception t) {
+            NmsLogger.debug("scheduleDelayedChunkResend failed: " + t.getMessage());
+        }
     }
 
     private boolean trySuppressBlockUpdate(ChannelHandlerContext ctx, Object msg, ChannelPromise promise, Player player) throws Exception {
@@ -228,19 +291,9 @@ public abstract class AbstractFakeBlockPacketHandler extends ChannelDuplexHandle
     // Chunk resend logic
     // ============================================================
 
-    private void resendForChunkPackets(Object msg, Player player) {
-        try {
-            final String cls = msg.getClass().getSimpleName();
-            if (cls.contains("SectionBlocksUpdate") || cls.contains("MultiBlockChange")
-                    || cls.contains("Chunk") || cls.contains("LevelChunk")) {
-                int[] chunk = tryExtractChunkCoords(msg);
-                if (chunk != null) scheduleResendForChunk(player, player.getWorld().getName(), chunk[0], chunk[1]);
-                else scheduleResendForWorld(player, player.getWorld().getName());
-            }
-        } catch (Exception e) {
-            NmsLogger.debug("resendForChunkPackets failed: " + e.getMessage());
-        }
-    }
+    // Note: Immediate chunk resend was removed; chunk-type packets now
+    // follow the deferred path (super.write first, then next-tick resend)
+    // to prevent chunk data from overwriting fake blocks on the client.
 
     private void scheduleResendForChunk(Player player, String worldName, int chunkX, int chunkZ) {
         try {

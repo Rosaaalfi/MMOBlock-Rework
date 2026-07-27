@@ -52,9 +52,14 @@ public final class InternalPlaceholderResolver {
         if (player == null || text == null || text.isEmpty()) {
             return text;
         }
-        if (!MMOCoreIntegration.isAvailable()) {
-            // MMOCore not installed — replace all MMOCore placeholders with empty string
-            // to avoid showing raw placeholder text to the player
+        try {
+            if (!MMOCoreIntegration.isAvailable()) {
+                // MMOCore not installed — replace all MMOCore placeholders with empty string
+                // to avoid showing raw placeholder text to the player
+                return removeAllMmocorePlaceholders(text);
+            }
+        } catch (final Throwable ignored) {
+            // MMOCore not installed or class loading failed
             return removeAllMmocorePlaceholders(text);
         }
 
@@ -76,53 +81,73 @@ public final class InternalPlaceholderResolver {
         }
 
         // Resolve {mmocore_level_<profession>}
-        final Matcher levelProfMatcher = MMOCORE_LEVEL_PROFESSION.matcher(result);
-        final StringBuffer levelProfBuf = new StringBuffer();
-        found = false;
-        while (levelProfMatcher.find()) {
-            found = true;
-            final String profession = levelProfMatcher.group(1).toLowerCase(Locale.ROOT);
-            final int level = MMOCoreIntegration.getProfessionLevel(player, profession);
-            levelProfMatcher.appendReplacement(levelProfBuf, Matcher.quoteReplacement(String.valueOf(level)));
-        }
-        if (found) {
-            levelProfMatcher.appendTail(levelProfBuf);
-            result = levelProfBuf.toString();
+        try {
+            final Matcher levelProfMatcher = MMOCORE_LEVEL_PROFESSION.matcher(result);
+            final StringBuffer levelProfBuf = new StringBuffer();
+            found = false;
+            while (levelProfMatcher.find()) {
+                found = true;
+                final String profession = levelProfMatcher.group(1).toLowerCase(Locale.ROOT);
+                try {
+                    final int level = MMOCoreIntegration.getProfessionLevel(player, profession);
+                    levelProfMatcher.appendReplacement(levelProfBuf, Matcher.quoteReplacement(String.valueOf(level)));
+                } catch (final Throwable ignored) {
+                    levelProfMatcher.appendReplacement(levelProfBuf, "0");
+                }
+            }
+            if (found) {
+                levelProfMatcher.appendTail(levelProfBuf);
+                result = levelProfBuf.toString();
+            }
+        } catch (final Throwable ignored) {
+            // MMOCore not installed or class loading failed
         }
 
         // Resolve {mmocore_attribute_<attribute_name>}
-        final Matcher attrMatcher = MMOCORE_ATTRIBUTE.matcher(result);
-        final StringBuffer attrBuf = new StringBuffer();
-        found = false;
-        while (attrMatcher.find()) {
-            found = true;
-            final String attribute = attrMatcher.group(1).toLowerCase(Locale.ROOT);
-            final int value = MMOCoreIntegration.getAttribute(player, attribute);
-            attrMatcher.appendReplacement(attrBuf, Matcher.quoteReplacement(String.valueOf(value)));
-        }
-        if (found) {
-            attrMatcher.appendTail(attrBuf);
-            result = attrBuf.toString();
+        try {
+            final Matcher attrMatcher = MMOCORE_ATTRIBUTE.matcher(result);
+            final StringBuffer attrBuf = new StringBuffer();
+            found = false;
+            while (attrMatcher.find()) {
+                found = true;
+                final String attribute = attrMatcher.group(1).toLowerCase(Locale.ROOT);
+                try {
+                    final int value = MMOCoreIntegration.getAttribute(player, attribute);
+                    attrMatcher.appendReplacement(attrBuf, Matcher.quoteReplacement(String.valueOf(value)));
+                } catch (final Throwable ignored) {
+                    attrMatcher.appendReplacement(attrBuf, "0");
+                }
+            }
+            if (found) {
+                attrMatcher.appendTail(attrBuf);
+                result = attrBuf.toString();
+            }
+        } catch (final Throwable ignored) {
+            // MMOCore not installed or class loading failed
         }
 
         return result;
     }
 
     private static String resolveSimple(final Player player, final String placeholder) {
-        return switch (placeholder) {
-            case "level" -> String.valueOf(MMOCoreIntegration.getLevel(player));
-            case "class" -> MMOCoreIntegration.getClassName(player);
-            case "profession" -> {
-                // In MMOCore, 'profession' refers to the player's class name.
-                // For specific profession/collection skill levels, use {mmocore_level_<profession>}.
-                final String className = MMOCoreIntegration.getClassName(player);
-                yield className.isEmpty() ? "0" : className;
-            }
-            case "mana" -> String.valueOf((int) MMOCoreIntegration.getMana(player));
-            case "stamina" -> String.valueOf((int) MMOCoreIntegration.getStamina(player));
-            case "stellium" -> String.valueOf((int) MMOCoreIntegration.getStellium(player));
-            default -> "";
-        };
+        try {
+            return switch (placeholder) {
+                case "level" -> String.valueOf(MMOCoreIntegration.getLevel(player));
+                case "class" -> MMOCoreIntegration.getClassName(player);
+                case "profession" -> {
+                    // In MMOCore, 'profession' refers to the player's class name.
+                    // For specific profession/collection skill levels, use {mmocore_level_<profession>}.
+                    final String className = MMOCoreIntegration.getClassName(player);
+                    yield className.isEmpty() ? "0" : className;
+                }
+                case "mana" -> String.valueOf((int) MMOCoreIntegration.getMana(player));
+                case "stamina" -> String.valueOf((int) MMOCoreIntegration.getStamina(player));
+                case "stellium" -> String.valueOf((int) MMOCoreIntegration.getStellium(player));
+                default -> "";
+            };
+        } catch (final Throwable ignored) {
+            return "";
+        }
     }
 
     /**

@@ -218,7 +218,11 @@ public final class BlockManagementService {
         this.hologramRuntimeService.shutdown();
         this.schematicService.clearAll();
         this.bdEngineService.clearAll();
-        me.chyxelmc.mmoblock.api.integration.BetterModelIntegration.removeAll();
+        try {
+            me.chyxelmc.mmoblock.api.integration.BetterModelIntegration.removeAll();
+        } catch (final Throwable ignored) {
+            // BetterModel not installed or class loading failed
+        }
         this.modelApplier.clearAllCollisions();
         this.visualSyncSystem.clearOriginalMaterials();
         this.stateRegistry.clear();

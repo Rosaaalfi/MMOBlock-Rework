@@ -25,6 +25,11 @@ public record MaterialClassification(
     /**
      * Classify a material string using the explicit type hint and fallback auto-detection.
      *
+     * <p>Each integration call is wrapped in a try-catch(Throwable) to protect against
+     * {@link NoClassDefFoundError} that can occur when the Paper classloader eagerly
+     * resolves all class references during class loading. Since integrations are soft
+     * dependencies, their absence must not crash the plugin.</p>
+     *
      * @param explicitType    the explicit {@code type} value from config ({@code null} when absent)
      * @param materialString  the raw material / namespaced ID string from config
      * @return the classified result (all fields may be {@code null} if materialString is null/blank)
@@ -48,14 +53,26 @@ public record MaterialClassification(
         // Legacy auto-detection when no explicit type is set
         if (explicitType == null) {
             // MMOItems IDs are simple strings without colons, check first
-            if (MMOItemsIntegration.isMMOItemsId(materialString)) {
-                return new MaterialClassification(null, null, null, materialString);
+            try {
+                if (MMOItemsIntegration.isMMOItemsId(materialString)) {
+                    return new MaterialClassification(null, null, null, materialString);
+                }
+            } catch (final Throwable ignored) {
+                // Integration not available — NoClassDefFoundError, etc.
             }
-            if (CraftEngineIntegration.isCraftEngineConfigId(materialString)) {
-                return new MaterialClassification(null, null, materialString, null);
+            try {
+                if (CraftEngineIntegration.isCraftEngineConfigId(materialString)) {
+                    return new MaterialClassification(null, null, materialString, null);
+                }
+            } catch (final Throwable ignored) {
+                // Integration not available — NoClassDefFoundError, etc.
             }
-            if (ItemsAdderIntegration.isItemsAdderId(materialString)) {
-                return new MaterialClassification(null, materialString, null, null);
+            try {
+                if (ItemsAdderIntegration.isItemsAdderId(materialString)) {
+                    return new MaterialClassification(null, materialString, null, null);
+                }
+            } catch (final Throwable ignored) {
+                // Integration not available — NoClassDefFoundError, etc.
             }
         }
 

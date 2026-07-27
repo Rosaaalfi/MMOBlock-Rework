@@ -34,7 +34,6 @@ dependencies {
     implementation(project(":mmoblock-utils"))
     implementation(project(":mmoblock-persistence"))
     implementation(project(":mmoblock-ecs"))
-    implementation(project(":nms-common"))
     runtimeOnly(project(":nms-common"))
     implementation(project(":nms-v1_21_1"))
     implementation(project(":nms-v1_21_4"))
