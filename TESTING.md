@@ -29,8 +29,8 @@
 |---------|-----------|---------|-------------|--------|
 | **1.19.4** | `nms-mojang-v1_19_4` | Mojang | `1.19.4-R0.1-SNAPSHOT` | ✅ **Stable (base)** |
 | **1.19.4** | `nms-spigot-v1_19_4` | Spigot/Obf | `1.19.4-R0.1-SNAPSHOT` | ✅ **Stable (base)** |
-| **1.20.4** | `nms-mojang-v1_20_4` | Mojang | `1.20.4-R0.1-SNAPSHOT` | ⬜ Needs testing |
-| **1.20.4** | `nms-spigot-v1_20_4` | Spigot/Obf | `1.20.4-R0.1-SNAPSHOT` | ⬜ Needs testing |
+| **1.20.4** | `nms-mojang-v1_20_4` | Mojang | `1.20.4-R0.1-SNAPSHOT` | ✅ **Stable** |
+| **1.20.4** | `nms-spigot-v1_20_4` | Spigot/Obf | `1.20.4-R0.1-SNAPSHOT` | ✅ **Stable** |
 | **1.21.1** | `nms-v1_21_1` | Mojang | `1.21.1-R0.1-SNAPSHOT` | ⬜ Needs testing |
 | **1.21.4** | `nms-v1_21_4` | Mojang | `1.21.4-R0.1-SNAPSHOT` | ⬜ Needs testing |
 | **1.21.11** | `nms-v1_21_11` | Mojang | `1.21.11-R0.1-SNAPSHOT` | ⬜ Needs testing |
@@ -224,8 +224,8 @@ Expected:
 |---------|-----------|-------------|----------------|-------------|---------------|-------|
 | **1.19.4 Paper** | ✅ | ✅ | ✅ | ✅ | ✅ | Base stable |
 | **1.19.4 Folia** | ✅ | ✅ | ✅ | ✅ | ✅ | Base stable |
-| **1.20.4 Paper** | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | |
-| **1.20.4 Folia** | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | |
+| **1.20.4 Paper** | ✅ | ✅ | ✅ | ✅ | ✅ | Background hologram transparency fixed |
+| **1.20.4 Folia** | ✅ | ✅ | ✅ | ✅ | ✅ | Background hologram transparency fixed |
 | **1.21.1 Paper** | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | |
 | **1.21.4 Paper** | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | |
 | **1.21.11 Paper** | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | |
@@ -804,5 +804,7 @@ Use the following template to record test results:
 > **Last Updated:** July 27, 2026
 >
 > **Base tested by:** Rosaaalfi (1.19.4 Paper & Folia ✅)
+>
+> **Additional testing:** Rosaaalfi (1.20.4 Mojang & Spigot/Paper/Folia ✅ — background hologram transparency verified)
 >
 > _This document will be updated as testing progresses._

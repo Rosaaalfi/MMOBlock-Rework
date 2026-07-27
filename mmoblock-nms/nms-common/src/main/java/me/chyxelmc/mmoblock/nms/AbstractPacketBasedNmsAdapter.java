@@ -598,11 +598,13 @@ public abstract class AbstractPacketBasedNmsAdapter implements NmsAdapter {
             final String nmsFailure
     ) {
         try {
-            final Interaction interaction = world.spawn(
-                    location,
-                    Interaction.class,
-                    spawned -> configureInteraction(spawned, width, height, uniqueIdKey, blockUniqueId)
-            );
+            // Use 2-arg spawn(Location, Class) which is available in all Bukkit API versions.
+            // The 3-arg Consumer variant (spawn(Location, Class, Consumer)) was added in a
+            // later API version and does not exist on Paper/Folia 1.20.4.
+            final Interaction interaction = world.spawn(location, Interaction.class);
+            if (interaction != null) {
+                configureInteraction(interaction, width, height, uniqueIdKey, blockUniqueId);
+            }
             return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
         } catch (final RuntimeException fallbackException) {
             return SpawnResult.failed(joinSpawnFailures(nmsFailure, "Bukkit spawn failed: " + fallbackException.getMessage()));

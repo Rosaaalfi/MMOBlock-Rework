@@ -234,13 +234,16 @@ public final class NmsAdapter_v1_20_4 extends AbstractPacketBasedNmsAdapter {
     protected Object createTextDisplayEntity(Object serverLevel, double x, double y, double z, String text) {
         final Display.TextDisplay display = new Display.TextDisplay(EntityType.TEXT_DISPLAY, (ServerLevel) serverLevel);
         display.setPos(x, y, z);
-        display.setBillboardConstraints(Display.BillboardConstraints.VERTICAL);
-        display.setTransformationInterpolationDelay(0);
-        display.setTransformationInterpolationDuration(2);
-        display.setViewRange(0.4F);
-        display.setShadowRadius(0.0F);
-        display.setShadowStrength(0.0F);
-        display.getEntityData().set(Display.TextDisplay.DATA_BACKGROUND_COLOR_ID, 0);
+        // Cast to Display to prevent Paperweight reobfuscator from remapping inherited
+        // Display methods to private TextDisplay methods in Spigot mappings (Folia 1.20.4).
+        final Display d = display;
+        d.setBillboardConstraints(Display.BillboardConstraints.VERTICAL);
+        d.setTransformationInterpolationDelay(0);
+        d.setTransformationInterpolationDuration(2);
+        d.setViewRange(0.4F);
+        d.setShadowRadius(0.0F);
+        d.setShadowStrength(0.0F);
+        setTextDisplayBackgroundColor(display, 0);
         display.setText(PaperAdventure.asVanilla(HologramColorUtil.toComponent(text == null ? "" : text)));
         return display;
     }
@@ -256,16 +259,18 @@ public final class NmsAdapter_v1_20_4 extends AbstractPacketBasedNmsAdapter {
         display.setPos(x, y, z);
         display.setItemStack(CraftItemStack.asNMSCopy(new org.bukkit.inventory.ItemStack(material)));
         display.setItemTransform(ItemDisplayContext.GROUND);
-        display.setBillboardConstraints(Display.BillboardConstraints.FIXED);
-        display.setViewRange(0.4F);
-        display.setWidth(0.5F);
-        display.setHeight(0.5F);
-        display.setShadowRadius(0.0F);
-        display.setShadowStrength(0.0F);
+        // Cast to Display to prevent Paperweight reobfuscation issue
+        final Display d = display;
+        d.setBillboardConstraints(Display.BillboardConstraints.FIXED);
+        d.setViewRange(0.4F);
+        d.setWidth(0.5F);
+        d.setHeight(0.5F);
+        d.setShadowRadius(0.0F);
+        d.setShadowStrength(0.0F);
         final Matrix4f matrix = new Matrix4f().translation(0.0f, verticalOffset, 0.0f).rotateY(rotationAngle);
-        display.setTransformation(new Transformation(matrix));
-        display.setTransformationInterpolationDelay(0);
-        display.setTransformationInterpolationDuration(2);
+        d.setTransformation(new Transformation(matrix));
+        d.setTransformationInterpolationDelay(0);
+        d.setTransformationInterpolationDuration(2);
         return display;
     }
 
@@ -275,12 +280,14 @@ public final class NmsAdapter_v1_20_4 extends AbstractPacketBasedNmsAdapter {
         final Display.BlockDisplay display = new Display.BlockDisplay(EntityType.BLOCK_DISPLAY, (ServerLevel) serverLevel);
         display.setPos(x, y, z);
         display.setBlockState(CraftMagicNumbers.getBlock(material).defaultBlockState());
-        display.setBillboardConstraints(Display.BillboardConstraints.CENTER);
-        display.setViewRange(0.4F);
-        display.setWidth(0.5F);
-        display.setHeight(0.5F);
-        display.setShadowRadius(0.0F);
-        display.setShadowStrength(0.0F);
+        // Cast to Display to prevent Paperweight reobfuscation issue
+        final Display d = display;
+        d.setBillboardConstraints(Display.BillboardConstraints.CENTER);
+        d.setViewRange(0.4F);
+        d.setWidth(0.5F);
+        d.setHeight(0.5F);
+        d.setShadowRadius(0.0F);
+        d.setShadowStrength(0.0F);
         return display;
     }
 
@@ -339,7 +346,7 @@ public final class NmsAdapter_v1_20_4 extends AbstractPacketBasedNmsAdapter {
         final Display.TextDisplay display = new Display.TextDisplay(EntityType.TEXT_DISPLAY, (ServerLevel) serverLevel);
         display.setPos(base.getX(), base.getY(), base.getZ());
         display.setText(PaperAdventure.asVanilla(HologramColorUtil.toComponent(part.text() == null ? "" : part.text())));
-        display.getEntityData().set(Display.TextDisplay.DATA_BACKGROUND_COLOR_ID, 0);
+        setTextDisplayBackgroundColor(display, 0);
         configureBdEngineDisplay(display, part, normalizeMatrix(part.matrix()));
         return display;
     }
@@ -411,7 +418,63 @@ public final class NmsAdapter_v1_20_4 extends AbstractPacketBasedNmsAdapter {
         return CraftMagicNumbers.getBlock(material).defaultBlockState();
     }
 
-    // --- inner types ---
+    /**
+     * Cached {@code EntityDataAccessor<Integer>} for the TextDisplay background color.
+     *
+     * <p>In Spigot-remapped (Folia 1.20.4) jars, both {@code DATA_BACKGROUND_COLOR_ID}
+     * and {@code setBackgroundColor(int)} are {@code private} on {@code TextDisplay}.
+     * We cannot use the Mojang field/method name string in reflection either, because
+     * Paperweight does not remap string literals.
+     *
+     * <p>Solution: scan all declared static {@code EntityDataAccessor} fields of
+     * {@code TextDisplay} and pick the one whose current value in the freshly-created
+     * display is {@code 0x40000000} — the {@code DEFAULT_BACKGROUND_COLOR} that the
+     * {@code TextDisplay} constructor sets. This works around both the name obfuscation
+     * and the fact that Paperweight may inject synthetic copies of parent-class accessors
+     * (e.g. {@code DATA_TRANSFORMATION_INTERPOLATION_DELAY_ID}) as declared fields.
+     */
+    private static volatile net.minecraft.network.syncher.EntityDataAccessor<Integer> backgroundAccessor;
+
+    @SuppressWarnings("unchecked")
+    private static net.minecraft.network.syncher.EntityDataAccessor<Integer> resolveBgAccessor(
+            final Display.TextDisplay display
+    ) {
+        try {
+            for (final java.lang.reflect.Field field : Display.TextDisplay.class.getDeclaredFields()) {
+                if (!java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+                if (!net.minecraft.network.syncher.EntityDataAccessor.class.isAssignableFrom(field.getType())) continue;
+                field.setAccessible(true);
+                final Object val = field.get(null);
+                if (!(val instanceof net.minecraft.network.syncher.EntityDataAccessor<?> accessorUser)) continue;
+                try {
+                    final Object current = display.getEntityData().get(accessorUser);
+                    if (current instanceof Integer intVal && intVal == 0x40000000) {
+                        return (net.minecraft.network.syncher.EntityDataAccessor<Integer>) accessorUser;
+                    }
+                } catch (final Exception ignoredField) {
+                    // Not a valid accessor for this entity type — skip
+                }
+            }
+        } catch (final Exception ignored) {
+            // Fall through to null
+        }
+        return null;
+    }
+
+    /**
+     * Sets the background color of a TextDisplay to transparent by finding the
+     * background-color {@code EntityDataAccessor} via value-based verification.
+     */
+    private static void setTextDisplayBackgroundColor(final Display.TextDisplay display, final int color) {
+        net.minecraft.network.syncher.EntityDataAccessor<Integer> accessor = backgroundAccessor;
+        if (accessor == null) {
+            accessor = resolveBgAccessor(display);
+            backgroundAccessor = accessor;
+        }
+        if (accessor != null) {
+            display.getEntityData().set(accessor, color);
+        }
+    }
 
     private void applyCustomAabb(
             final net.minecraft.world.entity.Interaction handle,

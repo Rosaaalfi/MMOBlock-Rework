@@ -185,7 +185,9 @@ gantt
 | PlaceholderAPI expansion | Done |
 | Custom logger, drop popups, hologram animations | Done |
 | Exception handling audit (117 silent exceptions identified) | Done |
+| Background hologram transparency fix (1.20.4 Spigot/Folia) | Done |
 | Comprehensive testing guide | Done |
+| 1.20.4 Mojang & Spigot (Paper/Folia) testing | Done |
 | RC build & final verification | In Progress |
 | **Public Release** | **August 1, 2026** |
 
