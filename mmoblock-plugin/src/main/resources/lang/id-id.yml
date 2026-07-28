@@ -62,10 +62,13 @@ commands:
     get:
       usage: "&ePenggunaan: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c[MMOBlock] Block belum aktif."
-  too_fast: "&c[MMOBlock] Terlalu cepat, tunggu sebentar."
-  config_missing: "&c[MMOBlock] Konfigurasi block tidak ditemukan."
-  broken: "&a[MMOBlock] Block hancur. Respawn dalam {respawn} detik"
+  not_active: "&cBlock belum aktif."
+  too_fast: "&cTerlalu cepat, tunggu sebentar."
+  too_fast_subtitle: "&eHarap tunggu beberapa saat"
+  tool_not_allowed: "&cAlat tidak diizinkan untuk block ini."
+  tool_not_allowed_subtitle: "&eGunakan alat yang sesuai"
+  config_missing: "&cKonfigurasi block tidak ditemukan."
+  broken: "&aBlock hancur. Respawn dalam {respawn} detik"
 
   block:
     not_found: "&cBlock tidak ditemukan: {token}"

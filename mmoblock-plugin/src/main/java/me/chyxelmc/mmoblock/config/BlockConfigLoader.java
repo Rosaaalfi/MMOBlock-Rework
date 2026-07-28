@@ -146,6 +146,21 @@ public final class BlockConfigLoader {
                 if (useRealBlockModel && blockClass.material() == null && itemsAdderBlockId == null && craftEngineBlockId == null) {
                     report.error("Block '" + key + "' has invalid modelType.block.material.");
                 }
+
+                // Parse dead block configuration
+                final ConfigurationSection deadBlockSection = section.getConfigurationSection("modelType.block.dead");
+                final String deadBlockType = deadBlockSection != null
+                        ? deadBlockSection.getString("type", null)
+                        : null;
+                final String deadBlockMaterialStr = deadBlockSection != null
+                        ? deadBlockSection.getString("material", null)
+                        : null;
+                final MaterialClassification deadBlockClass = deadBlockType != null || deadBlockMaterialStr != null
+                        ? MaterialClassification.resolve(deadBlockType, deadBlockMaterialStr)
+                        : new MaterialClassification(null, null, null, null);
+                final Material realDeadBlockMaterial = deadBlockClass.material();
+                final String itemsAdderDeadBlockId = deadBlockClass.itemsAdderId();
+                final String craftEngineDeadBlockId = deadBlockClass.craftEngineId();
                 final Sound soundOnClick = parseSound(section.getString("sound.onClick"), "sound.onClick", key, report);
                 final Sound soundOnDead = parseSound(section.getString("sound.onDead"), "sound.onDead", key, report);
                 final Sound soundOnRespawn = parseSound(section.getString("sound.onRespawn"), "sound.onRespawn", key, report);
@@ -364,7 +379,11 @@ public final class BlockConfigLoader {
                                 itemName,
                                 itemMaterial,
                                 itemsAdderBlockId,
-                                craftEngineBlockId
+                                craftEngineBlockId,
+                                deadBlockType,
+                                realDeadBlockMaterial,
+                                itemsAdderDeadBlockId,
+                                craftEngineDeadBlockId
                         )
                 );
                 loaded++;

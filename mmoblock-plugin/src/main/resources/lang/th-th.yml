@@ -63,10 +63,13 @@ commands:
     get:
       usage: "&eวิธีใช้: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c[MMOBlock] บล็อกไม่ได้เปิดใช้งาน"
-  too_fast: "&c[MMOBlock] กรุณาช้าลงหน่อย"
-  config_missing: "&c[MMOBlock] ไม่มีการตั้งค่าบล็อก"
-  broken: "&a[MMOBlock] บล็อกแตกแล้ว จะเกิดใหม่ใน {respawn}วินาที"
+  not_active: "&cบล็อกไม่ได้เปิดใช้งาน"
+  too_fast: "&cกรุณาช้าลงหน่อย"
+  too_fast_subtitle: "&eกรุณารอสักครู่"
+  tool_not_allowed: "&cไม่อนุญาตให้ใช้เครื่องมือนี้กับบล็อกนี้"
+  tool_not_allowed_subtitle: "&eกรุณาใช้เครื่องมือที่เหมาะสม"
+  config_missing: "&cไม่มีการตั้งค่าบล็อก"
+  broken: "&aบล็อกแตกแล้ว จะเกิดใหม่ใน {respawn}วินาที"
 
   block:
     not_found: "&cไม่พบบล็อก: {token}"

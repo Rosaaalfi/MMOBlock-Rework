@@ -7,6 +7,9 @@ import java.util.Locale;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -296,6 +299,14 @@ public final class MMOBlock extends JavaPlugin{
         };
         getServer().getPluginManager().registerEvents(
                 new HologramCleanupListener(this, this.scheduler, this.blockRuntimeService, this.nodeRuntimeService, hologramCleanup), this);
+
+        // Listen for late-loading plugins (e.g. Minepacks) to update DependencyChecker flags
+        getServer().getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onPluginEnable(final PluginEnableEvent event) {
+                DependencyChecker.notifyPluginEnabled(event.getPlugin().getName());
+            }
+        }, this);
     }
 
     private void setupEcs() {

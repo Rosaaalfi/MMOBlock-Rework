@@ -62,10 +62,13 @@ commands:
     get:
       usage: "&e用法: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c[MMOBlock] 方块尚未激活。"
-  too_fast: "&c[MMOBlock] 操作过快，请稍等。"
-  config_missing: "&c[MMOBlock] 缺失方块配置。"
-  broken: "&a[MMOBlock] 方块已破坏。将在 {respawn} 秒后重生"
+  not_active: "&c方块尚未激活。"
+  too_fast: "&c操作过快，请稍等。"
+  too_fast_subtitle: "&e请稍等片刻"
+  tool_not_allowed: "&c该方块不允许使用此工具。"
+  tool_not_allowed_subtitle: "&e请使用合适的工具"
+  config_missing: "&c缺失方块配置。"
+  broken: "&a方块已破坏。将在 {respawn} 秒后重生"
 
   block:
     not_found: "&c方块未找到: {token}"

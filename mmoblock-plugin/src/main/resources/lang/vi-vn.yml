@@ -63,10 +63,13 @@ commands:
     get:
       usage: "&eCách dùng: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c[MMOBlock] Khối không hoạt động."
-  too_fast: "&c[MMOBlock] Hãy chậm lại một chút."
-  config_missing: "&c[MMOBlock] Thiếu cấu hình khối."
-  broken: "&a[MMOBlock] Khối đã bị phá. Hồi sinh sau {respawn}s"
+  not_active: "&cKhối không hoạt động."
+  too_fast: "&cHãy chậm lại một chút."
+  too_fast_subtitle: "&eVui lòng đợi một lát"
+  tool_not_allowed: "&cCông cụ không được phép cho khối này."
+  tool_not_allowed_subtitle: "&eHãy sử dụng công cụ phù hợp"
+  config_missing: "&cThiếu cấu hình khối."
+  broken: "&aKhối đã bị phá. Hồi sinh sau {respawn}s"
 
   block:
     not_found: "&cKhông tìm thấy khối: {token}"

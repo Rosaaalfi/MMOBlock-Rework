@@ -107,11 +107,17 @@ public final class BlockMiningOrchestrator {
         final ItemStack item = player.getInventory().getItemInMainHand();
         final ToolAction action = this.blockConfigService.resolveToolAction(definition, item, clickType);
         if (action == null) {
+            final Component toolNotAllowed = translate(player, "blocks.tool_not_allowed", "&cTool is not allowed for this block.");
+            final Component subtitle = translate(player, "blocks.tool_not_allowed_subtitle", "&eGunakan alat yang sesuai");
+            player.showTitle(Title.title(toolNotAllowed, subtitle));
             return Component.empty();
         }
 
         if (isThrottled(block.uniqueId(), player.getUniqueId())) {
-            return translate(player, "blocks.too_fast", "&eHey slow down a bit.");
+            final Component tooFastTitle = translate(player, "blocks.too_fast", "&eHey slow down a bit.");
+            final Component tooFastSubtitle = translate(player, "blocks.too_fast_subtitle", "&eHarap tunggu beberapa saat");
+            player.showTitle(Title.title(tooFastTitle, tooFastSubtitle));
+            return Component.empty();
         }
 
         playConfiguredSound(player.getWorld(), block, definition.soundOnClick());
@@ -259,7 +265,12 @@ public final class BlockMiningOrchestrator {
 
         final World world = this.plugin.getServer().getWorld(block.world());
         if (world != null) {
-            this.visualSyncSystem.clearRealBlockModel(block, definition, world);
+            // Apply dead block model if configured, otherwise clear
+            if (this.visualSyncSystem.hasDeadBlockModel(definition)) {
+                this.visualSyncSystem.applyDeadBlockModel(block, definition, world);
+            } else {
+                this.visualSyncSystem.clearRealBlockModel(block, definition, world);
+            }
             this.modelApplier.clearSchematicModel(block, world);
             this.modelApplier.clearBdEngineModel(block, world);
             this.modelApplier.clearModelEngineModel(block, world);

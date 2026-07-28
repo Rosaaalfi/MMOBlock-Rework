@@ -63,10 +63,13 @@ commands:
     get:
       usage: "&eUsage: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c[MMOBlock] Block is not active."
-  too_fast: "&c[MMOBlock] Slow down a bit."
-  config_missing: "&c[MMOBlock] Block config missing."
-  broken: "&a[MMOBlock] Block broken. Respawning in {respawn}s"
+  not_active: "&cBlock is not active."
+  too_fast: "&cSlow down a bit."
+  too_fast_subtitle: "&ePlease wait a moment"
+  tool_not_allowed: "&cTool is not allowed for this block."
+  tool_not_allowed_subtitle: "&eUse an appropriate tool"
+  config_missing: "&cBlock config missing."
+  broken: "&aBlock broken. Respawning in {respawn}s"
 
   block:
     not_found: "&cBlock not found: {token}"

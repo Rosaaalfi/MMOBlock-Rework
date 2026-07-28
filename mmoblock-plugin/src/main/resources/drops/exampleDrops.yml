@@ -51,7 +51,19 @@ exampleDrops:
       text: # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
         key: "drops_config.example_drop_popup_item" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
         default: "&a+{item_amount} &r{item_name}"
-    dropType: inventory # inventory, frontGround(front of player), and centerGround(center of entity or block).
+    dropType: inventory # inventory, frontGround(front of player), and centerGround(center of entity or block), new integration with Minepacks(Backpack plugin) plugin and MythicCrucible Plugin Equipment Bags, dropType: minepacks, dropType: mythiccrucible.
+
+  - item:
+      type: vanilla
+      material: iron_nugget # material to drop
+    total: [ 1-2 ] # 1-2 items
+    chances: 0.2 # 20% chance
+    dropPopup:
+      enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
+      text: # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
+        key: "drops_config.example_drop_popup_item" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+        default: "&a+{item_amount} &r{item_name}"
+    dropType: minepacks # inventory, frontGround(front of player), and centerGround(center of entity or block), new integration with Minepacks(Backpack plugin) plugin and MythicCrucible Plugin Equipment Bags, dropType: minepacks, dropType: mythiccrucible.
 
   - experience: vanilla # type of experience, support vanilla and mmocore. If you want to use mmocore experience, you need to have MMOCore plugin installed and enabled.
     amount: [ 10-20 ] # 10-20 experience points

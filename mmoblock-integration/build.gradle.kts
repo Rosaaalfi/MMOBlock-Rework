@@ -18,4 +18,8 @@ dependencies {
     compileOnly(libs.mmoitemsApi)
     compileOnly(libs.mythiclibApi)
     compileOnly(libs.mmocoreApi)
+    compileOnly(libs.mythiccrucibleApi)
+
+    // Local Dependencies
+    compileOnly(files("../lib/Minepacks-API-2.5.9.1.jar"))
 }

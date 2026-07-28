@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Predicate;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -84,6 +85,12 @@ public final class BlockRespawnOrchestrator {
             return;
         }
         this.hologramRuntimeService.showDead(block, definition, seconds);
+
+        // Apply dead block model if configured
+        final World world = Bukkit.getServer().getWorld(block.world());
+        if (world != null && this.visualSyncSystem.hasDeadBlockModel(definition)) {
+            this.visualSyncSystem.applyDeadBlockModel(block, definition, world);
+        }
     }
 
     public void schedule(final PlacedBlockModel block, final World world, final long delayMillis) {
@@ -115,8 +122,26 @@ public final class BlockRespawnOrchestrator {
             return;
         }
 
+        // Check whether a dead block model is configured before we potentially
+        // change the block's position (so we can clear it at the old position)
+        final boolean hadDeadModel = this.visualSyncSystem.hasDeadBlockModel(latestDefinition);
+
         final RespawnTarget respawnTarget = resolveRespawnTarget(block, latestDefinition, world);
         if (respawnTarget != null) {
+            // Clear the dead block BEFORE moving. The dead block was placed at the
+            // ORIGIN position (where the dead hologram is shown), so we temporarily
+            // set the block's coordinates to origin to clear at the right spot.
+            // After clearing, the original current position is restored immediately.
+            // This is safe because clearRealBlockModel only reads block.x/y/z and
+            // performs no registry mutations.
+            if (hadDeadModel) {
+                final double currX = block.x();
+                final double currY = block.y();
+                final double currZ = block.z();
+                block.setCurrentLocation(block.originX(), block.originY(), block.originZ());
+                this.visualSyncSystem.clearRealBlockModel(block, latestDefinition, world);
+                block.setCurrentLocation(currX, currY, currZ);
+            }
             moveBlockToRespawnTarget(block, respawnTarget);
         }
 

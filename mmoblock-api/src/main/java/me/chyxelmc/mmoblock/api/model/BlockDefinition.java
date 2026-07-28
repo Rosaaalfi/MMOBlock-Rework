@@ -75,4 +75,36 @@ public interface BlockDefinition {
     default String craftEngineBlockId() {
         return null;
     }
+
+    // ---- Dead-state block model ----
+
+    /**
+     * The type of dead block (vanilla, craftengine, itemsadder).
+     * When non-null, the block will change to its dead-state model after being mined
+     * instead of disappearing entirely.
+     */
+    default String deadBlockType() {
+        return null;
+    }
+
+    /**
+     * Vanilla material for the dead-state block model.
+     */
+    default Material realDeadBlockMaterial() {
+        return null;
+    }
+
+    /**
+     * ItemsAdder block ID for the dead-state block model.
+     */
+    default String itemsAdderDeadBlockId() {
+        return null;
+    }
+
+    /**
+     * CraftEngine block ID for the dead-state block model.
+     */
+    default String craftEngineDeadBlockId() {
+        return null;
+    }
 }

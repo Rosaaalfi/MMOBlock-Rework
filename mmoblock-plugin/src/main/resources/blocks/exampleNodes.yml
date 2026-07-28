@@ -22,8 +22,11 @@ exampleNodes:
   modelType:
     block:
       enabled: true
-      type: vanilla
-      material: minecraft:iron_ore # The exact block to use as the display for the entity. This will be used if modelEngine is disabled.
+      type: vanilla # type of block, support vanilla, craftengine, itemsadder
+      material: minecraft:iron_ore # <namespace>:<block_id> from CraftEngine
+      dead:
+        type: vanilla # type of block, support vanilla, craftengine, itemsadder
+        material: minecraft:bedrock # <namespace>:<block_id> from CraftEngine, <namespace>:<block_id> from ItemsAdder.
   allowedTools:
     - exampleTools
   conditions:

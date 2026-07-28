@@ -197,6 +197,14 @@ public final class DropService implements Listener {
             remainder.values().forEach(item -> player.getWorld().dropItemNaturally(player.getLocation(), item));
             return;
         }
+        if ("minepacks".equals(dropType)) {
+            if (!me.chyxelmc.mmoblock.api.integration.MinepacksIntegration.addToBackpack(player, stack)) {
+                // Fallback to inventory if Minepacks is unavailable or fails
+                final Map<Integer, ItemStack> remainder = player.getInventory().addItem(stack);
+                remainder.values().forEach(item -> player.getWorld().dropItemNaturally(player.getLocation(), item));
+            }
+            return;
+        }
 
         final Location location;
         if ("front_ground".equals(dropType) || "frontground".equals(dropType)) {

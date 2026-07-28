@@ -62,10 +62,13 @@ commands:
     get:
       usage: "&e使用方法: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c[MMOBlock] ブロックはまだ有効ではありません。"
-  too_fast: "&c[MMOBlock] 連打が速すぎます。"
-  config_missing: "&c[MMOBlock] ブロック設定が見つかりません。"
-  broken: "&a[MMOBlock] ブロックを破壊しました。{respawn}秒後にリスポーンします"
+  not_active: "&cブロックはまだ有効ではありません。"
+  too_fast: "&c連打が速すぎます。"
+  too_fast_subtitle: "&eしばらくお待ちください"
+  tool_not_allowed: "&cこのブロックにはこのツールは使用できません。"
+  tool_not_allowed_subtitle: "&e適切なツールを使用してください"
+  config_missing: "&cブロック設定が見つかりません。"
+  broken: "&aブロックを破壊しました。{respawn}秒後にリスポーンします"
 
   block:
     not_found: "&cブロックが見つかりません: {token}"

@@ -7,6 +7,7 @@ import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ToolAction;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
+import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -45,26 +46,37 @@ public final class BlockVisualSyncService {
     ) {
         final World world = player.getWorld();
         for (final PlacedBlockModel placedBlock : blocks) {
-            if (!activeStatus.equalsIgnoreCase(placedBlock.status())) {
-                continue;
-            }
             if (!placedBlock.world().equals(world.getName())) {
                 continue;
             }
 
             final BlockDefinitionModel definition = definitionLookup.apply(placedBlock.type());
-            if (!usesRealBlockModel(definition)) {
-                continue;
-            }
-            if (definition.itemsAdderBlockId() != null || definition.craftEngineBlockId() != null) {
-                continue;
-            }
+            if (definition == null) continue;
 
-            final Location location = blockBaseLocation(placedBlock);
-            if (location.getWorld() == null || location.distanceSquared(player.getLocation()) > syncRadiusSquared) {
-                continue;
+            if (activeStatus.equalsIgnoreCase(placedBlock.status())) {
+                // Active block — sync the real block model
+                if (!usesRealBlockModel(definition)) continue;
+                if (definition.itemsAdderBlockId() != null || definition.craftEngineBlockId() != null) continue;
+
+                final Location location = blockBaseLocation(placedBlock);
+                if (location.getWorld() == null || location.distanceSquared(player.getLocation()) > syncRadiusSquared) {
+                    continue;
+                }
+                this.nmsAdapter.showFakeBlock(world, location, definition.realBlockMaterial());
+            } else if (BlockLifecycleState.STATUS_RESPAWNING.equalsIgnoreCase(placedBlock.status())) {
+                // Respawning (dead) block — sync the dead block model if configured
+                // Only vanilla fake blocks need syncing; ItemsAdder/CraftEngine are world-level
+                if (!hasDeadBlockModel(definition)) continue;
+                if (definition.realDeadBlockMaterial() == null) continue;
+
+                // Dead block is shown at the ORIGIN (same as the dead hologram), not at
+                // the block's current position (which may have moved due to randomLocation).
+                final Location location = originBaseLocation(placedBlock);
+                if (location.getWorld() == null || location.distanceSquared(player.getLocation()) > syncRadiusSquared) {
+                    continue;
+                }
+                this.nmsAdapter.showFakeBlock(world, location, definition.realDeadBlockMaterial());
             }
-            this.nmsAdapter.showFakeBlock(world, location, definition.realBlockMaterial());
         }
     }
 
@@ -122,26 +134,7 @@ public final class BlockVisualSyncService {
         }
 
         final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
-        this.nmsAdapter.showFakeBlock(world, loc, definition.realBlockMaterial());
-        try {
-            final int bx = (int) Math.floor(placedBlock.x());
-            final int by = (int) Math.floor(placedBlock.y());
-            final int bz = (int) Math.floor(placedBlock.z());
-            me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.add(world.getName(), bx, by, bz, definition.realBlockMaterial().name());
-        } catch (final Exception e) {
-            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
-        }
-        try {
-            this.plugin.scheduler().runAtLocationLater(loc, () -> {
-                try {
-                    this.nmsAdapter.showFakeBlock(world, loc, definition.realBlockMaterial());
-                } catch (final Exception e) {
-                    MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
-                }
-            }, 1L);
-        } catch (final Exception e) {
-            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
-        }
+        showFakeBlockAndRegister(placedBlock, world, loc, definition.realBlockMaterial());
     }
 
     public void clearRealBlockModel(final PlacedBlockModel placedBlock, final BlockDefinitionModel definition, final World world) {
@@ -181,6 +174,60 @@ public final class BlockVisualSyncService {
             MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
         }
         this.nmsAdapter.clearFakeBlock(world, loc);
+    }
+
+    /**
+     * Apply the dead-state block model for a respawning (mined) block.
+     * Shows a different material (e.g. bedrock) instead of clearing the block entirely.
+     */
+    public void applyDeadBlockModel(final PlacedBlockModel placedBlock, final BlockDefinitionModel definition, final World world) {
+        if (!usesRealBlockModel(definition)) {
+            return;
+        }
+        if (!hasDeadBlockModel(definition)) {
+            // No dead state configured — clear the block as before
+            clearRealBlockModel(placedBlock, definition, world);
+            return;
+        }
+
+        // Place the dead block at the ORIGIN position (same as where the dead hologram is shown),
+        // so it appears centered even when randomLocation has moved the block away from origin.
+        final Location loc = new Location(world, placedBlock.originX(), placedBlock.originY(), placedBlock.originZ());
+
+        if (definition.itemsAdderDeadBlockId() != null) {
+            try {
+                me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.placeBlock(loc, definition.itemsAdderDeadBlockId());
+            } catch (final Throwable ignored) {
+            }
+            scheduleChunkRefresh(world, loc);
+            return;
+        }
+
+        if (definition.craftEngineDeadBlockId() != null) {
+            try {
+                me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.placeBlock(loc, definition.craftEngineDeadBlockId());
+            } catch (final Throwable ignored) {
+            }
+            scheduleChunkRefresh(world, loc);
+            return;
+        }
+
+        // Vanilla dead block material
+        if (definition.realDeadBlockMaterial() != null) {
+            showFakeBlockAndRegister(placedBlock, world, loc, definition.realDeadBlockMaterial());
+        }
+    }
+
+    /**
+     * Check whether a block definition has a dead-state block model configured.
+     */
+    public boolean hasDeadBlockModel(final BlockDefinitionModel definition) {
+        if (definition == null) return false;
+        if (!usesRealBlockModel(definition)) return false;
+        if (definition.realDeadBlockMaterial() != null) return true;
+        if (definition.itemsAdderDeadBlockId() != null) return true;
+        if (definition.craftEngineDeadBlockId() != null) return true;
+        return false;
     }
 
     private void saveOriginalMaterial(final UUID blockUniqueId, final Location location) {
@@ -273,7 +320,65 @@ public final class BlockVisualSyncService {
         return new Location(world, block.x(), block.y(), block.z());
     }
 
+    private Location originBaseLocation(final PlacedBlockModel block) {
+        final World world = this.plugin.getServer().getWorld(block.world());
+        return new Location(world, block.originX(), block.originY(), block.originZ());
+    }
+
     private int breakAnimationEntityId(final PlacedBlockModel block) {
         return Math.abs(block.uniqueId().hashCode());
+    }
+
+    /**
+     * Show a fake block and register it in the FakeBlockRegistry.
+     */
+    private void showFakeBlockAndRegister(
+        final PlacedBlockModel placedBlock,
+        final World world,
+        final Location loc,
+        final Material material
+    ) {
+        this.nmsAdapter.showFakeBlock(world, loc, material);
+        // Use the loc coordinates (not placedBlock.x/y/z) so the FakeBlockRegistry
+        // entry matches where the fake block was actually shown. This is critical
+        // when the dead block is placed at the origin vs the block's current position.
+        try {
+            final int bx = loc.getBlockX();
+            final int by = loc.getBlockY();
+            final int bz = loc.getBlockZ();
+            me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.add(world.getName(), bx, by, bz, material.name());
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }
+        try {
+            this.plugin.scheduler().runAtLocationLater(loc, () -> {
+                try {
+                    this.nmsAdapter.showFakeBlock(world, loc, material);
+                } catch (final Exception e) {
+                    MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+                }
+            }, 1L);
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Schedule a delayed chunk refresh after placing an ItemsAdder/CraftEngine block.
+     */
+    private void scheduleChunkRefresh(final World world, final Location loc) {
+        try {
+            final int cx = (int) Math.floor(loc.getBlockX()) >> 4;
+            final int cz = (int) Math.floor(loc.getBlockZ()) >> 4;
+            this.plugin.scheduler().runAtLocationLater(loc, () -> {
+                try {
+                    world.refreshChunk(cx, cz);
+                } catch (final Exception e) {
+                    MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+                }
+            }, 1L);
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }
     }
 }

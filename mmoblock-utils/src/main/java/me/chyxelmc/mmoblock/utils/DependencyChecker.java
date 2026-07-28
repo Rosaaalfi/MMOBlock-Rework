@@ -27,6 +27,7 @@ import java.util.Map;
  *   <li>CraftEngine</li>
  *   <li>ModelEngine</li>
  *   <li>BetterModel</li>
+ *   <li>Minepacks</li>
  * </ul>
  * </p>
  */
@@ -39,6 +40,7 @@ public final class DependencyChecker {
     private static boolean craftEngine;
     private static boolean modelEngine;
     private static boolean betterModel;
+    private static boolean minepacks;
 
     private static boolean initialized;
 
@@ -69,6 +71,7 @@ public final class DependencyChecker {
         craftEngine = pm.isPluginEnabled("CraftEngine");
         modelEngine = pm.isPluginEnabled("ModelEngine");
         betterModel = pm.isPluginEnabled("BetterModel");
+        minepacks = pm.isPluginEnabled("Minepacks");
 
         initialized = true;
 
@@ -104,6 +107,10 @@ public final class DependencyChecker {
         return betterModel;
     }
 
+    public static boolean isMinepacksAvailable() {
+        return minepacks;
+    }
+
     /**
      * @return {@code true} if the dependency check has been run at least once
      */
@@ -136,6 +143,65 @@ public final class DependencyChecker {
     }
 
     /**
+     * Called by {@link org.bukkit.event.server.PluginEnableEvent} listener when a
+     * soft dependency enables after MMOBlock's initial startup check.
+     * <p>
+     * Updates the cached flag for the given plugin and logs the change so the
+     * console reflects the correct state without requiring a server restart.
+     * </p>
+     *
+     * @param pluginName the name of the plugin that just enabled
+     */
+    public static void notifyPluginEnabled(final String pluginName) {
+        if (pluginName == null || pluginName.isEmpty()) return;
+
+        switch (pluginName) {
+            case "MMOCore" -> {
+                if (!mmoCore) {
+                    mmoCore = true;
+                    MMOBlockLogger.info("integration.found", "MMOCore detected and integration enabled.", java.util.Map.of("{name}", "MMOCore"));
+                }
+            }
+            case "MMOItems" -> {
+                if (!mmoItems) {
+                    mmoItems = true;
+                    MMOBlockLogger.info("integration.found", "MMOItems detected and integration enabled.", java.util.Map.of("{name}", "MMOItems"));
+                }
+            }
+            case "ItemsAdder" -> {
+                if (!itemsAdder) {
+                    itemsAdder = true;
+                    MMOBlockLogger.info("integration.found", "ItemsAdder detected and integration enabled.", java.util.Map.of("{name}", "ItemsAdder"));
+                }
+            }
+            case "CraftEngine" -> {
+                if (!craftEngine) {
+                    craftEngine = true;
+                    MMOBlockLogger.info("integration.found", "CraftEngine detected and integration enabled.", java.util.Map.of("{name}", "CraftEngine"));
+                }
+            }
+            case "ModelEngine" -> {
+                if (!modelEngine) {
+                    modelEngine = true;
+                    MMOBlockLogger.info("integration.found", "ModelEngine detected and integration enabled.", java.util.Map.of("{name}", "ModelEngine"));
+                }
+            }
+            case "BetterModel" -> {
+                if (!betterModel) {
+                    betterModel = true;
+                    MMOBlockLogger.info("integration.found", "BetterModel detected and integration enabled.", java.util.Map.of("{name}", "BetterModel"));
+                }
+            }
+            case "Minepacks" -> {
+                if (!minepacks) {
+                    minepacks = true;
+                    MMOBlockLogger.info("integration.found", "Minepacks detected and integration enabled.", java.util.Map.of("{name}", "Minepacks"));
+                }
+            }
+        }
+    }
+
+    /**
      * Force re-check on next call. Useful for testing or plugin reload scenarios.
      */
     public static void reset() {
@@ -146,5 +212,6 @@ public final class DependencyChecker {
         craftEngine = false;
         modelEngine = false;
         betterModel = false;
+        minepacks = false;
     }
 }

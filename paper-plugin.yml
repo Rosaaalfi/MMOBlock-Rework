@@ -1,6 +1,6 @@
 name: MMOBlock
 prefix: "Chyxel"
-version: '${version}'
+version: '26.7.28-01'
 authors:
   - Aniko
 website: chyxelmc.me
@@ -43,9 +43,6 @@ dependencies:
     load: BEFORE
     required: false
   - name: MMOCore
-    load: BEFORE
-    required: false
-  - name: Minepacks
     load: BEFORE
     required: false
 

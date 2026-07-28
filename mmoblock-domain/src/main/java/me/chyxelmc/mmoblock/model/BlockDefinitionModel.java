@@ -144,7 +144,12 @@ public record BlockDefinitionModel(
     // itemsadder
     String itemsAdderBlockId,
     // craftengine
-    String craftEngineBlockId
+    String craftEngineBlockId,
+    // dead block model
+    String deadBlockType,
+    Material realDeadBlockMaterial,
+    String itemsAdderDeadBlockId,
+    String craftEngineDeadBlockId
 ) implements me.chyxelmc.mmoblock.api.model.BlockDefinition {
 
     // ---- Supplementary inner types merged from former Impl files ----

@@ -17,6 +17,7 @@ craftEngine= "26.7"
 mmoitems= "6.10.1-SNAPSHOT"
 mythiclib= "1.7.1-SNAPSHOT"
 mmocore= "1.13.1-SNAPSHOT"
+mythiccrucible= "5.13.0-SNAPSHOT"
 
 # Obfuscation
 proguard = "7.9.1"
@@ -40,6 +41,8 @@ craftEngineCoreApi= { module= "net.momirealms:craft-engine-core", version.ref = 
 mmoitemsApi= { module= "net.Indyuce:MMOItems-API", version.ref = "mmoitems" }
 mythiclibApi= { module= "io.lumine:MythicLib-dist", version.ref = "mythiclib" }
 mmocoreApi= { module= "net.Indyuce:MMOCore-API", version.ref = "mmocore" }
+mythiccrucibleApi= { module= "io.lumine:MythicCrucible-API", version.ref = "mythiccrucible" }
+
 [plugins]
 run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-task" }
 run-shadow = { id = "com.gradleup.shadow", version.ref = "shadow"}

@@ -63,10 +63,13 @@ commands:
     get:
       usage: "&eИспользование: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c[MMOBlock] Блок не активен."
-  too_fast: "&c[MMOBlock] Немного помедленнее."
-  config_missing: "&c[MMOBlock] Конфигурация блока отсутствует."
-  broken: "&a[MMOBlock] Блок сломан. Возрождение через {respawn}с"
+  not_active: "&cБлок не активен."
+  too_fast: "&cНемного помедленнее."
+  too_fast_subtitle: "&eПожалуйста, подождите немного"
+  tool_not_allowed: "&cИнструмент не подходит для этого блока."
+  tool_not_allowed_subtitle: "&eИспользуйте подходящий инструмент"
+  config_missing: "&cКонфигурация блока отсутствует."
+  broken: "&aБлок сломан. Возрождение через {respawn}с"
 
   block:
     not_found: "&cБлок не найден: {token}"

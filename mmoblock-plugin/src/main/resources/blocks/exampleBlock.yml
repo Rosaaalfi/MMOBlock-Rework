@@ -27,6 +27,9 @@ exampleBlock:
       enabled: true
       type: vanilla # type of block, support vanilla, craftengine, itemsadder
       material: minecraft:diamond_ore # <namespace>:<block_id> from CraftEngine
+      dead:
+        type: vanilla # type of block, support vanilla, craftengine, itemsadder
+        material: minecraft:bedrock # <namespace>:<block_id> from CraftEngine, <namespace>:<block_id> from ItemsAdder.
     bdengine:
       enabled: false # Enable BDEngine for this entity. If false.
       model: iron_ore # get model from models dir

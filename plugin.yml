@@ -1,5 +1,5 @@
 name: MMOBlock
-version: '${version}'
+version: '26.7.28-01'
 main: me.chyxelmc.mmoblock.MMOBlock
 author: Aniko
 website: chyxelmc.me
@@ -18,7 +18,6 @@ softdepend:
   - CraftEngine
   - MMOItems
   - MMOCore
-  - Minepacks
 
 permissions:
   mmoblock.admin:

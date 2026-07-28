@@ -63,10 +63,13 @@ commands:
     get:
       usage: "&ePag Gamit: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c[MMOBlock] Ang block ay hindi aktibo."
-  too_fast: "&c[MMOBlock] Medyo mabagal lang."
-  config_missing: "&c[MMOBlock] Nawawala ang config ng block."
-  broken: "&a[MMOBlock] Nasira ang block. Muling lilitaw sa {respawn}s"
+  not_active: "&cAng block ay hindi aktibo."
+  too_fast: "&c Medyo mabagal lang."
+  too_fast_subtitle: "&eMangyaring maghintay ng ilang sandali"
+  tool_not_allowed: "&cAng gamit ay hindi pinapayagan para sa block na ito."
+  tool_not_allowed_subtitle: "&eGumamit ng angkop na kasangkapan"
+  config_missing: "&c Nawawala ang config ng block."
+  broken: "&aNasira ang block. Muling lilitaw sa {respawn}s"
 
   block:
     not_found: "&cHindi natagpuan ang block: {token}"
