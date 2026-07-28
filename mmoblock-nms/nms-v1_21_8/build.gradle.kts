@@ -1,0 +1,17 @@
+plugins {
+    `java-library`
+    id("io.papermc.paperweight.userdev")
+}
+
+dependencies {
+    api(project(":nms-common"))
+    paperweight.paperDevBundle("1.21.8-R0.1-SNAPSHOT")
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+}
+
+paperweight {
+    reobfArtifactConfiguration = io.papermc.paperweight.userdev.ReobfArtifactConfiguration.MOJANG_PRODUCTION
+}

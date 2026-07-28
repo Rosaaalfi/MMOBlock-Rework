@@ -1,0 +1,136 @@
+debug:
+  load: "&e[MMOBlock] &7Режим отладки включён."
+
+logger:
+  debug_enabled: "&e[MMOBlock] Режим отладки включён"
+  debug_disabled: "&e[MMOBlock] Режим отладки выключен"
+
+integration:
+  found: "{name} найден - интеграция включена"
+  not_found: "{name} не установлен или не включён."
+  lang:
+    load_failed: "&eНе удалось загрузить языковой файл '{file}': {reason}"
+    fallback_missing: "&eЯзыковой файл по умолчанию 'en-us.yml' не найден! Перевод может быть неполным."
+
+update:
+  new_version: "Доступна новая версия: {latest} (текущая: {current}). Скачать: {url}"
+  latest: "У вас установлена последняя версия ({version})."
+  newer: "У вас установлена версия новее, чем в репозитории ({current} > {latest})."
+
+targeted_store:
+  purchase_verified: "[Chyxel] Покупка подтверждена! Спасибо {buyer} за поддержку MMOBlock."
+  leaker: "[Chyxel] ЛИЦЕНЗИЯ ОТОЗВАНА — ОБНАРУЖЕН ВЗЛОМЩИК! Плагин отключается."
+
+commands:
+  usage:
+    block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&cНеизвестная подкоманда: {subcommand}"
+  world_not_found: "&cМир не найден: {world}"
+  player_only: "&cКоманда только для игроков."
+  world_required: "&cМир обязателен при использовании из консоли."
+  invalid_facing: "&cНеверное направление: {facing} (используйте north, south, east, west)"
+  invalid_coordinate: "&cНеверная {name}: {value}"
+  node_runtime_unavailable: "&cСреда выполнения узлов недоступна."
+  place:
+    usage: "&eИспользование: /mmoblock block place <blockId> x y z [world] [facing]"
+    invalid_facing: "&cНеверное направление: {facing} (используйте north, south, east, west)"
+    failed: "&cНе удалось разместить блок: {reason}"
+    success: "&aРазмещён {id} в {world} {x} {y} {z}"
+  remove:
+    usage: "&eИспользование: /mmoblock block remove <blockId> x y z [world]"
+    not_found: "&cБлок не найден в этом месте."
+    success: "&aУдалён {id} из {world} {x} {y} {z}"
+  reload:
+    all: "&aПерезагружены config, blocks, drops, lang, tools и nodes."
+    config: "&aПерезагружен config.yml"
+    lang: "&aПерезагружено {lang_files} языковых файлов и {i18n_files} записей перевода."
+  node:
+    usage: "&eИспользование: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    place:
+      usage: "&eИспользование: /mmoblock node place <nodeId> x y z [world] [facing]"
+    remove:
+      usage: "&eИспользование: /mmoblock node remove <nodeId> x y z [world]"
+    get:
+      usage: "&eИспользование: /mmoblock node get <nodeId|remover>"
+  block:
+    usage: "&eИспользование: /mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    place:
+      usage: "&eИспользование: /mmoblock block place <blockId> x y z [world] [facing]"
+    remove:
+      usage: "&eИспользование: /mmoblock block remove <blockId> x y z [world]"
+    get:
+      usage: "&eИспользование: /mmoblock block get <blockId|remover>"
+blocks:
+  not_active: "&c[MMOBlock] Блок не активен."
+  too_fast: "&c[MMOBlock] Немного помедленнее."
+  config_missing: "&c[MMOBlock] Конфигурация блока отсутствует."
+  broken: "&a[MMOBlock] Блок сломан. Возрождение через {respawn}с"
+
+  block:
+    not_found: "&cБлок не найден: {token}"
+    no_item: "&cПредмет блока не настроен для: {token}"
+    list_header: "&eСписок блоков:"
+    list_empty: "&eНет размещённых блоков."
+  node:
+    not_found: "&cУзел не найден: {token}"
+    no_item: "&cПредмет узла не настроен для: {token}"
+    list_header: "&eСписок узлов:"
+    list_empty: "&eНет размещённых узлов."
+  nodes:
+    place:
+      failed: "&cНе удалось разместить узел: {reason}"
+      success: "&aРазмещён узел {id} в {world} {x} {y} {z}"
+    remove:
+      not_found: "&cУзел не найден в этом месте."
+      success: "&aУдалён узел {id} из {world} {x} {y} {z}"
+  debug:
+    usage: "&eОтладочные команды:"
+    extracting: "&7Извлечение стандартных ресурсов..."
+    extracted: "&aСтандартные ресурсы успешно извлечены. Выполните &7/mmoblock reload&a для применения."
+    placeholder_usage: "&eИспользование: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&cКонсоль должна указать имя игрока."
+    player_not_found: "&cИгрок не найден: {player}"
+    mass_spawn_usage: "&cИспользование: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&cКоличество должно быть от 1 до 10000."
+    count_range_1000: "&cКоличество должно быть от 1 до 1000."
+    invalid_count: "&cНеверное количество: {count}"
+    no_world: "&cНе удалось определить ваш мир."
+    no_blocks: "&cНе настроено ни одного типа блоков."
+    db_stress_usage: "&cИспользование: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== MMOBlock Stress Info ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7Память: &e{used}&7/&e{max} &7MB (&e{free} &7MB свободно)"
+      blocks: "&7Размещённых блоков: &e{count}"
+      nodes: "&7Размещённых узлов: &e{count}"
+      types: "&7Зарегистрированных типов блоков: &e{count}"
+    chunk_stress:
+      start: "&eЗапуск стресс-теста чанков... &7{count} чанков в радиусе &e{radius}&7 чанков."
+      spiral: "&7Вы будете телепортированы по спирали."
+      complete: "&aСтресс-тест чанков завершён! &7Посещено &e{count} &7чанков."
+      timeout: "&eСтресс-тест чанков прерван по тайм-ауту."
+
+block_config:
+  example_bdengine_name: "&6Пример BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Требуется 10 уровень</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Требуется 10 уровень</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&cВы слишком слабы, чтобы добывать этот блок!"
+  example_bdengine_sendsubtitle_condition_1: "&7Вам нужен как минимум 10 уровень, чтобы добывать этот блок."
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>Пример BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>Добыча......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>Нажмите, чтобы добыть!</anim>"
+  example_bdengine_display_dead_line_4: "&7Возрождение через: &c{respawn_time}с"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &rАлмазов"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &aАктивен"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}с"
+  example_node_display_line_2: "<anim:wave:&1;&b>Равнинные узлы:</anim>"

@@ -1,0 +1,136 @@
+debug:
+  load: "&e[MMOBlock] &7Mod nyahpepijat telah diaktifkan."
+
+logger:
+  debug_enabled: "&e[MMOBlock] Mod nyahpepijat diaktifkan"
+  debug_disabled: "&e[MMOBlock] Mod nyahpepijat dilumpuhkan"
+
+integration:
+  found: "{name} ditemui - integrasi diaktifkan"
+  not_found: "{name} tidak dipasang atau tidak diaktifkan."
+  lang:
+    load_failed: "&eGagal memuatkan fail bahasa '{file}': {reason}"
+    fallback_missing: "&eFail bahasa sandaran 'en-us.yml' tidak ditemui! Terjemahan mungkin tidak lengkap."
+
+update:
+  new_version: "Versi baharu tersedia: {latest} (semasa: {current}). Muat turun di {url}"
+  latest: "Anda sedang menggunakan versi terkini ({version})."
+  newer: "Anda sedang menggunakan versi yang lebih baharu daripada repositori ({current} > {latest})."
+
+targeted_store:
+  purchase_verified: "[Chyxel] Pembelian disahkan! Terima kasih {buyer} kerana menyokong MMOBlock."
+  leaker: "[Chyxel] LESEN DIBATALKAN — PENGEPONG DIKESAN! Melumpuhkan plugin."
+
+commands:
+  usage:
+    block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&cSubcommand tidak diketahui: {subcommand}"
+  world_not_found: "&cDunia tidak ditemui: {world}"
+  player_only: "&cPerintah pemain sahaja."
+  world_required: "&cDunia diperlukan untuk penggunaan konsol."
+  invalid_facing: "&cArah tidak sah: {facing} (guna north, south, east, west)"
+  invalid_coordinate: "&c{name} tidak sah: {value}"
+  node_runtime_unavailable: "&cRuntime nod tidak tersedia."
+  place:
+    usage: "&ePenggunaan: /mmoblock block place <blockId> x y z [world] [facing]"
+    invalid_facing: "&cArah tidak sah: {facing} (guna north, south, east, west)"
+    failed: "&cGagal meletakkan blok: {reason}"
+    success: "&a{id} diletakkan di {world} {x} {y} {z}"
+  remove:
+    usage: "&ePenggunaan: /mmoblock block remove <blockId> x y z [world]"
+    not_found: "&cBlok tidak ditemui di lokasi tersebut."
+    success: "&a{id} dialihkan dari {world} {x} {y} {z}"
+  reload:
+    all: "&aConfig, blocks, drops, lang, tools, dan nodes telah dimuat semula."
+    config: "&aconfig.yml telah dimuat semula"
+    lang: "&a{lang_files} fail bahasa dan {i18n_files} entri terjemahan telah dimuat semula."
+  node:
+    usage: "&ePenggunaan: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    place:
+      usage: "&ePenggunaan: /mmoblock node place <nodeId> x y z [world] [facing]"
+    remove:
+      usage: "&ePenggunaan: /mmoblock node remove <nodeId> x y z [world]"
+    get:
+      usage: "&ePenggunaan: /mmoblock node get <nodeId|remover>"
+  block:
+    usage: "&ePenggunaan: /mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    place:
+      usage: "&ePenggunaan: /mmoblock block place <blockId> x y z [world] [facing]"
+    remove:
+      usage: "&ePenggunaan: /mmoblock block remove <blockId> x y z [world]"
+    get:
+      usage: "&ePenggunaan: /mmoblock block get <blockId|remover>"
+blocks:
+  not_active: "&c[MMOBlock] Blok tidak aktif."
+  too_fast: "&c[MMOBlock] Perlahan sedikit."
+  config_missing: "&c[MMOBlock] Konfigurasi blok tiada."
+  broken: "&a[MMOBlock] Blok dipecahkan. Menjana semula dalam {respawn}s"
+
+  block:
+    not_found: "&cBlok tidak ditemui: {token}"
+    no_item: "&cItem blok tidak dikonfigurasi untuk: {token}"
+    list_header: "&eSenarai Blok:"
+    list_empty: "&eTiada blok diletakkan."
+  node:
+    not_found: "&cNod tidak ditemui: {token}"
+    no_item: "&cItem nod tidak dikonfigurasi untuk: {token}"
+    list_header: "&eSenarai Nod:"
+    list_empty: "&eTiada nod diletakkan."
+  nodes:
+    place:
+      failed: "&cGagal meletakkan nod: {reason}"
+      success: "&aNod {id} diletakkan di {world} {x} {y} {z}"
+    remove:
+      not_found: "&cNod tidak ditemui di lokasi tersebut."
+      success: "&aNod {id} dialihkan dari {world} {x} {y} {z}"
+  debug:
+    usage: "&ePerintah Nyahpepijat:"
+    extracting: "&7Mengekstrak aset lalai..."
+    extracted: "&aAset lalai berjaya diekstrak. Jalankan &7/mmoblock reload&a untuk menggunakan."
+    placeholder_usage: "&ePenggunaan: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&cKonsol mesti menentukan nama pemain."
+    player_not_found: "&cPemain tidak ditemui: {player}"
+    mass_spawn_usage: "&cPenggunaan: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&cKiraan mesti antara 1 dan 10000."
+    count_range_1000: "&cKiraan mesti antara 1 dan 1000."
+    invalid_count: "&cKiraan tidak sah: {count}"
+    no_world: "&cTidak dapat menentukan dunia anda."
+    no_blocks: "&cTiada jenis blok dikonfigurasi."
+    db_stress_usage: "&cPenggunaan: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== MMOBlock Maklumat Stress ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7Memori: &e{used}&7/&e{max} &7MB (&e{free} &7MB percuma)"
+      blocks: "&7Blok Diletakkan: &e{count}"
+      nodes: "&7Nod Diletakkan: &e{count}"
+      types: "&7Jenis Blok Berdaftar: &e{count}"
+    chunk_stress:
+      start: "&eMemulakan ujian tekanan chunk... &7{count} chunk dalam jejari &e{radius}&7 chunk."
+      spiral: "&7Anda akan diteleport dalam corak lingkaran."
+      complete: "&aUjian tekanan chunk selesai! &7Melawat &e{count} &7chunk."
+      timeout: "&eUjian tekanan chunk tamat masa."
+
+block_config:
+  example_bdengine_name: "&6Contoh BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Perlukan Level 10</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Perlukan Level 10</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&cAnda terlalu lemah untuk melombong blok ini!"
+  example_bdengine_sendsubtitle_condition_1: "&7Anda perlukan sekurang-kurangnya level 10 untuk melombong blok ini."
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>Contoh BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>Melombong......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>Klik untuk Melombong!</anim>"
+  example_bdengine_display_dead_line_4: "&7Penjanaan semula dalam: &c{respawn_time}s"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &rBerlian"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &aAktif"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}s"
+  example_node_display_line_2: "<anim:wave:&1;&b>Nod Dataran:</anim>"

@@ -1,0 +1,136 @@
+debug:
+  load: "&e[MMOBlock] &7Chế độ gỡ lỗi đã được bật."
+
+logger:
+  debug_enabled: "&e[MMOBlock] Đã bật chế độ gỡ lỗi"
+  debug_disabled: "&e[MMOBlock] Đã tắt chế độ gỡ lỗi"
+
+integration:
+  found: "{name} được tìm thấy - tích hợp đã được bật"
+  not_found: "{name} chưa được cài đặt hoặc chưa được bật."
+  lang:
+    load_failed: "&eKhông thể tải tệp ngôn ngữ '{file}': {reason}"
+    fallback_missing: "&eTệp ngôn ngữ dự phòng 'en-us.yml' không được tìm thấy! Bản dịch có thể không đầy đủ."
+
+update:
+  new_version: "Đã có phiên bản mới: {latest} (hiện tại: {current}). Tải tại {url}"
+  latest: "Bạn đang chạy phiên bản mới nhất ({version})."
+  newer: "Bạn đang chạy phiên bản mới hơn kho lưu trữ ({current} > {latest})."
+
+targeted_store:
+  purchase_verified: "[Chyxel] Giao dịch đã được xác nhận! Cảm ơn {buyer} đã ủng hộ MMOBlock."
+  leaker: "[Chyxel] GIẤY PHÉP ĐÃ BỊ THU HỒI — PHÁT HIỆN KẺ RÒ RỈ! Đang tắt plugin."
+
+commands:
+  usage:
+    block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&cLệnh con không xác định: {subcommand}"
+  world_not_found: "&cKhông tìm thấy thế giới: {world}"
+  player_only: "&cChỉ người chơi mới có thể sử dụng lệnh này."
+  world_required: "&cCần chỉ định thế giới khi sử dụng từ console."
+  invalid_facing: "&cHướng không hợp lệ: {facing} (sử dụng north, south, east, west)"
+  invalid_coordinate: "&c{name} không hợp lệ: {value}"
+  node_runtime_unavailable: "&cKhông có môi trường chạy nút."
+  place:
+    usage: "&eCách dùng: /mmoblock block place <blockId> x y z [world] [facing]"
+    invalid_facing: "&cHướng không hợp lệ: {facing} (sử dụng north, south, east, west)"
+    failed: "&cKhông thể đặt khối: {reason}"
+    success: "&aĐã đặt {id} tại {world} {x} {y} {z}"
+  remove:
+    usage: "&eCách dùng: /mmoblock block remove <blockId> x y z [world]"
+    not_found: "&cKhông tìm thấy khối tại vị trí đó."
+    success: "&aĐã xoá {id} tại {world} {x} {y} {z}"
+  reload:
+    all: "&aĐã tải lại config, blocks, drops, lang, tools và nodes."
+    config: "&aĐã tải lại config.yml"
+    lang: "&aĐã tải lại {lang_files} tệp ngôn ngữ và {i18n_files} mục dịch thuật."
+  node:
+    usage: "&eCách dùng: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    place:
+      usage: "&eCách dùng: /mmoblock node place <nodeId> x y z [world] [facing]"
+    remove:
+      usage: "&eCách dùng: /mmoblock node remove <nodeId> x y z [world]"
+    get:
+      usage: "&eCách dùng: /mmoblock node get <nodeId|remover>"
+  block:
+    usage: "&eCách dùng: /mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    place:
+      usage: "&eCách dùng: /mmoblock block place <blockId> x y z [world] [facing]"
+    remove:
+      usage: "&eCách dùng: /mmoblock block remove <blockId> x y z [world]"
+    get:
+      usage: "&eCách dùng: /mmoblock block get <blockId|remover>"
+blocks:
+  not_active: "&c[MMOBlock] Khối không hoạt động."
+  too_fast: "&c[MMOBlock] Hãy chậm lại một chút."
+  config_missing: "&c[MMOBlock] Thiếu cấu hình khối."
+  broken: "&a[MMOBlock] Khối đã bị phá. Hồi sinh sau {respawn}s"
+
+  block:
+    not_found: "&cKhông tìm thấy khối: {token}"
+    no_item: "&cVật phẩm khối chưa được cấu hình cho: {token}"
+    list_header: "&eDanh sách khối:"
+    list_empty: "&eChưa có khối nào được đặt."
+  node:
+    not_found: "&cKhông tìm thấy nút: {token}"
+    no_item: "&cVật phẩm nút chưa được cấu hình cho: {token}"
+    list_header: "&eDanh sách nút:"
+    list_empty: "&eChưa có nút nào được đặt."
+  nodes:
+    place:
+      failed: "&cKhông thể đặt nút: {reason}"
+      success: "&aĐã đặt nút {id} tại {world} {x} {y} {z}"
+    remove:
+      not_found: "&cKhông tìm thấy nút tại vị trí đó."
+      success: "&aĐã xoá nút {id} tại {world} {x} {y} {z}"
+  debug:
+    usage: "&eLệnh gỡ lỗi:"
+    extracting: "&7Đang giải nén tài nguyên mặc định..."
+    extracted: "&aĐã giải nén tài nguyên thành công. Chạy &7/mmoblock reload&a để áp dụng."
+    placeholder_usage: "&eCách dùng: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&cConsole phải chỉ định tên người chơi."
+    player_not_found: "&cKhông tìm thấy người chơi: {player}"
+    mass_spawn_usage: "&cCách dùng: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&cSố lượng phải từ 1 đến 10000."
+    count_range_1000: "&cSố lượng phải từ 1 đến 1000."
+    invalid_count: "&cSố lượng không hợp lệ: {count}"
+    no_world: "&cKhông thể xác định thế giới của bạn."
+    no_blocks: "&cChưa có loại khối nào được cấu hình."
+    db_stress_usage: "&cCách dùng: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== MMOBlock Stress Info ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7Bộ nhớ: &e{used}&7/&e{max} &7MB (&e{free} &7MB trống)"
+      blocks: "&7Khối đã đặt: &e{count}"
+      nodes: "&7Nút đã đặt: &e{count}"
+      types: "&7Loại khối đã đăng ký: &e{count}"
+    chunk_stress:
+      start: "&eBắt đầu kiểm tra tải chunk... &7{count} chunk trong bán kính &e{radius}&7 chunk."
+      spiral: "&7Bạn sẽ được dịch chuyển theo hình xoắn ốc."
+      complete: "&aKiểm tra tải chunk hoàn tất! &7Đã thăm &e{count} &7chunk."
+      timeout: "&eKiểm tra tải chunk đã hết thời gian."
+
+block_config:
+  example_bdengine_name: "&6Ví dụ BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Yêu cầu Cấp 10</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Yêu cầu Cấp 10</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&cBạn quá yếu để khai thác khối này!"
+  example_bdengine_sendsubtitle_condition_1: "&7Bạn cần ít nhất cấp 10 để khai thác khối này."
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>Ví dụ BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>Đang khai thác......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>Nhấn để khai thác!</anim>"
+  example_bdengine_display_dead_line_4: "&7Hồi sinh sau: &c{respawn_time}s"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &rKim cương"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &aHoạt động"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}s"
+  example_node_display_line_2: "<anim:wave:&1;&b>Nút đồng bằng:</anim>"

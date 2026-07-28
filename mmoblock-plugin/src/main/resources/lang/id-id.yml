@@ -12,13 +12,13 @@ integration:
     load_failed: "&eGagal memuat file bahasa '{file}': {reason}"
     fallback_missing: "&eFile bahasa cadangan 'en-us.yml' tidak ditemukan! Terjemahan mungkin tidak lengkap."
 update:
-  new_version: "&aVersi baru tersedia: {latest} (saat ini: {current}). Unduh di {url}"
-  latest: "&aKamu menjalankan versi terbaru ({version})."
-  newer: "&aKamu menjalankan versi yang lebih baru dari repositori ({current} > {latest})."
+  new_version: "Versi baru tersedia: {latest} (saat ini: {current}). Unduh di {url}"
+  latest: "Kamu menjalankan versi terbaru ({version})."
+  newer: "Kamu menjalankan versi yang lebih baru dari repositori ({current} > {latest})."
 
 targeted_store:
-  purchase_verified: "&a[Chyxel] Pembelian terverifikasi! Terima kasih {buyer} telah mendukung MMOBlock."
-  leaker: "&4[Chyxel] LISENSI DICABUT — PEMBOCOR TERDETEKSI! Menonaktifkan plugin."
+  purchase_verified: "[Chyxel] Pembelian terverifikasi! Terima kasih {buyer} telah mendukung MMOBlock."
+  leaker: "[Chyxel] LISENSI DICABUT — PEMBOCOR TERDETEKSI! Menonaktifkan plugin."
 
 commands:
   usage:
@@ -65,8 +65,6 @@ blocks:
   not_active: "&c[MMOBlock] Block belum aktif."
   too_fast: "&c[MMOBlock] Terlalu cepat, tunggu sebentar."
   config_missing: "&c[MMOBlock] Konfigurasi block tidak ditemukan."
-  tool_not_allowed: "&c[MMOBlock] Tool tidak diizinkan untuk block ini."
-  mining_progress: "&e[MMOBlock] Progress mining: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] Block hancur. Respawn dalam {respawn} detik"
 
   block:

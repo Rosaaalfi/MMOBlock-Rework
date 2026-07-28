@@ -37,6 +37,7 @@ dependencies {
     runtimeOnly(project(":nms-common"))
     implementation(project(":nms-v1_21_1"))
     implementation(project(":nms-v1_21_4"))
+    implementation(project(":nms-v1_21_8"))
     implementation(project(":nms-v1_21_11"))
     implementation(project(":nms-v26_1"))
     implementation(project(":nms-v26_2"))
@@ -143,7 +144,7 @@ val obfuscatedJar by tasks.registering(JavaExec::class) {
 
     // Collect all NMS module server dev bundle jars as library jars
     val nmsProjects = listOf(
-        ":nms-v1_21_1", ":nms-v1_21_4", ":nms-v1_21_11",
+        ":nms-v1_21_1", ":nms-v1_21_4", ":nms-v1_21_8", ":nms-v1_21_11",
         ":nms-v26_1", ":nms-v26_2",
         ":nms-mojang-v1_19_4", ":nms-mojang-v1_20_4",
         ":nms-spigot-v1_19_4", ":nms-spigot-v1_20_4"

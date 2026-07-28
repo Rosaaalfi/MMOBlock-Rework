@@ -1,0 +1,136 @@
+debug:
+  load: "&e[MMOBlock] &7디버그 모드가 활성화되었습니다."
+
+logger:
+  debug_enabled: "&e[MMOBlock] 디버그 모드 활성화"
+  debug_disabled: "&e[MMOBlock] 디버그 모드 비활성화"
+
+integration:
+  found: "{name} 발견 - 통합 활성화됨"
+  not_found: "{name}이(가) 설치되지 않았거나 활성화되지 않았습니다."
+  lang:
+    load_failed: "&e언어 파일 '{file}'을(를) 불러오지 못했습니다: {reason}"
+    fallback_missing: "&e기본 언어 파일 'en-us.yml'을(를) 찾을 수 없습니다! 번역이 불완전할 수 있습니다."
+
+update:
+  new_version: "새 버전이 출시되었습니다: {latest} (현재: {current}). 다운로드: {url}"
+  latest: "최신 버전을 사용 중입니다 ({version})."
+  newer: "저장소보다 최신 버전을 사용 중입니다 ({current} > {latest})."
+
+targeted_store:
+  purchase_verified: "[Chyxel] 구매가 확인되었습니다! MMOBlock을 지원해 주셔서 감사합니다 {buyer}님."
+  leaker: "[Chyxel] 라이선스가 취소되었습니다 — 유출자 발견! 플러그인을 비활성화합니다."
+
+commands:
+  usage:
+    block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&c알 수 없는 하위 명령어: {subcommand}"
+  world_not_found: "&c월드를 찾을 수 없음: {world}"
+  player_only: "&c플레이어 전용 명령어입니다."
+  world_required: "&c콘솔 사용 시 월드를 지정해야 합니다."
+  invalid_facing: "&c잘못된 방향: {facing} (north, south, east, west 사용)"
+  invalid_coordinate: "&c잘못된 {name}: {value}"
+  node_runtime_unavailable: "&c노드 런타임을 사용할 수 없습니다."
+  place:
+    usage: "&e사용법: /mmoblock block place <blockId> x y z [world] [facing]"
+    invalid_facing: "&c잘못된 방향: {facing} (north, south, east, west 사용)"
+    failed: "&c블록을 배치하지 못했습니다: {reason}"
+    success: "&a{world} {x} {y} {z}에 {id}을(를) 배치했습니다"
+  remove:
+    usage: "&e사용법: /mmoblock block remove <blockId> x y z [world]"
+    not_found: "&c해당 위치에서 블록을 찾을 수 없습니다."
+    success: "&a{world} {x} {y} {z}에서 {id}을(를) 제거했습니다"
+  reload:
+    all: "&aconfig, blocks, drops, lang, tools 및 nodes를 다시 불러왔습니다."
+    config: "&aconfig.yml을 다시 불러왔습니다"
+    lang: "&a{lang_files}개의 언어 파일과 {i18n_files}개의 번역 항목을 다시 불러왔습니다."
+  node:
+    usage: "&e사용법: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    place:
+      usage: "&e사용법: /mmoblock node place <nodeId> x y z [world] [facing]"
+    remove:
+      usage: "&e사용법: /mmoblock node remove <nodeId> x y z [world]"
+    get:
+      usage: "&e사용법: /mmoblock node get <nodeId|remover>"
+  block:
+    usage: "&e사용법: /mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    place:
+      usage: "&e사용법: /mmoblock block place <blockId> x y z [world] [facing]"
+    remove:
+      usage: "&e사용법: /mmoblock block remove <blockId> x y z [world]"
+    get:
+      usage: "&e사용법: /mmoblock block get <blockId|remover>"
+blocks:
+  not_active: "&c[MMOBlock] 블록이 활성화되지 않았습니다."
+  too_fast: "&c[MMOBlock] 너무 빠릅니다."
+  config_missing: "&c[MMOBlock] 블록 설정이 없습니다."
+  broken: "&a[MMOBlock] 블록이 파괴되었습니다. {respawn}초 후 재생성"
+
+  block:
+    not_found: "&c블록을 찾을 수 없음: {token}"
+    no_item: "&c블록 아이템이 설정되지 않음: {token}"
+    list_header: "&e블록 목록:"
+    list_empty: "&e배치된 블록이 없습니다."
+  node:
+    not_found: "&c노드를 찾을 수 없음: {token}"
+    no_item: "&c노드 아이템이 설정되지 않음: {token}"
+    list_header: "&e노드 목록:"
+    list_empty: "&e배치된 노드가 없습니다."
+  nodes:
+    place:
+      failed: "&c노드를 배치하지 못했습니다: {reason}"
+      success: "&a{id} 노드를 {world} {x} {y} {z}에 배치했습니다"
+    remove:
+      not_found: "&c해당 위치에서 노드를 찾을 수 없습니다."
+      success: "&a{id} 노드를 {world} {x} {y} {z}에서 제거했습니다"
+  debug:
+    usage: "&e디버그 명령어:"
+    extracting: "&7기본 에셋을 추출하는 중..."
+    extracted: "&a기본 에셋이 성공적으로 추출되었습니다. &7/mmoblock reload&a를 실행하여 적용하세요."
+    placeholder_usage: "&e사용법: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&c콘솔은 플레이어 이름을 지정해야 합니다."
+    player_not_found: "&c플레이어를 찾을 수 없음: {player}"
+    mass_spawn_usage: "&c사용법: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&c개수는 1에서 10000 사이여야 합니다."
+    count_range_1000: "&c개수는 1에서 1000 사이여야 합니다."
+    invalid_count: "&c잘못된 개수: {count}"
+    no_world: "&c월드를 확인할 수 없습니다."
+    no_blocks: "&c설정된 블록 유형이 없습니다."
+    db_stress_usage: "&c사용법: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== MMOBlock 스트레스 정보 ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7메모리: &e{used}&7/&e{max} &7MB (&e{free} &7MB 사용 가능)"
+      blocks: "&7배치된 블록: &e{count}"
+      nodes: "&7배치된 노드: &e{count}"
+      types: "&7등록된 블록 유형: &e{count}"
+    chunk_stress:
+      start: "&e청크 스트레스 테스트 시작... &e{radius}&7 청크 반경에 &7{count}개 청크."
+      spiral: "&7나선형 패턴으로 텔레포트됩니다."
+      complete: "&a청크 스트레스 테스트 완료! &7{count}개 청크 방문."
+      timeout: "&e청크 스트레스 테스트 시간 초과."
+
+block_config:
+  example_bdengine_name: "&6예제 BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>레벨 10 필요</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>레벨 10 필요</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&c이 블록을 채굴하기엔 너무 약합니다!"
+  example_bdengine_sendsubtitle_condition_1: "&7이 블록을 채굴하려면 최소 10레벨이 필요합니다."
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>예제 BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>채굴 중......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>클릭하여 채굴!</anim>"
+  example_bdengine_display_dead_line_4: "&7재생성까지: &c{respawn_time}초"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &r다이아몬드"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &a활성"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}초"
+  example_node_display_line_2: "<anim:wave:&1;&b>평원 노드:</anim>"

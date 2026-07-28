@@ -1,0 +1,136 @@
+debug:
+  load: "&e[MMOBlock] &7Ang debug mode ay pinagana."
+
+logger:
+  debug_enabled: "&e[MMOBlock] Debug mode ay pinagana"
+  debug_disabled: "&e[MMOBlock] Debug mode ay hindi pinagana"
+
+integration:
+  found: "{name} natagpuan - pinagana ang integrasyon"
+  not_found: "{name} ay hindi naka-install o hindi pinagana."
+  lang:
+    load_failed: "&eHindi nagawang i-load ang file ng wika '{file}': {reason}"
+    fallback_missing: "&eAng fallback na wikang 'en-us.yml' ay hindi natagpuan! Maaaring hindi kumpleto ang mga pagsasalin."
+
+update:
+  new_version: "May bagong bersyon na available: {latest} (kasalukuyan: {current}). I-download sa {url}"
+  latest: "Gumagamit ka ng pinakabagong bersyon ({version})."
+  newer: "Gumagamit ka ng mas bagong bersyon kaysa sa repository ({current} > {latest})."
+
+targeted_store:
+  purchase_verified: "[Chyxel] Nabatid ang pagbili! Salamat {buyer} sa pagsuporta sa MMOBlock."
+  leaker: "[Chyxel] BINABAWI ANG LISENSYA — NATUKOY ANG TAGALEK! Pini-pinid ang plugin."
+
+commands:
+  usage:
+    block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&cHindi kilalang subcommand: {subcommand}"
+  world_not_found: "&cHindi natagpuan ang mundo: {world}"
+  player_only: "&cPara sa manlalaro lamang ang command."
+  world_required: "&cKinakailangan ang mundo para sa paggamit ng console."
+  invalid_facing: "&cHindi wastong direksyon: {facing} (gamitin ang north, south, east, west)"
+  invalid_coordinate: "&cHindi wastong {name}: {value}"
+  node_runtime_unavailable: "&cHindi available ang node runtime."
+  place:
+    usage: "&ePag Gamit: /mmoblock block place <blockId> x y z [world] [facing]"
+    invalid_facing: "&cHindi wastong direksyon: {facing} (gamitin ang north, south, east, west)"
+    failed: "&cHindi nagawang ilagay ang block: {reason}"
+    success: "&aInilagay ang {id} sa {world} {x} {y} {z}"
+  remove:
+    usage: "&ePag Gamit: /mmoblock block remove <blockId> x y z [world]"
+    not_found: "&cWalang block na natagpuan sa lokasyong iyon."
+    success: "&aInalis ang {id} sa {world} {x} {y} {z}"
+  reload:
+    all: "&aNa-reload ang config, blocks, drops, lang, tools, at nodes."
+    config: "&aNa-reload ang config.yml"
+    lang: "&aNa-reload ang {lang_files} file ng wika at {i18n_files} entry ng pagsasalin."
+  node:
+    usage: "&ePag Gamit: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    place:
+      usage: "&ePag Gamit: /mmoblock node place <nodeId> x y z [world] [facing]"
+    remove:
+      usage: "&ePag Gamit: /mmoblock node remove <nodeId> x y z [world]"
+    get:
+      usage: "&ePag Gamit: /mmoblock node get <nodeId|remover>"
+  block:
+    usage: "&ePag Gamit: /mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    place:
+      usage: "&ePag Gamit: /mmoblock block place <blockId> x y z [world] [facing]"
+    remove:
+      usage: "&ePag Gamit: /mmoblock block remove <blockId> x y z [world]"
+    get:
+      usage: "&ePag Gamit: /mmoblock block get <blockId|remover>"
+blocks:
+  not_active: "&c[MMOBlock] Ang block ay hindi aktibo."
+  too_fast: "&c[MMOBlock] Medyo mabagal lang."
+  config_missing: "&c[MMOBlock] Nawawala ang config ng block."
+  broken: "&a[MMOBlock] Nasira ang block. Muling lilitaw sa {respawn}s"
+
+  block:
+    not_found: "&cHindi natagpuan ang block: {token}"
+    no_item: "&cAng item ng block ay hindi naka-configure para sa: {token}"
+    list_header: "&eListahan ng Block:"
+    list_empty: "&eWalang mga block na inilagay."
+  node:
+    not_found: "&cHindi natagpuan ang node: {token}"
+    no_item: "&cAng item ng node ay hindi naka-configure para sa: {token}"
+    list_header: "&eListahan ng Node:"
+    list_empty: "&eWalang mga node na inilagay."
+  nodes:
+    place:
+      failed: "&cHindi nagawang ilagay ang node: {reason}"
+      success: "&aInilagay ang node {id} sa {world} {x} {y} {z}"
+    remove:
+      not_found: "&cWalang node na natagpuan sa lokasyong iyon."
+      success: "&aInalis ang node {id} sa {world} {x} {y} {z}"
+  debug:
+    usage: "&eMga Command sa Debug:"
+    extracting: "&7Kinukuha ang mga default na asset..."
+    extracted: "&aMatagumpay na nakuha ang mga default na asset. Patakbuhin ang &7/mmoblock reload&a upang mailapat."
+    placeholder_usage: "&ePag Gamit: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&cAng console ay dapat tumukoy ng pangalan ng manlalaro."
+    player_not_found: "&cHindi natagpuan ang manlalaro: {player}"
+    mass_spawn_usage: "&cPag Gamit: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&cAng bilang ay dapat nasa pagitan ng 1 at 10000."
+    count_range_1000: "&cAng bilang ay dapat nasa pagitan ng 1 at 1000."
+    invalid_count: "&cHindi wastong bilang: {count}"
+    no_world: "&cHindi matukoy ang iyong mundo."
+    no_blocks: "&cWalang mga uri ng block na naka-configure."
+    db_stress_usage: "&cPag Gamit: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== MMOBlock Stress Info ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7Memorya: &e{used}&7/&e{max} &7MB (&e{free} &7MB libre)"
+      blocks: "&7Mga Block na Inilagay: &e{count}"
+      nodes: "&7Mga Node na Inilagay: &e{count}"
+      types: "&7Mga Uri ng Block na Naka-rehistro: &e{count}"
+    chunk_stress:
+      start: "&eSinisimulan ang stress test ng chunk... &7{count} chunk sa radius na &e{radius}&7 chunk."
+      spiral: "&7Ikaw ay teleportahin sa spiral pattern."
+      complete: "&aTapos na ang stress test ng chunk! &7Binisita ang &e{count} &7chunk."
+      timeout: "&eAng stress test ng chunk ay nag-time out."
+
+block_config:
+  example_bdengine_name: "&6Halimbawa ng BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Kailangan ng Level 10</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Kailangan ng Level 10</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&cMasyado kang mahina para minahin ang block na ito!"
+  example_bdengine_sendsubtitle_condition_1: "&7Kailangan mo ng hindi bababa sa level 10 para minahin ang block na ito."
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>Halimbawa ng BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>Nagmimina......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>I-click para Magmina!</anim>"
+  example_bdengine_display_dead_line_4: "&7Muling lilitaw sa: &c{respawn_time}s"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &rDiyamante"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &aAktibo"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}s"
+  example_node_display_line_2: "<anim:wave:&1;&b>Mga Node ng Kapatagan:</anim>"

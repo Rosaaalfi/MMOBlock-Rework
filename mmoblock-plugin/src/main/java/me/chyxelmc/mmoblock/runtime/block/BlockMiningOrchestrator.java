@@ -1,7 +1,5 @@
 package me.chyxelmc.mmoblock.runtime.block;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -109,7 +107,7 @@ public final class BlockMiningOrchestrator {
         final ItemStack item = player.getInventory().getItemInMainHand();
         final ToolAction action = this.blockConfigService.resolveToolAction(definition, item, clickType);
         if (action == null) {
-            return translate(player, "blocks.tool_not_allowed", "&cTool is not allowed for this block.");
+            return Component.empty();
         }
 
         if (isThrottled(block.uniqueId(), player.getUniqueId())) {
@@ -144,7 +142,8 @@ public final class BlockMiningOrchestrator {
         this.eventDispatcher.callMineProgress(player, block, definition, clickType, progress, action.clickNeeded());
 
         if (progress < action.clickNeeded()) {
-            return progressMessage(player, block, definition, progress, action.clickNeeded());
+            showProgressHologram(block, definition, progress, action.clickNeeded());
+            return Component.empty();
         }
 
         this.miningSystem.clearProgress(block.uniqueId(), player.getUniqueId());
@@ -163,8 +162,7 @@ public final class BlockMiningOrchestrator {
         }
     }
 
-    private Component progressMessage(
-            final Player player,
+    private void showProgressHologram(
             final PlacedBlockModel block,
             final BlockDefinitionModel definition,
             final int progress,
@@ -172,13 +170,6 @@ public final class BlockMiningOrchestrator {
     ) {
         final String progressBar = renderProgressBar(progress, needed);
         this.hologramRuntimeService.showProgress(block, definition, progressBar, progress, needed);
-        final Map<String, String> placeholders = new HashMap<>();
-        placeholders.put("{progress}", String.valueOf(progress));
-        placeholders.put("{needed}", String.valueOf(needed));
-        placeholders.put("{progress_bar}", progressBar);
-        return translate(player, "blocks.mining_progress",
-                "&e[MMOBlock] Mining progress: {progress}/{needed} &7[{progress_bar}&7]",
-                placeholders);
     }
 
     private boolean checkConditions(final BlockDefinitionModel definition, final Player player) {

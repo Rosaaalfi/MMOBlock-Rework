@@ -1204,6 +1204,12 @@ public final class BlockConfigLoader {
         extractResource("lang/ja-jp.yml", forceReplace);
         extractResource("lang/zh-cn.yml", forceReplace);
         extractResource("lang/zh-tw.yml", forceReplace);
+        extractResource("lang/ko-kr.yml", forceReplace);
+        extractResource("lang/ms-my.yml", forceReplace);
+        extractResource("lang/ru-ru.yml", forceReplace);
+        extractResource("lang/th-th.yml", forceReplace);
+        extractResource("lang/vi-vn.yml", forceReplace);
+        extractResource("lang/en-ph.yml", forceReplace);
         extractResource("nodes/exampleNodes.yml", forceReplace);
         extractResource("models/bdengine/iron_ore.bdengine", forceReplace);
         extractResource("models/bdengine/tree.bdengine", forceReplace);

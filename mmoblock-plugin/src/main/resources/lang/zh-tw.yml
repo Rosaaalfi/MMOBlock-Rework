@@ -12,13 +12,13 @@ integration:
     load_failed: "&e載入語言檔案 '{file}' 失敗: {reason}"
     fallback_missing: "&e未找到備用語言檔案 'en-us.yml'！翻譯可能不完整。"
 update:
-  new_version: "&a新版本可用: {latest} (目前: {current})。下載位置: {url}"
-  latest: "&a你正在執行最新版本 ({version})。"
-  newer: "&a你執行的版本比倉庫更新 ({current} > {latest})。"
+  new_version: "新版本可用: {latest} (目前: {current})。下載位置: {url}"
+  latest: "你正在執行最新版本 ({version})。"
+  newer: "你執行的版本比倉庫更新 ({current} > {latest})。"
 
 targeted_store:
-  purchase_verified: "&a[Chyxel] 購買已验证！感謝 {buyer} 支援 MMOBlock。"
-  leaker: "&4[Chyxel] 許可證已吊銷 — 檢測到洩漏者！正在停用插件。"
+  purchase_verified: "[Chyxel] 購買已验证！感謝 {buyer} 支援 MMOBlock。"
+  leaker: "[Chyxel] 許可證已吊銷 — 檢測到洩漏者！正在停用插件。"
 
 commands:
   usage:
@@ -65,8 +65,6 @@ blocks:
   not_active: "&c[MMOBlock] 方塊尚未激活。"
   too_fast: "&c[MMOBlock] 操作過快，請稍等。"
   config_missing: "&c[MMOBlock] 缺失方塊配置。"
-  tool_not_allowed: "&c[MMOBlock] 該工具不能用於此方塊。"
-  mining_progress: "&e[MMOBlock] 挖掘進度: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] 方塊已破壞。將在 {respawn} 秒後重生"
 
   block:

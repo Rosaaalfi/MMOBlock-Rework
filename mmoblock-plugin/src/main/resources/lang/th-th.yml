@@ -1,0 +1,136 @@
+debug:
+  load: "&e[MMOBlock] &7เปิดใช้งานโหมดดีบักแล้ว"
+
+logger:
+  debug_enabled: "&e[MMOBlock] เปิดใช้งานโหมดดีบัก"
+  debug_disabled: "&e[MMOBlock] ปิดใช้งานโหมดดีบัก"
+
+integration:
+  found: "{name} พบ - เปิดใช้งานการรวมระบบแล้ว"
+  not_found: "{name} ยังไม่ได้ติดตั้งหรือยังไม่ได้เปิดใช้งาน"
+  lang:
+    load_failed: "&eไม่สามารถโหลดไฟล์ภาษา '{file}': {reason}"
+    fallback_missing: "&eไม่พบไฟล์ภาษาสำรอง 'en-us.yml'! คำแปลอาจไม่สมบูรณ์"
+
+update:
+  new_version: "มีเวอร์ชันใหม่: {latest} (ปัจจุบัน: {current}) ดาวน์โหลดได้ที่ {url}"
+  latest: "คุณกำลังใช้เวอร์ชันล่าสุด ({version})"
+  newer: "คุณกำลังใช้เวอร์ชันที่ใหม่กว่าที่เก็บ ({current} > {latest})"
+
+targeted_store:
+  purchase_verified: "[Chyxel] ยืนยันการซื้อแล้ว! ขอบคุณ {buyer} ที่สนับสนุน MMOBlock"
+  leaker: "[Chyxel] ใบอนุญาตถูกเพิกถอน — พบผู้รั่วไหล! กำลังปิดการทำงานของปลั๊กอิน"
+
+commands:
+  usage:
+    block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
+  unknown_subcommand: "&cคำสั่งย่อยไม่รู้จัก: {subcommand}"
+  world_not_found: "&cไม่พบโลก: {world}"
+  player_only: "&cคำสั่งสำหรับผู้เล่นเท่านั้น"
+  world_required: "&cจำเป็นต้องระบุโลกเมื่อใช้จากคอนโซล"
+  invalid_facing: "&cทิศทางไม่ถูกต้อง: {facing} (ใช้ north, south, east, west)"
+  invalid_coordinate: "&c{name} ไม่ถูกต้อง: {value}"
+  node_runtime_unavailable: "&cไม่สามารถรันโหนดได้"
+  place:
+    usage: "&eวิธีใช้: /mmoblock block place <blockId> x y z [world] [facing]"
+    invalid_facing: "&cทิศทางไม่ถูกต้อง: {facing} (ใช้ north, south, east, west)"
+    failed: "&cไม่สามารถวางบล็อก: {reason}"
+    success: "&aวาง {id} ที่ {world} {x} {y} {z} แล้ว"
+  remove:
+    usage: "&eวิธีใช้: /mmoblock block remove <blockId> x y z [world]"
+    not_found: "&cไม่พบบล็อกที่ตำแหน่งนั้น"
+    success: "&aลบ {id} ที่ {world} {x} {y} {z} แล้ว"
+  reload:
+    all: "&aโหลด config, blocks, drops, lang, tools และ nodes ใหม่แล้ว"
+    config: "&aโหลด config.yml ใหม่แล้ว"
+    lang: "&aโหลดไฟล์ภาษา {lang_files} รายการและรายการแปล {i18n_files} รายการใหม่แล้ว"
+  node:
+    usage: "&eวิธีใช้: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
+    place:
+      usage: "&eวิธีใช้: /mmoblock node place <nodeId> x y z [world] [facing]"
+    remove:
+      usage: "&eวิธีใช้: /mmoblock node remove <nodeId> x y z [world]"
+    get:
+      usage: "&eวิธีใช้: /mmoblock node get <nodeId|remover>"
+  block:
+    usage: "&eวิธีใช้: /mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
+    place:
+      usage: "&eวิธีใช้: /mmoblock block place <blockId> x y z [world] [facing]"
+    remove:
+      usage: "&eวิธีใช้: /mmoblock block remove <blockId> x y z [world]"
+    get:
+      usage: "&eวิธีใช้: /mmoblock block get <blockId|remover>"
+blocks:
+  not_active: "&c[MMOBlock] บล็อกไม่ได้เปิดใช้งาน"
+  too_fast: "&c[MMOBlock] กรุณาช้าลงหน่อย"
+  config_missing: "&c[MMOBlock] ไม่มีการตั้งค่าบล็อก"
+  broken: "&a[MMOBlock] บล็อกแตกแล้ว จะเกิดใหม่ใน {respawn}วินาที"
+
+  block:
+    not_found: "&cไม่พบบล็อก: {token}"
+    no_item: "&cไม่ได้ตั้งค่าไอเท็มบล็อกสำหรับ: {token}"
+    list_header: "&eรายการบล็อก:"
+    list_empty: "&eไม่มีบล็อกที่วางไว้"
+  node:
+    not_found: "&cไม่พบโหนด: {token}"
+    no_item: "&cไม่ได้ตั้งค่าไอเท็มโหนดสำหรับ: {token}"
+    list_header: "&eรายการโหนด:"
+    list_empty: "&eไม่มีโหนดที่วางไว้"
+  nodes:
+    place:
+      failed: "&cไม่สามารถวางโหนด: {reason}"
+      success: "&aวางโหนด {id} ที่ {world} {x} {y} {z} แล้ว"
+    remove:
+      not_found: "&cไม่พบโหนดที่ตำแหน่งนั้น"
+      success: "&aลบโหนด {id} ที่ {world} {x} {y} {z} แล้ว"
+  debug:
+    usage: "&eคำสั่งดีบัก:"
+    extracting: "&7กำลังแยกทรัพยากรเริ่มต้น..."
+    extracted: "&aแยกทรัพยากรเริ่มต้นสำเร็จ รัน &7/mmoblock reload&a เพื่อนำไปใช้"
+    placeholder_usage: "&eวิธีใช้: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&cคอนโซลต้องระบุชื่อผู้เล่น"
+    player_not_found: "&cไม่พบผู้เล่น: {player}"
+    mass_spawn_usage: "&cวิธีใช้: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&cจำนวนต้องอยู่ระหว่าง 1 ถึง 10000"
+    count_range_1000: "&cจำนวนต้องอยู่ระหว่าง 1 ถึง 1000"
+    invalid_count: "&cจำนวนไม่ถูกต้อง: {count}"
+    no_world: "&cไม่สามารถระบุโลกของคุณได้"
+    no_blocks: "&cไม่ได้ตั้งค่าประเภทบล็อกใด ๆ"
+    db_stress_usage: "&cวิธีใช้: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== ข้อมูลความเครียด MMOBlock ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7หน่วยความจำ: &e{used}&7/&e{max} &7MB (&e{free} &7MB ว่าง)"
+      blocks: "&7บล็อกที่วาง: &e{count}"
+      nodes: "&7โหนดที่วาง: &e{count}"
+      types: "&7ประเภทบล็อกที่ลงทะเบียน: &e{count}"
+    chunk_stress:
+      start: "&eเริ่มการทดสอบความเครียดของชังก์... &7{count} ชังก์ในรัศมี &e{radius}&7 ชังก์"
+      spiral: "&7คุณจะถูกเทเลพอร์ตแบบเกลียว"
+      complete: "&aทดสอบความเครียดของชังก์เสร็จสิ้น! &7เยี่ยมชม &e{count} &7ชังก์"
+      timeout: "&eการทดสอบความเครียดของชังก์หมดเวลา"
+
+block_config:
+  example_bdengine_name: "&6ตัวอย่าง BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>ต้องเลเวล 10</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>ต้องเลเวล 10</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&cคุณอ่อนแอเกินไปที่จะขุดบล็อกนี้!"
+  example_bdengine_sendsubtitle_condition_1: "&7คุณต้องมีอย่างน้อยเลเวล 10 เพื่อขุดบล็อกนี้"
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>ตัวอย่าง BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>กำลังขุด......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>คลิกเพื่อขุด!</anim>"
+  example_bdengine_display_dead_line_4: "&7เกิดใหม่ใน: &c{respawn_time}วินาที"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &rเพชร"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &aเปิดใช้งาน"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}s"
+  example_node_display_line_2: "<anim:wave:&1;&b>โหนดที่ราบ:</anim>"

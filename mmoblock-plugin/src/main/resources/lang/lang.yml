@@ -6,3 +6,9 @@ languages: #list of languages to register, you can add more languages by adding 
   - "zh-tw" # Chinese (Traditional)
   - "ja-jp" # Japanese
   - "id-id" # Indonesian
+  - "ru-ru" # Russian (Русский)
+  - "ko-kr" # Korean (한국어)
+  - "vi-vn" # Vietnamese (Tiếng Việt)
+  - "th-th" # Thai (ไทย)
+  - "ms-my" # Malay (Bahasa Melayu)
+  - "en-ph" # Filipino

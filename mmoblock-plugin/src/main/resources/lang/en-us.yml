@@ -13,13 +13,13 @@ integration:
     fallback_missing: "&eFallback language 'en-us.yml' not found! Translations may be incomplete."
 
 update:
-  new_version: "&aA new version is available: {latest} (current: {current}). Download at {url}"
-  latest: "&aYou are running the latest version ({version})."
-  newer: "&aYou are running a newer version than the repository ({current} > {latest})."
+  new_version: "A new version is available: {latest} (current: {current}). Download at {url}"
+  latest: "You are running the latest version ({version})."
+  newer: "You are running a newer version than the repository ({current} > {latest})."
 
 targeted_store:
-  purchase_verified: "&a[Chyxel] Purchase verified! Thank you {buyer} for supporting MMOBlock."
-  leaker: "&4[Chyxel] LICENSE REVOKED — LEAKER DETECTED! Disabling plugin."
+  purchase_verified: "[Chyxel] Purchase verified! Thank you {buyer} for supporting MMOBlock."
+  leaker: "[Chyxel] LICENSE REVOKED — LEAKER DETECTED! Disabling plugin."
 
 commands:
   usage:
@@ -66,8 +66,6 @@ blocks:
   not_active: "&c[MMOBlock] Block is not active."
   too_fast: "&c[MMOBlock] Slow down a bit."
   config_missing: "&c[MMOBlock] Block config missing."
-  tool_not_allowed: "&c[MMOBlock] Tool is not allowed for this block."
-  mining_progress: "&e[MMOBlock] Mining progress: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] Block broken. Respawning in {respawn}s"
 
   block:
