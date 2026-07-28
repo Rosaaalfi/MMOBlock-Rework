@@ -43,6 +43,7 @@ public final class TranslationService {
     private final MMOBlock plugin;
     private final Map<String, Map<String, String>> languages = new ConcurrentHashMap<>();
     private String defaultLocale = FALLBACK_LOCALE;
+    private boolean checkUserLanguage = true;
 
     public TranslationService(final MMOBlock plugin) {
         this.plugin = plugin;
@@ -56,14 +57,18 @@ public final class TranslationService {
         final File folder = new File(this.plugin.getDataFolder(), "lang");
         if (!folder.isDirectory()) {
             folder.mkdirs();
-            this.plugin.saveResource("lang/en-us.yml", false);
         }
+        saveDefaultLangResource("lang/lang.yml");
+        saveDefaultLangResource("lang/en-us.yml");
 
         final File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
         if (files == null) return 0;
 
         int count = 0;
         for (final File file : files) {
+            if ("lang.yml".equalsIgnoreCase(file.getName())) {
+                continue;
+            }
             final String locale = file.getName().replace(".yml", "").toLowerCase(Locale.ROOT);
             final Map<String, String> flat = loadYamlFlat(file);
             if (flat != null) {
@@ -76,8 +81,27 @@ public final class TranslationService {
             MMOBlockLogger.warning("integration.lang.fallback_missing",
                     "Fallback language 'en-us.yml' not found! Translations may be incomplete.");
         }
-        this.defaultLocale = this.plugin.getConfig().getString("lang", FALLBACK_LOCALE).toLowerCase(Locale.ROOT);
+        loadLanguageSettings();
         return count;
+    }
+
+    private void saveDefaultLangResource(final String path) {
+        final File target = new File(this.plugin.getDataFolder(), path);
+        if (!target.exists()) {
+            this.plugin.saveResource(path, false);
+        }
+    }
+
+    private void loadLanguageSettings() {
+        final File file = new File(this.plugin.getDataFolder(), "lang/lang.yml");
+        final YamlConfiguration settings = YamlConfiguration.loadConfiguration(file);
+        this.checkUserLanguage = settings.getBoolean("checkUserLanguage", true);
+        final String configuredDefault = settings.getString("defaultLanguage", FALLBACK_LOCALE);
+        final String normalized = normalizeLocale(configuredDefault);
+        this.defaultLocale = this.languages.containsKey(normalized) ? normalized : FALLBACK_LOCALE;
+        if (!this.languages.containsKey(this.defaultLocale) && !this.languages.isEmpty()) {
+            this.defaultLocale = this.languages.keySet().stream().sorted().findFirst().orElse(FALLBACK_LOCALE);
+        }
     }
 
     private Map<String, String> loadYamlFlat(final File file) {
@@ -180,6 +204,11 @@ public final class TranslationService {
         return Collections.unmodifiableSet(this.languages.keySet());
     }
 
+    @NotNull
+    public String defaultLocale() {
+        return this.defaultLocale;
+    }
+
     @Nullable
     private String lookup(@NotNull final String key, @NotNull final String locale) {
         final Map<String, String> lang = this.languages.get(locale);
@@ -189,15 +218,23 @@ public final class TranslationService {
     @NotNull
     private String resolveLocale(@Nullable final Player player) {
         if (player == null) return this.defaultLocale;
+        if (!this.checkUserLanguage) return this.defaultLocale;
         try {
             final String raw = player.getLocale();
             if (raw == null || raw.isBlank()) return this.defaultLocale;
-            final String normalized = raw.toLowerCase(Locale.ROOT).replace('_', '-');
+            final String normalized = normalizeLocale(raw);
             if (this.languages.containsKey(normalized)) return normalized;
             final String langPart = normalized.contains("-") ? normalized.substring(0, normalized.indexOf('-')) : normalized;
             if (this.languages.containsKey(langPart)) return langPart;
         } catch (final Exception ignored) {}
         return this.defaultLocale;
     }
-}
 
+    @NotNull
+    private String normalizeLocale(@Nullable final String locale) {
+        if (locale == null || locale.isBlank()) {
+            return FALLBACK_LOCALE;
+        }
+        return locale.toLowerCase(Locale.ROOT).replace('_', '-');
+    }
+}

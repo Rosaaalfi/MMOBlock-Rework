@@ -144,16 +144,16 @@ public final class TargetedStore {
             }
             case LEAKER -> {
                 final String name = getBuyerName();
-                plugin.getLogger().severe("╔═══════════════════════════════════════════════════════════");
-                plugin.getLogger().severe("║  [Chyxel] LICENSE REVOKED — LEAKER DETECTED!");
-                plugin.getLogger().severe("║");
-                plugin.getLogger().severe("║  Hello " + name + ", it looks like you shared this plugin");
-                plugin.getLogger().severe("║  illegally. Your license has been revoked by the system.");
-                plugin.getLogger().severe("║");
-                plugin.getLogger().severe("║  Sharing paid plugins is illegal and violates copyright.");
-                plugin.getLogger().severe("║");
-                plugin.getLogger().severe("║  Please purchase this plugin at https://voxel.shop/product/6390/");
-                plugin.getLogger().severe("╚═══════════════════════════════════════════════════════════");
+                plugin.getLogger().severe("============================================================");
+                plugin.getLogger().severe("[Chyxel] LICENSE REVOKED - LEAKER DETECTED!");
+                plugin.getLogger().severe("");
+                plugin.getLogger().severe("Hello " + name + ", it looks like you shared this plugin");
+                plugin.getLogger().severe("illegally. Your license has been revoked by the system.");
+                plugin.getLogger().severe("");
+                plugin.getLogger().severe("Sharing paid plugins is illegal and violates copyright.");
+                plugin.getLogger().severe("");
+                plugin.getLogger().severe("Please purchase this plugin at https://voxel.shop/product/6390/");
+                plugin.getLogger().severe("============================================================");
             }
             case INVALID -> {
                 // Silent disable — no message

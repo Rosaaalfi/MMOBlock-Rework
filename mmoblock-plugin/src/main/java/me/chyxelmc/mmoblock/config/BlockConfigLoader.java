@@ -563,7 +563,7 @@ public final class BlockConfigLoader {
     }
 
     public Component messageComponent(final String path, final String fallback) {
-        final String lang = this.plugin.getConfig().getString("lang", "en-us").toLowerCase(Locale.ROOT);
+        final String lang = defaultLocale();
         final YamlConfiguration selected = this.languages.get(lang + ".yml");
         if (selected == null) {
             return colorizeComponent(fallback);
@@ -1153,12 +1153,21 @@ public final class BlockConfigLoader {
     }
 
     private String rawMessage(final String path, final String fallback) {
-        final String lang = this.plugin.getConfig().getString("lang", "en-us").toLowerCase(Locale.ROOT);
+        final String lang = defaultLocale();
         final YamlConfiguration selected = this.languages.get(lang + ".yml");
         if (selected == null) {
             return fallback;
         }
         return selected.getString(path, fallback);
+    }
+
+    private String defaultLocale() {
+        if (this.translationService != null) {
+            return this.translationService.defaultLocale();
+        }
+        final File file = new File(this.plugin.getDataFolder(), "lang/lang.yml");
+        final YamlConfiguration settings = YamlConfiguration.loadConfiguration(file);
+        return settings.getString("defaultLanguage", "en-us").toLowerCase(Locale.ROOT).replace('_', '-');
     }
 
     private Component colorizeComponent(final String value) {
