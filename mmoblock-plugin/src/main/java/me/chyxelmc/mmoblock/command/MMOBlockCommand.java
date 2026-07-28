@@ -44,7 +44,7 @@ import java.util.List;
 public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
 
     private final CommandManager manager;
-    private final BlockConfigLoader configService;
+    private final CommandContext ctx;
 
     public MMOBlockCommand(
             final MMOBlock plugin,
@@ -54,8 +54,7 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
             final NodeRuntimeService nodeRuntimeService,
             final RuntimeCoordinator runtimeCoordinator
     ) {
-        this.configService = configService;
-        final CommandContext ctx = new CommandContext(
+        this.ctx = new CommandContext(
                 plugin,
                 configService,
                 nodeConfigService,
@@ -66,10 +65,10 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
         );
 
         this.manager = new CommandManager();
-        this.manager.register(new BlockCommand(ctx), "block");
-        this.manager.register(new NodeCommand(ctx), "node");
-        this.manager.register(new ReloadCommand(ctx), "reload");
-        this.manager.register(new DebugCommand(ctx), "debug");
+        this.manager.register(new BlockCommand(this.ctx), "block");
+        this.manager.register(new NodeCommand(this.ctx), "node");
+        this.manager.register(new ReloadCommand(this.ctx), "reload");
+        this.manager.register(new DebugCommand(this.ctx), "debug");
     }
 
     @Override
@@ -86,7 +85,8 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
 
         final boolean handled = this.manager.execute(sender, args);
         if (!handled) {
-            sender.sendMessage(TextColor.toComponent("&cUnknown subcommand: " + args[0]));
+            this.ctx.sendMessage(sender, "commands.unknown_subcommand", "&cUnknown subcommand: {subcommand}",
+                    java.util.Map.of("{subcommand}", args[0]));
             showUsage(sender);
         }
         return true;
@@ -110,21 +110,13 @@ public final class MMOBlockCommand implements CommandExecutor, TabCompleter {
     // -------------------------------------------------------------
 
     private void showUsage(final CommandSender sender) {
-        sender.sendMessage(this.configService.messageComponent(
-                "commands.usage.block",
-                "§e§lMMOBlock Commands:\n§7/mmoblock block §8- Manage blocks (place, remove, get, list)"
-        ));
-        sender.sendMessage(this.configService.messageComponent(
-                "commands.usage.node",
-                "§7/mmoblock node §8- Manage nodes (place, remove, get, list)"
-        ));
-        sender.sendMessage(this.configService.messageComponent(
-                "commands.usage.reload",
-                "§7/mmoblock reload §8- Reload subsystems (config, blocks, drops, lang, tools, nodes)"
-        ));
-        sender.sendMessage(this.configService.messageComponent(
-                "commands.usage.debug",
-                "§7/mmoblock debug §8- Debug utilities (placeholder parse)"
-        ));
+        this.ctx.sendMessage(sender, "commands.usage.block",
+                "§e§lMMOBlock Commands:\n§7/mmoblock block §8- Manage blocks (place, remove, get, list)");
+        this.ctx.sendMessage(sender, "commands.usage.node",
+                "§7/mmoblock node §8- Manage nodes (place, remove, get, list)");
+        this.ctx.sendMessage(sender, "commands.usage.reload",
+                "§7/mmoblock reload §8- Reload subsystems (config, blocks, drops, lang, tools, nodes)");
+        this.ctx.sendMessage(sender, "commands.usage.debug",
+                "§7/mmoblock debug §8- Debug utilities (placeholder parse)");
     }
 }

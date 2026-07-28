@@ -3,7 +3,6 @@ exampleSchematic:
     name: "&7Example Schematic"
     material: oak_sapling
   respawnTime: 5 # Time in seconds for the block to respawn after being broken
-  deadDelay: 5 # Time in seconds for the block to disappear after being broken
   particleBreak:
     enabled: true
     source:

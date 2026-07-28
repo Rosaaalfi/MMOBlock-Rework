@@ -6,6 +6,8 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -21,18 +23,15 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
+import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ConditionDefinition;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ToolAction;
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
-import me.chyxelmc.mmoblock.runtime.block.MiningProgressTracker;
-import me.chyxelmc.mmoblock.runtime.block.DropService;
-import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
-import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
-import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
 import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
+import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.utils.ConditionEvaluator;
 import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;
@@ -42,6 +41,7 @@ public final class BlockMiningOrchestrator {
 
     private final MMOBlock plugin;
     private final BlockConfigLoader blockConfigService;
+    private final me.chyxelmc.mmoblock.i18n.TranslationService translationService;
     private final PersistenceSystem persistenceSystem;
     private final MiningProgressTracker miningSystem;
     private final DropService dropSystem;
@@ -59,6 +59,7 @@ public final class BlockMiningOrchestrator {
     public BlockMiningOrchestrator(
             final MMOBlock plugin,
             final BlockConfigLoader blockConfigService,
+            final me.chyxelmc.mmoblock.i18n.TranslationService translationService,
             final PersistenceSystem persistenceSystem,
             final MiningProgressTracker miningSystem,
             final DropService dropSystem,
@@ -75,6 +76,7 @@ public final class BlockMiningOrchestrator {
     ) {
         this.plugin = plugin;
         this.blockConfigService = blockConfigService;
+        this.translationService = translationService;
         this.persistenceSystem = persistenceSystem;
         this.miningSystem = miningSystem;
         this.dropSystem = dropSystem;
@@ -92,12 +94,12 @@ public final class BlockMiningOrchestrator {
 
     public Component processMiningClick(final PlacedBlockModel block, final Player player, final String clickType) {
         if (!this.lifecycleSystem.isActive(block)) {
-            return this.blockConfigService.messageComponent("blocks.not_active", "&c[MMOBlock] Block is not active.");
+            return translate(player, "blocks.not_active", "&c[MMOBlock] Block is not active.");
         }
 
         final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
         if (definition == null) {
-            return this.blockConfigService.messageComponent("blocks.config_missing", "&c[MMOBlock] Block config missing.");
+            return translate(player, "blocks.config_missing", "&c[MMOBlock] Block config missing.");
         }
 
         if (!checkConditions(definition, player)) {
@@ -107,11 +109,11 @@ public final class BlockMiningOrchestrator {
         final ItemStack item = player.getInventory().getItemInMainHand();
         final ToolAction action = this.blockConfigService.resolveToolAction(definition, item, clickType);
         if (action == null) {
-            return this.blockConfigService.messageComponent("blocks.tool_not_allowed", "&cTool is not allowed for this block.");
+            return translate(player, "blocks.tool_not_allowed", "&cTool is not allowed for this block.");
         }
 
         if (isThrottled(block.uniqueId(), player.getUniqueId())) {
-            return this.blockConfigService.messageComponent("blocks.too_fast", "&eHey slow down a bit.");
+            return translate(player, "blocks.too_fast", "&eHey slow down a bit.");
         }
 
         playConfiguredSound(player.getWorld(), block, definition.soundOnClick());
@@ -133,7 +135,7 @@ public final class BlockMiningOrchestrator {
 
         applyDurability(item, action.decreaseDurability());
         final int progress = this.miningSystem.incrementProgress(block.uniqueId(), player.getUniqueId(), System.currentTimeMillis());
-        if (definition.breakAnimation()) {
+        if (definition.breakAnimation() && !definition.bdengineEnabled()) {
             this.visualSyncSystem.sendBreakAnimation(block, action, progress, false);
         }
         if (definition.particleBreak()) {
@@ -142,7 +144,7 @@ public final class BlockMiningOrchestrator {
         this.eventDispatcher.callMineProgress(player, block, definition, clickType, progress, action.clickNeeded());
 
         if (progress < action.clickNeeded()) {
-            return progressMessage(block, definition, progress, action.clickNeeded());
+            return progressMessage(player, block, definition, progress, action.clickNeeded());
         }
 
         this.miningSystem.clearProgress(block.uniqueId(), player.getUniqueId());
@@ -162,6 +164,7 @@ public final class BlockMiningOrchestrator {
     }
 
     private Component progressMessage(
+            final Player player,
             final PlacedBlockModel block,
             final BlockDefinitionModel definition,
             final int progress,
@@ -173,7 +176,9 @@ public final class BlockMiningOrchestrator {
         placeholders.put("{progress}", String.valueOf(progress));
         placeholders.put("{needed}", String.valueOf(needed));
         placeholders.put("{progress_bar}", progressBar);
-        return Component.empty();
+        return translate(player, "blocks.mining_progress",
+                "&e[MMOBlock] Mining progress: {progress}/{needed} &7[{progress_bar}&7]",
+                placeholders);
     }
 
     private boolean checkConditions(final BlockDefinitionModel definition, final Player player) {
@@ -196,12 +201,34 @@ public final class BlockMiningOrchestrator {
         return true;
     }
 
+    private static final Pattern I18N_PATTERN = Pattern.compile("\\{i18n:([^}]+)\\}");
+
+    private String resolveI18nPlaceholders(final String text, final Player player) {
+        if (text == null || !text.contains("{i18n:")) {
+            return text;
+        }
+        final Matcher matcher = I18N_PATTERN.matcher(text);
+        final StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            final String content = matcher.group(1);
+            final String[] parts = content.split("\\|\\|\\|", 2);
+            final String key = parts[0].trim();
+            final String defaultText = parts.length > 1 ? parts[1].trim() : "";
+            final String translated = this.translationService.translate(player, key, defaultText);
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(translated));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
     private void sendConditionTitle(final Player player, final ConditionDefinition condition) {
         if (player == null || condition == null) {
             return;
         }
-        final String titleRaw = ConditionEvaluator.resolvePlaceholder(this.plugin, player, condition.sendTitle());
-        final String subtitleRaw = ConditionEvaluator.resolvePlaceholder(this.plugin, player, condition.sendSubtitle());
+        String titleRaw = ConditionEvaluator.resolvePlaceholder(this.plugin, player, condition.sendTitle());
+        String subtitleRaw = ConditionEvaluator.resolvePlaceholder(this.plugin, player, condition.sendSubtitle());
+        titleRaw = resolveI18nPlaceholders(titleRaw, player);
+        subtitleRaw = resolveI18nPlaceholders(subtitleRaw, player);
         final Component title = (titleRaw == null || titleRaw.isBlank()) ? Component.empty() : TextColor.toComponent(titleRaw);
         final Component subtitle = (subtitleRaw == null || subtitleRaw.isBlank()) ? Component.empty() : TextColor.toComponent(subtitleRaw);
         if (title.equals(Component.empty()) && subtitle.equals(Component.empty())) {
@@ -219,7 +246,7 @@ public final class BlockMiningOrchestrator {
         this.eventDispatcher.callMineComplete(player, block, definition, action.clickType(), action.clickNeeded());
         this.miningSystem.clearAllProgress(block.uniqueId());
         this.dropSystem.executeDrops(block, action, player);
-        if (definition.breakAnimation()) {
+        if (definition.breakAnimation() && !definition.bdengineEnabled()) {
             this.visualSyncSystem.sendBreakAnimation(block, action, action.clickNeeded(), true);
         }
         playConfiguredSound(player.getWorld(), block, definition.soundOnDead());
@@ -378,6 +405,18 @@ public final class BlockMiningOrchestrator {
 
     private Location blockCenterLocation(final PlacedBlockModel block, final World world) {
         return new Location(world, block.x() + 0.5D, block.y() + 0.5D, block.z() + 0.5D);
+    }
+
+    private Component translate(final Player player, final String key, final String defaultMessage) {
+        return translate(player, key, defaultMessage, java.util.Map.of());
+    }
+
+    private Component translate(final Player player, final String key, final String defaultMessage,
+                                final java.util.Map<String, String> placeholders) {
+        if (this.translationService != null) {
+            return this.translationService.translateComponent(player, key, defaultMessage, placeholders);
+        }
+        return this.blockConfigService.messageComponent(key, defaultMessage, placeholders);
     }
 
     @FunctionalInterface

@@ -54,7 +54,21 @@ java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
 }
 
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
+
 // ── Bytecode downgrade: shadowJar → Java 21 bytecode ──────
+// ── TargetedStore exclusion (build without Voxel.shop verification) ──
+val excludeTargetedStore = project.hasProperty("noTargetedStore")
+
+if (excludeTargetedStore) {
+    tasks.shadowJar {
+        exclude("me/chyxelmc/mmoblock/utils/TargetedStore.class")
+    }
+    logger.lifecycle("[TargetedStore] Excluded from build (-PnoTargetedStore)")
+}
+
 val downgradeBytecode by tasks.registering {
     dependsOn(tasks.shadowJar)
     doLast {

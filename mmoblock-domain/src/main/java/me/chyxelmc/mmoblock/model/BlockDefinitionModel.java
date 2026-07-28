@@ -198,7 +198,10 @@ public record BlockDefinitionModel(
         String mmoItemsId,
         String experienceSource,
         String mmocoreProfession,
-        DropPopup dropPopup
+        DropPopup dropPopup,
+        // ---- Custom drop handler (third-party addon plugins) ----
+        String customHandlerId,
+        java.util.Map<String, Object> customData
     ) implements me.chyxelmc.mmoblock.api.model.DropEntry {
 
         @Override
@@ -209,6 +212,18 @@ public record BlockDefinitionModel(
         @Override
         public String mmocoreProfession() {
             return this.mmocoreProfession != null && !this.mmocoreProfession.isBlank() ? this.mmocoreProfession : "main";
+        }
+
+        @Override
+        public String customHandlerId() {
+            return this.customHandlerId;
+        }
+
+        @Override
+        public java.util.Map<String, Object> customData() {
+            return this.customData != null
+                ? java.util.Collections.unmodifiableMap(this.customData)
+                : java.util.Collections.emptyMap();
         }
     }
 

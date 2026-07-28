@@ -1,12 +1,38 @@
 debug:
-  load: "&e[MMOBlock] &7Debug mode is enabled." #custom logger on console use bukkit
+  load: "&e[MMOBlock] &7Debug mode is enabled."
+
+logger:
+  debug_enabled: "&e[MMOBlock] Debug mode enabled"
+  debug_disabled: "&e[MMOBlock] Debug mode disabled"
+
+integration:
+  found: "{name} found - integration enabled"
+  not_found: "{name} is not installed or not enabled."
+  lang:
+    load_failed: "&eFailed to load language file '{file}': {reason}"
+    fallback_missing: "&eFallback language 'en-us.yml' not found! Translations may be incomplete."
+
+update:
+  new_version: "&aA new version is available: {latest} (current: {current}). Download at {url}"
+  latest: "&aYou are running the latest version ({version})."
+  newer: "&aYou are running a newer version than the repository ({current} > {latest})."
+
+targeted_store:
+  purchase_verified: "&a[Chyxel] Purchase verified! Thank you {buyer} for supporting MMOBlock."
+  leaker: "&4[Chyxel] LICENSE REVOKED — LEAKER DETECTED! Disabling plugin."
+
 commands:
   usage:
     block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
     node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
     reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
-  unknown_subcommand: "&cUnknown subcommand."
+  unknown_subcommand: "&cUnknown subcommand: {subcommand}"
   world_not_found: "&cWorld not found: {world}"
+  player_only: "&cPlayer only command."
+  world_required: "&cWorld is required for console usage."
+  invalid_facing: "&cInvalid facing: {facing} (use north, south, east, west)"
+  invalid_coordinate: "&cInvalid {name}: {value}"
+  node_runtime_unavailable: "&cNode runtime not available."
   place:
     usage: "&eUsage: /mmoblock block place <blockId> x y z [world] [facing]"
     invalid_facing: "&cInvalid facing: {facing} (use north, south, east, west)"
@@ -17,8 +43,9 @@ commands:
     not_found: "&cBlock not found at that location."
     success: "&aRemoved {id} at {world} {x} {y} {z}"
   reload:
-    all: "&aReloaded config, blocks, drops, lang, and tools."
+    all: "&aReloaded config, blocks, drops, lang, tools, and nodes."
     config: "&aReloaded config.yml"
+    lang: "&aReloaded {lang_files} language files and {i18n_files} translation entries."
   node:
     usage: "&eUsage: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
     place:
@@ -43,4 +70,69 @@ blocks:
   mining_progress: "&e[MMOBlock] Mining progress: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] Block broken. Respawning in {respawn}s"
 
+  block:
+    not_found: "&cBlock not found: {token}"
+    no_item: "&cBlock item is not configured for: {token}"
+    list_header: "&eBlock List:"
+    list_empty: "&eNo blocks placed."
+  node:
+    not_found: "&cNode not found: {token}"
+    no_item: "&cNode item is not configured for: {token}"
+    list_header: "&eNode List:"
+    list_empty: "&eNo nodes placed."
+  nodes:
+    place:
+      failed: "&cFailed to place node: {reason}"
+      success: "&aPlaced node {id} at {world} {x} {y} {z}"
+    remove:
+      not_found: "&cNode not found at that location."
+      success: "&aRemoved node {id} at {world} {x} {y} {z}"
+  debug:
+    usage: "&eDebug Commands:"
+    extracting: "&7Extracting default assets..."
+    extracted: "&aDefault assets extracted successfully. Run &7/mmoblock reload&a to apply."
+    placeholder_usage: "&eUsage: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&cConsole must specify a player name."
+    player_not_found: "&cPlayer not found: {player}"
+    mass_spawn_usage: "&cUsage: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&cCount must be between 1 and 10000."
+    count_range_1000: "&cCount must be between 1 and 1000."
+    invalid_count: "&cInvalid count: {count}"
+    no_world: "&cCould not determine your world."
+    no_blocks: "&cNo block types configured."
+    db_stress_usage: "&cUsage: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== MMOBlock Stress Info ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7Memory: &e{used}&7/&e{max} &7MB (&e{free} &7MB free)"
+      blocks: "&7Placed Blocks: &e{count}"
+      nodes: "&7Placed Nodes: &e{count}"
+      types: "&7Registered Block Types: &e{count}"
+    chunk_stress:
+      start: "&eStarting chunk stress test... &7{count} chunks in a &e{radius}&7 chunk radius."
+      spiral: "&7You will be teleported in a spiral pattern."
+      complete: "&aChunk stress test complete! &7Visited &e{count} &7chunks."
+      timeout: "&eChunk stress test timed out."
 
+block_config:
+  example_bdengine_name: "&6Example BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Require Lvl 10</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Require Lvl 10</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&cYou are too weak to mine this block!"
+  example_bdengine_sendsubtitle_condition_1: "&7You need at least 10 level to mine this block."
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>Example BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>Mining......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>Click to Mine!</anim>"
+  example_bdengine_display_dead_line_4: "&7Respawns in: &c{respawn_time}s"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &rDiamonds"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &aActive"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}s"
+  example_node_display_line_2: "<anim:wave:&1;&b>Plains Nodes:</anim>"

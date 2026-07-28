@@ -158,14 +158,6 @@ public final class BdEngineService {
             this.nmsAdapter.removePacketBdEngineModel(player, blockUniqueId);
             return;
         }
-        // Clear the NMS adapter's cached entity IDs for this player+model so that
-        // a full re-spawn (add-entity + metadata) is always sent, not just a metadata
-        // update. This fixes the shadow bug that occurred when a player left an area
-        // and returned: the client had removed the display entities (view distance),
-        // but the NMS adapter's fast-path would only send metadata updates to
-        // non-existent entities, leaving the model invisible or with incorrect shadow
-        // defaults.
-        this.nmsAdapter.removePacketBdEngineModel(player, blockUniqueId);
         this.nmsAdapter.upsertPacketBdEngineModel(player, blockUniqueId, state.baseLocation(), state.parts());
         final List<BdEngineCollisionEntry> collisions = this.activeCollisions.get(blockUniqueId);
         if (collisions != null) {
@@ -196,8 +188,12 @@ public final class BdEngineService {
         final PacketModelState runningState = state.withAnimationSequence(sequence);
         this.activeModels.put(blockUniqueId, runningState);
         final List<BdEngineAnimationFrame> sampledFrames = sampleAnimationFrames(animation.frames(), timelineLengthSeconds);
+        final boolean skipInitialBaseFrame = !runningState.parts().equals(runningState.baseParts());
         for (final BdEngineAnimationFrame frame : sampledFrames) {
             final long delay = Math.max(0L, Math.round(frame.time()));
+            if (skipInitialBaseFrame && delay == 0L && sameTransform(frame.transform(), animation.bindTransform())) {
+                continue;
+            }
             this.plugin.scheduler().runAtLocationLater(
                     runningState.baseLocation(),
                     () -> sendParts(blockUniqueId, state.baseLocation(), transformParts(

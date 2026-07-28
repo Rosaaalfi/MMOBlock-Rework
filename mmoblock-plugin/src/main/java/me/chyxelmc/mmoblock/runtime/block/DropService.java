@@ -12,8 +12,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.Particle;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
@@ -26,15 +26,17 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 
 import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.api.model.DropType;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel.DropEntry;
-import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ToolAction;
-import me.chyxelmc.mmoblock.utils.TextColor;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.nms.NmsAdapter.HologramLine;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
+import me.chyxelmc.mmoblock.utils.HologramAnimationUtil;
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+import me.chyxelmc.mmoblock.utils.TextColor;
 
 /**
  * Handles drop resolution and dispatch for mined blocks.
@@ -97,8 +99,57 @@ public final class DropService implements Listener {
                         }
                         spawnDropPopup(block, player, entry, 1);
                     }
+                    case CUSTOM -> handleCustomDrop(block, player, entry);
                 }
             }
+        }
+    }
+
+    /**
+     * Handle a custom drop by invoking the registered drop handler from the extension API.
+     */
+    private void handleCustomDrop(final PlacedBlockModel block, final Player player, final DropEntry entry) {
+        final String handlerId = entry.customHandlerId();
+        if (handlerId == null || handlerId.isBlank()) {
+            MMOBlockLogger.warning("CUSTOM drop entry has no customHandlerId configured.");
+            return;
+        }
+
+        final me.chyxelmc.mmoblock.api.MMOBlockApi api = me.chyxelmc.mmoblock.api.ApiProvider.getApi();
+        if (api == null) {
+            return;
+        }
+
+        final me.chyxelmc.mmoblock.api.drop.DropHandler handler = api.getDropHandlerRegistry().getHandler(handlerId);
+        if (handler == null) {
+            MMOBlockLogger.warning("No drop handler registered for '" + handlerId + "'. Available: " + api.getDropHandlerRegistry().getRegisteredIds());
+            return;
+        }
+
+        final World world = this.plugin.getServer().getWorld(block.world());
+        final Location dropLocation = world != null
+            ? new Location(world, block.x() + 0.5D, block.y() + 0.5D, block.z() + 0.5D)
+            : player.getLocation();
+
+        final me.chyxelmc.mmoblock.api.drop.DropContext context =
+            new me.chyxelmc.mmoblock.api.drop.DropContext() {
+                @Override public Player player() { return player; }
+                @Override public me.chyxelmc.mmoblock.api.model.PlacedBlock block() { return block; }
+                @Override public me.chyxelmc.mmoblock.api.model.BlockDefinition blockDefinition() {
+                    return this.blockDefinition;
+                }
+                private final me.chyxelmc.mmoblock.api.model.BlockDefinition blockDefinition =
+                    block.type() != null ? api.getBlockService().getBlockDefinition(block.type()) : null;
+                @Override public Location dropLocation() { return dropLocation; }
+                @Override public String handlerId() { return handlerId; }
+                @Override public java.util.Map<String, Object> customData() { return entry.customData(); }
+                @Override public double chance() { return entry.chance(); }
+            };
+
+        try {
+            handler.processDrop(context);
+        } catch (final Exception e) {
+            MMOBlockLogger.warning("Custom drop handler '" + handlerId + "' threw an exception: " + e.getMessage());
         }
     }
 
@@ -374,6 +425,47 @@ public final class DropService implements Listener {
         return item != null && item.getPersistentDataContainer().has(this.noMergeKey, PersistentDataType.BYTE);
     }
 
+    private String resolveI18nPlaceholders(final Player player, final String text, final Map<String, String> placeholders) {
+        if (text == null || !text.contains("{i18n:")) {
+            return text;
+        }
+        final StringBuilder sb = new StringBuilder(text.length() + 64);
+        int cursor = 0;
+        while (true) {
+            final int start = text.indexOf("{i18n:", cursor);
+            if (start < 0) {
+                sb.append(text, cursor, text.length());
+                break;
+            }
+            sb.append(text, cursor, start);
+            int depth = 0;
+            int end = start;
+            for (; end < text.length(); end++) {
+                final char c = text.charAt(end);
+                if (c == '{') {
+                    depth++;
+                } else if (c == '}') {
+                    depth--;
+                    if (depth == 0) {
+                        break;
+                    }
+                }
+            }
+            if (depth != 0 || end >= text.length()) {
+                sb.append(text, start, text.length());
+                break;
+            }
+            final String content = text.substring(start + "{i18n:".length(), end);
+            final String[] parts = content.split("\\|\\|\\|", 2);
+            final String key = parts[0].trim();
+            final String defaultText = parts.length > 1 ? parts[1].trim() : "";
+            final String translated = this.plugin.translationService().translate(player, key, defaultText, placeholders);
+            sb.append(translated);
+            cursor = end + 1;
+        }
+        return sb.toString();
+    }
+
     private List<String> randomizedRainbowColors() {
         final List<String> colors = new ArrayList<>(List.of(
                 "black", "dark_blue", "dark_green", "dark_aqua", "dark_red",
@@ -394,6 +486,9 @@ public final class DropService implements Listener {
         }
 
         String rawText = entry.dropPopup().text();
+        final Map<String, String> placeholders = dropPopupPlaceholders(entry, amount, itemStack);
+        rawText = resolveI18nPlaceholders(player, rawText, placeholders);
+        rawText = replaceDropPopupPlaceholders(rawText, placeholders);
 
         // Resolve placeholders based on drop type
         switch (entry.type()) {
@@ -426,6 +521,10 @@ public final class DropService implements Listener {
                 rawText = rawText.replace("{item_amount}", String.valueOf(amount));
             }
         }
+        rawText = replaceDropPopupPlaceholders(rawText, placeholders);
+
+        // Resolve animation tags
+        rawText = HologramAnimationUtil.resolveAnimations(rawText, 0L);
 
         // Resolve PlaceholderAPI placeholders
         final String resolvedText = this.plugin.applyHologramPlaceholderApi(player, rawText, 0, 0, 0L);
@@ -478,6 +577,47 @@ public final class DropService implements Listener {
             }
             this.scheduler.runForEntityLater(stand, stand::remove, null, 40L);
         }
+    }
+
+    private Map<String, String> dropPopupPlaceholders(final DropEntry entry, final int amount, final ItemStack itemStack) {
+        final java.util.HashMap<String, String> placeholders = new java.util.HashMap<>();
+        final String amountText = String.valueOf(amount);
+        placeholders.put("{item_amount}", amountText);
+        placeholders.put("{exp_amount}", amountText);
+        placeholders.put("{mmocore_exp_amount}", "0");
+        placeholders.put("{vanilla_exp_amount}", "0");
+        if (entry.type() == DropType.EXPERIENCE) {
+            if ("mmocore".equalsIgnoreCase(entry.experienceSource())) {
+                placeholders.put("{mmocore_exp_amount}", amountText);
+            } else {
+                placeholders.put("{vanilla_exp_amount}", amountText);
+            }
+        }
+        placeholders.put("{item_name}", resolvePopupItemName(itemStack));
+        return placeholders;
+    }
+
+    private static String replaceDropPopupPlaceholders(String text, final Map<String, String> placeholders) {
+        if (text == null || placeholders.isEmpty()) {
+            return text;
+        }
+        for (final Map.Entry<String, String> placeholder : placeholders.entrySet()) {
+            text = text.replace(placeholder.getKey(), placeholder.getValue());
+        }
+        return text;
+    }
+
+    private static String resolvePopupItemName(final ItemStack itemStack) {
+        if (itemStack == null) {
+            return "Item";
+        }
+        if (itemStack.hasItemMeta()) {
+            final var meta = itemStack.getItemMeta();
+            if (meta.hasDisplayName()) {
+                return meta.getDisplayName();
+            }
+        }
+        return formatMaterialName(itemStack.getType());
     }
 
     private static String formatMaterialName(final Material material) {

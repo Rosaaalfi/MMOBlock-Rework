@@ -1,12 +1,37 @@
 debug:
   load: "&e[MMOBlock] &7調試模式已啟用。"
+
+logger:
+  debug_enabled: "&e[MMOBlock] 調試模式已啟用"
+  debug_disabled: "&e[MMOBlock] 調試模式已禁用"
+
+integration:
+  found: "{name} 已找到 - 整合已啟用"
+  not_found: "{name} 未安裝或未啟用。"
+  lang:
+    load_failed: "&e載入語言檔案 '{file}' 失敗: {reason}"
+    fallback_missing: "&e未找到備用語言檔案 'en-us.yml'！翻譯可能不完整。"
+update:
+  new_version: "&a新版本可用: {latest} (目前: {current})。下載位置: {url}"
+  latest: "&a你正在執行最新版本 ({version})。"
+  newer: "&a你執行的版本比倉庫更新 ({current} > {latest})。"
+
+targeted_store:
+  purchase_verified: "&a[Chyxel] 購買已验证！感謝 {buyer} 支援 MMOBlock。"
+  leaker: "&4[Chyxel] 許可證已吊銷 — 檢測到洩漏者！正在停用插件。"
+
 commands:
   usage:
     block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
     node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
     reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
-  unknown_subcommand: "&c未知的子指令。"
+  unknown_subcommand: "&c未知的子指令: {subcommand}"
   world_not_found: "&c未找到世界: {world}"
+  player_only: "&c僅玩家可用的指令。"
+  world_required: "&c控制台使用需要指定世界。"
+  invalid_facing: "&c朝向無效: {facing} (請使用 north, south, east, west)"
+  invalid_coordinate: "&c{name} 無效: {value}"
+  node_runtime_unavailable: "&c節點執行環境不可用。"
   place:
     usage: "&e用法: /mmoblock block place <blockId> x y z [world] [facing]"
     invalid_facing: "&c朝向無效: {facing} (請使用 north, south, east, west)"
@@ -17,8 +42,9 @@ commands:
     not_found: "&c該位置未發現方塊。"
     success: "&a已移除 {world} {x} {y} {z} 處的 {id}"
   reload:
-    all: "&a已重新加載配置、方塊、掉落物、語言和工具。"
-    config: "&a已重新加載 config.yml"
+    all: "&a已重新載入配置、方塊、掉落物、語言、工具和節點。"
+    config: "&a已重新載入 config.yml"
+    lang: "&a已重新載入 {lang_files} 個語言檔案和 {i18n_files} 條翻譯條目。"
   node:
     usage: "&e用法: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
     place:
@@ -42,3 +68,70 @@ blocks:
   tool_not_allowed: "&c[MMOBlock] 該工具不能用於此方塊。"
   mining_progress: "&e[MMOBlock] 挖掘進度: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] 方塊已破壞。將在 {respawn} 秒後重生"
+
+  block:
+    not_found: "&c方塊未找到: {token}"
+    no_item: "&c方塊物品未配置: {token}"
+    list_header: "&e方塊列表:"
+    list_empty: "&e沒有已放置的方塊。"
+  node:
+    not_found: "&c節點未找到: {token}"
+    no_item: "&c節點物品未配置: {token}"
+    list_header: "&e節點列表:"
+    list_empty: "&e沒有已放置的節點。"
+  nodes:
+    place:
+      failed: "&c放置節點失敗: {reason}"
+      success: "&a已在 {world} {x} {y} {z} 放置節點 {id}"
+    remove:
+      not_found: "&c該位置未發現節點。"
+      success: "&a已移除 {world} {x} {y} {z} 處的節點 {id}"
+  debug:
+    usage: "&e除錯指令:"
+    extracting: "&7正在提取預設資源..."
+    extracted: "&a預設資源提取成功。執行 &7/mmoblock reload&a 以套用。"
+    placeholder_usage: "&e用法: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&c控制台必須指定玩家名稱。"
+    player_not_found: "&c玩家未找到: {player}"
+    mass_spawn_usage: "&c用法: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&c數量必須在 1 到 10000 之間。"
+    count_range_1000: "&c數量必須在 1 到 1000 之間。"
+    invalid_count: "&c無效數量: {count}"
+    no_world: "&c無法確定你的世界。"
+    no_blocks: "&c未配置任何方塊類型。"
+    db_stress_usage: "&c用法: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== MMOBlock 壓力測試資訊 ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7記憶體: &e{used}&7/&e{max} &7MB (&e{free} &7MB 空閒)"
+      blocks: "&7已放置方塊: &e{count}"
+      nodes: "&7已放置節點: &e{count}"
+      types: "&7已註冊方塊類型: &e{count}"
+    chunk_stress:
+      start: "&e開始區塊壓力測試... &7{count} 個區塊，半徑 &e{radius}&7 區塊。"
+      spiral: "&7你將以螺旋模式被傳送。"
+      complete: "&a區塊壓力測試完成！&7訪問了 &e{count} &7個區塊。"
+      timeout: "&e區塊壓力測試逾時。"
+
+block_config:
+  example_bdengine_name: "&6範例 BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>需要Lv10</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>需要Lv10</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&c你太弱了，無法挖掘這個方塊！"
+  example_bdengine_sendsubtitle_condition_1: "&7你需要至少10級才能挖掘這個方塊。"
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>範例 BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>挖掘中......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>點擊挖掘！</anim>"
+  example_bdengine_display_dead_line_4: "&7重生時間: &c{respawn_time}秒"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &r鑽石"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &a活躍"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}秒"
+  example_node_display_line_2: "<anim:wave:&1;&b>平原節點:</anim>"

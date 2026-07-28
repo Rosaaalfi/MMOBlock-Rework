@@ -1,0 +1,8 @@
+checkUserLanguage: true # Whether to check the user's language preference or not. If true, the plugin will use the user's language preference if available. If false, the plugin will use the default language specified below.
+defaultLanguage: "en-us" # The default language to use if the user's language preference is not available. This should be a language code from the list of registered languages below.
+languages: #list of languages to register, you can add more languages by adding more keys to this list. The key is the language code, and the value is the language name.
+  - "en-us" # English (United States)
+  - "zh-cn" # Chinese (Simplified)
+  - "zh-tw" # Chinese (Traditional)
+  - "ja-jp" # Japanese
+  - "id-id" # Indonesian

@@ -216,6 +216,7 @@ public final class BlockServiceFactory {
         final BlockMiningOrchestrator miningOrchestrator = new BlockMiningOrchestrator(
                 this.plugin,
                 this.blockConfigService,
+                this.plugin.translationService(),
                 this.persistenceSystem,
                 this.miningSystem,
                 this.dropSystem,

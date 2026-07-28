@@ -281,14 +281,14 @@ public abstract class AbstractPacketBasedNmsAdapter implements NmsAdapter {
         final String key = sessionKey(player.getUniqueId(), modelUniqueId);
         final PacketBdEngineModelState previous = this.packetBdEngineEntityIds.get(key);
 
-        // Fast path: structural match against raw parts list — no intermediate PacketBaseSignature
+        // Fast path: structural match against stable part identity; transforms may change every animation frame.
         if (previous != null && !previous.entityIds().isEmpty()
-                && previous.structurallyMatches(parts.size(), baseLocation)) {
+                && previous.structurallyMatches(parts, baseLocation)) {
             // Structural match — send entity data updates only
             final Object level = getServerLevel(baseLocation.getWorld());
             final Object handle = getServerPlayer(player);
             for (int i = 0; i < parts.size(); i++) {
-                final Object display = createBdEngineDisplayDispatch(level, baseLocation, parts.get(i));
+                final Object display = createBdEngineDisplayForUpdate(level, baseLocation, parts.get(i));
                 if (display == null) continue;
                 final List<?> values = getEntityDataValues(display);
                 if (values != null && !values.isEmpty()) {
@@ -306,6 +306,7 @@ public abstract class AbstractPacketBasedNmsAdapter implements NmsAdapter {
 
         // Full spawn: compute base signature for new state
         final PacketBaseSignature baseSignature = packetBaseSignature(baseLocation);
+        final List<PacketBdEnginePartSignature> signatures = packetBdEnginePartSignatures(parts);
 
         final Object level = getServerLevel(baseLocation.getWorld());
         final Object handle = getServerPlayer(player);
@@ -336,7 +337,7 @@ public abstract class AbstractPacketBasedNmsAdapter implements NmsAdapter {
             }
         }
 
-        this.packetBdEngineEntityIds.put(key, new PacketBdEngineModelState(List.copyOf(entityIds), baseSignature));
+        this.packetBdEngineEntityIds.put(key, new PacketBdEngineModelState(List.copyOf(entityIds), signatures, baseSignature));
     }
 
     @Override
@@ -683,6 +684,14 @@ public abstract class AbstractPacketBasedNmsAdapter implements NmsAdapter {
         };
     }
 
+    protected Object createBdEngineDisplayForUpdate(
+            final Object level,
+            final Location baseLocation,
+            final BdEngineDisplayPart part
+    ) {
+        return createBdEngineDisplayDispatch(level, baseLocation, part);
+    }
+
     // ============================================================
     // UTILITY METHODS
     // ============================================================
@@ -707,6 +716,18 @@ public abstract class AbstractPacketBasedNmsAdapter implements NmsAdapter {
             signatures.add(new PacketLineSignature(line.type(), line.offsetY(), content));
         }
         return signatures;
+    }
+
+    private List<PacketBdEnginePartSignature> packetBdEnginePartSignatures(final List<BdEngineDisplayPart> parts) {
+        final List<PacketBdEnginePartSignature> signatures = new ArrayList<>(parts.size());
+        for (final BdEngineDisplayPart part : parts) {
+            signatures.add(new PacketBdEnginePartSignature(
+                    part.type(),
+                    part.material(),
+                    part.text() == null ? "" : part.text()
+            ));
+        }
+        return List.copyOf(signatures);
     }
 
     private PacketBaseSignature packetBaseSignature(final Location baseLocation) {
@@ -781,10 +802,33 @@ public abstract class AbstractPacketBasedNmsAdapter implements NmsAdapter {
         }
     }
 
-    protected record PacketBdEngineModelState(List<Integer> entityIds, PacketBaseSignature baseSignature) {
-        /** Returns true if the number of parts and base location match. */
-        public boolean structurallyMatches(final int partCount, final Location newLocation) {
-            return this.entityIds.size() == partCount && this.baseSignature.matches(newLocation);
+    protected record PacketBdEngineModelState(
+            List<Integer> entityIds,
+            List<PacketBdEnginePartSignature> signatures,
+            PacketBaseSignature baseSignature
+    ) {
+        /** Returns true if stable display identities and base location match. */
+        public boolean structurallyMatches(final List<BdEngineDisplayPart> parts, final Location newLocation) {
+            if (this.entityIds.size() != parts.size() || this.signatures.size() != parts.size()) {
+                return false;
+            }
+            if (!this.baseSignature.matches(newLocation)) {
+                return false;
+            }
+            for (int i = 0; i < this.signatures.size(); i++) {
+                if (!this.signatures.get(i).matchesPart(parts.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    protected record PacketBdEnginePartSignature(BdEngineDisplayType type, Material material, String text) {
+        public boolean matchesPart(final BdEngineDisplayPart part) {
+            return this.type == part.type()
+                    && this.material == part.material()
+                    && this.text.equals(part.text() == null ? "" : part.text());
         }
     }
 

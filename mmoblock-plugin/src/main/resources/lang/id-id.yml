@@ -1,12 +1,37 @@
 debug:
   load: "&e[MMOBlock] &7Mode debug aktif."
+
+logger:
+  debug_enabled: "&e[MMOBlock] Mode debug diaktifkan"
+  debug_disabled: "&e[MMOBlock] Mode debug dinonaktifkan"
+
+integration:
+  found: "{name} ditemukan - integrasi aktif"
+  not_found: "{name} tidak terpasang atau tidak aktif."
+  lang:
+    load_failed: "&eGagal memuat file bahasa '{file}': {reason}"
+    fallback_missing: "&eFile bahasa cadangan 'en-us.yml' tidak ditemukan! Terjemahan mungkin tidak lengkap."
+update:
+  new_version: "&aVersi baru tersedia: {latest} (saat ini: {current}). Unduh di {url}"
+  latest: "&aKamu menjalankan versi terbaru ({version})."
+  newer: "&aKamu menjalankan versi yang lebih baru dari repositori ({current} > {latest})."
+
+targeted_store:
+  purchase_verified: "&a[Chyxel] Pembelian terverifikasi! Terima kasih {buyer} telah mendukung MMOBlock."
+  leaker: "&4[Chyxel] LISENSI DICABUT — PEMBOCOR TERDETEKSI! Menonaktifkan plugin."
+
 commands:
   usage:
     block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
     node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
     reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
-  unknown_subcommand: "&cSubcommand tidak dikenal."
+  unknown_subcommand: "&cSubcommand tidak dikenal: {subcommand}"
   world_not_found: "&cWorld tidak ditemukan: {world}"
+  player_only: "&cPerintah hanya untuk pemain."
+  world_required: "&cWorld diperlukan untuk penggunaan konsol."
+  invalid_facing: "&cFacing tidak valid: {facing} (gunakan north, south, east, west)"
+  invalid_coordinate: "&c{name} tidak valid: {value}"
+  node_runtime_unavailable: "&cNode runtime tidak tersedia."
   place:
     usage: "&ePenggunaan: /mmoblock block place <blockId> x y z [world] [facing]"
     invalid_facing: "&cFacing tidak valid: {facing} (gunakan north, south, east, west)"
@@ -17,8 +42,9 @@ commands:
     not_found: "&cBlock tidak ditemukan di lokasi tersebut."
     success: "&aBerhasil menghapus {id} di {world} {x} {y} {z}"
   reload:
-    all: "&aBerhasil reload config, blocks, drops, lang, dan tools."
+    all: "&aBerhasil reload config, blocks, drops, lang, tools, dan nodes."
     config: "&aBerhasil reload config.yml"
+    lang: "&aBerhasil reload {lang_files} file bahasa dan {i18n_files} entri translasi."
   node:
     usage: "&ePenggunaan: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
     place:
@@ -42,3 +68,70 @@ blocks:
   tool_not_allowed: "&c[MMOBlock] Tool tidak diizinkan untuk block ini."
   mining_progress: "&e[MMOBlock] Progress mining: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] Block hancur. Respawn dalam {respawn} detik"
+
+  block:
+    not_found: "&cBlock tidak ditemukan: {token}"
+    no_item: "&cItem block tidak dikonfigurasi untuk: {token}"
+    list_header: "&eDaftar Block:"
+    list_empty: "&eTidak ada block yang ditempatkan."
+  node:
+    not_found: "&cNode tidak ditemukan: {token}"
+    no_item: "&cItem node tidak dikonfigurasi untuk: {token}"
+    list_header: "&eDaftar Node:"
+    list_empty: "&eTidak ada node yang ditempatkan."
+  nodes:
+    place:
+      failed: "&cGagal menaruh node: {reason}"
+      success: "&aBerhasil menaruh node {id} di {world} {x} {y} {z}"
+    remove:
+      not_found: "&cNode tidak ditemukan di lokasi tersebut."
+      success: "&aBerhasil menghapus node {id} di {world} {x} {y} {z}"
+  debug:
+    usage: "&ePerintah Debug:"
+    extracting: "&7Mengekstrak aset bawaan..."
+    extracted: "&aAset bawaan berhasil diekstrak. Jalankan &7/mmoblock reload&a untuk menerapkan."
+    placeholder_usage: "&ePenggunaan: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&cKonsol harus menyertakan nama pemain."
+    player_not_found: "&cPemain tidak ditemukan: {player}"
+    mass_spawn_usage: "&cPenggunaan: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&cJumlah harus antara 1 dan 10000."
+    count_range_1000: "&cJumlah harus antara 1 dan 1000."
+    invalid_count: "&cJumlah tidak valid: {count}"
+    no_world: "&cTidak dapat menentukan world kamu."
+    no_blocks: "&cTidak ada tipe block yang dikonfigurasi."
+    db_stress_usage: "&cPenggunaan: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== Info Stress MMOBlock ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7Memori: &e{used}&7/&e{max} &7MB (&e{free} &7MB tersedia)"
+      blocks: "&7Block Terpasang: &e{count}"
+      nodes: "&7Node Terpasang: &e{count}"
+      types: "&7Tipe Block Terdaftar: &e{count}"
+    chunk_stress:
+      start: "&eMemulai tes stress chunk... &7{count} chunk dalam radius &e{radius}&7 chunk."
+      spiral: "&7Kamu akan di-teleport dalam pola spiral."
+      complete: "&aTes stress chunk selesai! &7Mengunjungi &e{count} &7chunk."
+      timeout: "&eTes stress chunk timeout."
+
+block_config:
+  example_bdengine_name: "&6Contoh BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Butuh Lvl 10</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Butuh Lvl 10</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&cKamu terlalu lemah untuk menambang block ini!"
+  example_bdengine_sendsubtitle_condition_1: "&7Kamu butuh setidaknya level 10 untuk menambang block ini."
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>Contoh BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>Menambang......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>Klik untuk Menambang!</anim>"
+  example_bdengine_display_dead_line_4: "&7Respawn dalam: &c{respawn_time}dtk"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &rBerlian"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &aAktif"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}dtk"
+  example_node_display_line_2: "<anim:wave:&1;&b>Node Dataran:</anim>"

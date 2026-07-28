@@ -261,6 +261,18 @@ public final class NmsAdapter_v1_21_11 extends AbstractPacketBasedNmsAdapter {
     }
 
     @Override
+    protected Object createBdEngineDisplayForUpdate(Object serverLevel, Location base, BdEngineDisplayPart part) {
+        final Display display = switch (part.type()) {
+            case BLOCK -> new Display.BlockDisplay(EntityType.BLOCK_DISPLAY, (ServerLevel) serverLevel);
+            case ITEM -> new Display.ItemDisplay(EntityType.ITEM_DISPLAY, (ServerLevel) serverLevel);
+            case TEXT -> new Display.TextDisplay(EntityType.TEXT_DISPLAY, (ServerLevel) serverLevel);
+        };
+        display.setPos(base.getX(), base.getY(), base.getZ());
+        configureBdEngineDisplay(display, part, part.matrix());
+        return display;
+    }
+
+    @Override
     protected void configureBdEngineDisplay(Object display, BdEngineDisplayPart part, float[] matrix) {
         final Display d = (Display) display;
         final float[] safe = normalizeMatrix(matrix);

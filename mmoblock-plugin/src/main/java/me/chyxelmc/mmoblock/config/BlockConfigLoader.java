@@ -43,6 +43,9 @@ import net.kyori.adventure.text.Component;
  */
 public final class BlockConfigLoader {
 
+    static final String I18N_PLACEHOLDER_PREFIX = "{i18n:";
+    static final String I18N_PLACEHOLDER_SEPARATOR = "|||";
+
     private final MMOBlock plugin;
     private final Map<String, BlockDefinitionModel> blockDefinitions = new HashMap<>();
     private final Map<String, List<DropEntry>> drops = new HashMap<>();
@@ -52,6 +55,8 @@ public final class BlockConfigLoader {
     private ValidationReport lastToolReport = ValidationReport.empty();
     private ValidationReport lastDropReport = ValidationReport.empty();
     private long interactionThrottleMs;
+    private me.chyxelmc.mmoblock.api.registry.ConfigSectionParserRegistry configSectionParserRegistry;
+    private me.chyxelmc.mmoblock.i18n.TranslationService translationService;
 
     public java.util.Map<String, List<ToolAction>> tools() {
         return this.tools;
@@ -59,6 +64,25 @@ public final class BlockConfigLoader {
 
     public BlockConfigLoader(final MMOBlock plugin) {
         this.plugin = plugin;
+    }
+
+    /**
+     * Set the translation service for resolving localized config values.
+     */
+    public void setTranslationService(
+            final me.chyxelmc.mmoblock.i18n.TranslationService service
+    ) {
+        this.translationService = service;
+    }
+
+    /**
+     * Set the config section parser registry for processing custom YAML sections.
+     * Called after the API is initialized.
+     */
+    public void setConfigSectionParserRegistry(
+            final me.chyxelmc.mmoblock.api.registry.ConfigSectionParserRegistry registry
+    ) {
+        this.configSectionParserRegistry = registry;
     }
 
     public void reloadAll() {
@@ -86,7 +110,13 @@ public final class BlockConfigLoader {
 
         int loaded = 0;
         for (final File file : files) {
-            final YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+            final YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.load(file);
+            } catch (final IOException | InvalidConfigurationException e) {
+                report.error("Failed to parse YAML in '" + file.getName() + "': " + e.getMessage());
+                continue;
+            }
             for (final String key : yaml.getKeys(false)) {
                 final ConfigurationSection section = yaml.getConfigurationSection(key);
                 if (section == null) {
@@ -147,7 +177,7 @@ public final class BlockConfigLoader {
                 }
                 final List<DisplayLine> displayLines = parseDisplayLines(section, key, report);
                 final List<ConditionDefinition> conditions = parseConditions(section, key, report);
-                final String displayName = section.getString("name", key);
+                final String displayName = resolveLocalizedName(section, "name", key, "block_config." + key.toLowerCase(Locale.ROOT) + ".name");
                 // displayFacing config
                 final ConfigurationSection displayFacingSection = displaySection != null
                         ? displaySection.getConfigurationSection("displayFacing")
@@ -266,7 +296,7 @@ public final class BlockConfigLoader {
                         ? bdengineAnimationName(betterModelSection, "onClick", "onCLick")
                         : "";
                 final ConfigurationSection itemSection = section.getConfigurationSection("item");
-                final String itemName = itemSection != null ? itemSection.getString("name") : null;
+                final String itemName = resolveLocalizedName(section, "item.name", null, "block_config." + key.toLowerCase(Locale.ROOT) + ".item_name");
                 final Material itemMaterial = itemSection != null ? parseMaterial(itemSection.getString("material")) : null;
                 if (itemSection != null && itemMaterial == null) {
                     report.warn("Block '" + key + "' has invalid item.material.");
@@ -338,6 +368,9 @@ public final class BlockConfigLoader {
                         )
                 );
                 loaded++;
+
+                // Invoke registered config section parsers for custom sections
+                invokeConfigSectionParsers(file.getName(), key, section, "blocks", report);
             }
         }
         this.lastBlockReport = report;
@@ -355,7 +388,13 @@ public final class BlockConfigLoader {
         }
 
         for (final File file : files) {
-            final YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+            final YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.load(file);
+            } catch (final IOException | InvalidConfigurationException e) {
+                report.error("Failed to parse YAML in '" + file.getName() + "': " + e.getMessage());
+                continue;
+            }
             for (final String key : yaml.getKeys(false)) {
                 final List<Map<?, ?>> values = yaml.getMapList(key);
                 final List<DropEntry> parsed = new ArrayList<>();
@@ -383,7 +422,13 @@ public final class BlockConfigLoader {
         }
 
         for (final File file : files) {
-            final YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+            final YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.load(file);
+            } catch (final IOException | InvalidConfigurationException e) {
+                report.error("Failed to parse YAML in '" + file.getName() + "': " + e.getMessage());
+                continue;
+            }
             for (final String key : yaml.getKeys(false)) {
                 final List<Map<?, ?>> values = yaml.getMapList(key);
                 final List<ToolAction> parsed = new ArrayList<>();
@@ -666,6 +711,28 @@ public final class BlockConfigLoader {
         final DropGlow effectGlow = parseDropGlow(raw);
         final DropBeam effectBeam = parseDropBeam(raw);
 
+        // ---- CUSTOM drops (third-party addon plugins) ----
+        if (raw.containsKey("customHandlerId")) {
+            final String customHandlerId = String.valueOf(raw.get("customHandlerId")).trim();
+            if (customHandlerId.isBlank()) {
+                report.error("Drop group '" + dropId + "' has blank customHandlerId.");
+                return null;
+            }
+            final int[] range = parseRange(raw.get("total"), 1, 1);
+            @SuppressWarnings("unchecked")
+            final java.util.Map<String, Object> customData = raw.containsKey("customData") && raw.get("customData") instanceof Map<?, ?> map
+                ? (java.util.Map<String, Object>) map
+                : java.util.Collections.emptyMap();
+            final DropPopup dropPopup = parseDropPopup(raw);
+            return new DropEntry(
+                DropType.CUSTOM, null, range[0], range[1], null, chance, dropType,
+                perPlayer, effectExplosion, effectGlow, effectBeam,
+                null, null, null,
+                "vanilla", null, dropPopup,
+                customHandlerId, customData
+            );
+        }
+
         // Support both new nested "item" object and legacy top-level "material"
         final String materialStr;
         final String itemType;
@@ -689,18 +756,18 @@ public final class BlockConfigLoader {
             }
             final int[] range = parseRange(raw.get("total"), 1, 1);
             final DropPopup dropPopup = parseDropPopup(raw);
-            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam, itemsAdderId, craftEngineId, mmoItemsId, "vanilla", null, dropPopup);
+            return new DropEntry(DropType.MATERIAL, material, range[0], range[1], null, chance, dropType, perPlayer, effectExplosion, effectGlow, effectBeam, itemsAdderId, craftEngineId, mmoItemsId, "vanilla", null, dropPopup, null, null);
         }
         if (raw.containsKey("experience")) {
             final String experienceSource = String.valueOf(raw.get("experience")).trim().toLowerCase(Locale.ROOT);
             final int[] range = parseRange(raw.get("amount"), 1, 1);
             final DropPopup dropPopup = parseDropPopup(raw);
             final String mmocoreProfession = raw.containsKey("mmocore_profession") ? String.valueOf(raw.get("mmocore_profession")).trim().toLowerCase(Locale.ROOT) : "main";
-            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null, null, null, null, experienceSource, mmocoreProfession, dropPopup);
+            return new DropEntry(DropType.EXPERIENCE, null, range[0], range[1], null, chance, dropType, false, false, null, null, null, null, null, experienceSource, mmocoreProfession, dropPopup, null, null);
         }
         if (raw.containsKey("command")) {
             final DropPopup dropPopup = parseDropPopup(raw);
-            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null, null, null, null, "vanilla", null, dropPopup);
+            return new DropEntry(DropType.COMMAND, null, 1, 1, String.valueOf(raw.get("command")), chance, dropType, false, false, null, null, null, null, null, "vanilla", null, dropPopup, null, null);
         }
         report.warn("Drop group '" + dropId + "' contains unsupported drop entry: " + raw);
         return null;
@@ -715,8 +782,8 @@ public final class BlockConfigLoader {
         if (!enabled) {
             return null;
         }
-        final String text = popupMap.get("text") != null ? String.valueOf(popupMap.get("text")) : "";
-        return new DropPopup(true, text);
+        final String text = resolveConfigString(popupMap.get("text"));
+        return new DropPopup(true, text != null ? text : "");
     }
 
     private DropGlow parseDropGlow(final Map<?, ?> raw) {
@@ -835,16 +902,14 @@ public final class BlockConfigLoader {
             String notMetText = null;
             final Object placeholderTextRaw = raw.get("placeholderText");
             if (placeholderTextRaw instanceof Map<?, ?> placeholderMap) {
-                final Object requireRaw = placeholderMap.get("require");
-                final Object notMetRaw = placeholderMap.get("notMet");
-                requireText = requireRaw != null ? String.valueOf(requireRaw) : null;
-                notMetText = notMetRaw != null ? String.valueOf(notMetRaw) : null;
+                requireText = resolveConfigString(placeholderMap.get("require"));
+                notMetText = resolveConfigString(placeholderMap.get("notMet"));
             } else if (placeholderTextRaw instanceof ConfigurationSection placeholderSection) {
-                requireText = placeholderSection.getString("require");
-                notMetText = placeholderSection.getString("notMet");
+                requireText = resolveConfigString(placeholderSection.get("require"));
+                notMetText = resolveConfigString(placeholderSection.get("notMet"));
             }
-            final String sendTitle = raw.get("sendTitle") != null ? String.valueOf(raw.get("sendTitle")) : null;
-            final String sendSubtitle = raw.get("sendSubtitle") != null ? String.valueOf(raw.get("sendSubtitle")) : null;
+            final String sendTitle = resolveConfigString(raw.get("sendTitle"));
+            final String sendSubtitle = resolveConfigString(raw.get("sendSubtitle"));
 
             parsed.add(new ConditionDefinition(
                     id,
@@ -861,6 +926,40 @@ public final class BlockConfigLoader {
         return parsed;
     }
 
+    /**
+     * Convert a raw config value (plain string, Map with {@code key}/{@code default},
+     * or ConfigurationSection with {@code key}/{@code default}) into a display string.
+     * For i18n maps/sections this produces the {@code {i18n:key|||default}} placeholder
+     * so the TranslationService can resolve it at runtime.
+     */
+    private static String resolveConfigString(final Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof Map<?, ?> map) {
+            final Object keyObj = map.get("key");
+            if (keyObj != null) {
+                final String key = String.valueOf(keyObj).trim();
+                if (!key.isBlank()) {
+                    final Object defaultObj = map.get("default");
+                    final String defValue = defaultObj != null ? String.valueOf(defaultObj).trim() : "";
+                    return I18N_PLACEHOLDER_PREFIX + key + I18N_PLACEHOLDER_SEPARATOR + defValue + "}";
+                }
+            }
+            return String.valueOf(raw);
+        }
+        if (raw instanceof ConfigurationSection section) {
+            final String key = section.getString("key");
+            if (key != null && !key.isBlank()) {
+                final String defValue = section.getString("default", "");
+                return I18N_PLACEHOLDER_PREFIX + key + I18N_PLACEHOLDER_SEPARATOR + defValue + "}";
+            }
+            return null;
+        }
+        final String str = String.valueOf(raw).trim();
+        return str.isEmpty() ? null : str;
+    }
+
     private String valueAsString(final Object primary, final Object fallback, final String key) {
         final Object rawPrimary = resolveValue(primary, key);
         final Object raw = rawPrimary != null ? rawPrimary : resolveValue(fallback, key);
@@ -870,6 +969,29 @@ public final class BlockConfigLoader {
         if (raw instanceof Boolean bool) {
             // click/dead false should be treated as "not configured", so renderer can fallback to text.
             return bool ? "true" : null;
+        }
+        // Mode 2: i18n key value (Map with "key" and optional "default")
+        // e.g. text: { key: "block_config.example_name", default: "&6Example" }
+        if (raw instanceof Map<?, ?> i18nMap) {
+            final Object keyObj = i18nMap.get("key");
+            final Object defaultObj = i18nMap.get("default");
+            if (keyObj != null) {
+                final String i18nKey = String.valueOf(keyObj).trim();
+                if (!i18nKey.isBlank()) {
+                    final String defValue = defaultObj != null ? String.valueOf(defaultObj).trim() : "";
+                    return I18N_PLACEHOLDER_PREFIX + i18nKey + I18N_PLACEHOLDER_SEPARATOR + defValue + "}";
+                }
+            }
+            return null;
+        }
+        // Handle ConfigurationSection for i18n (YAML with section as Map)
+        if (raw instanceof ConfigurationSection i18nSection) {
+            final String i18nKey = i18nSection.getString("key");
+            if (i18nKey != null && !i18nKey.isBlank()) {
+                final String defValue = i18nSection.getString("default", "");
+                return I18N_PLACEHOLDER_PREFIX + i18nKey + I18N_PLACEHOLDER_SEPARATOR + defValue + "}";
+            }
+            return null;
         }
         final String value = String.valueOf(raw).trim();
         return value.isEmpty() ? null : value;
@@ -1067,6 +1189,7 @@ public final class BlockConfigLoader {
         extractResource("drops/exampleDropsCustom.yml", forceReplace);
         extractResource("tools/exampleTools.yml", forceReplace);
         extractResource("tools/exampleToolsAxe.yml", forceReplace);
+        extractResource("lang/lang.yml", forceReplace);
         extractResource("lang/en-us.yml", forceReplace);
         extractResource("lang/id-id.yml", forceReplace);
         extractResource("lang/ja-jp.yml", forceReplace);
@@ -1090,6 +1213,74 @@ public final class BlockConfigLoader {
 
     public long interactionThrottleMs() {
         return this.interactionThrottleMs;
+    }
+
+    /**
+     * Resolve a localized name from a configuration section, supporting dual-mode:
+     * <ul>
+     *   <li>Mode 1 (plain string): {@code name: "Example"}</li>
+     *   <li>Mode 2 (i18n key): {@code name: { key: "...", default: "..." }}</li>
+     * </ul>
+     */
+    private String resolveLocalizedName(
+            final org.bukkit.configuration.ConfigurationSection section,
+            final String path,
+            final String fallback,
+            final String i18nKeyHint
+    ) {
+        if (this.translationService == null || section == null) {
+            // No translation service: fall back to plain string
+            final String direct = section.getString(path);
+            return direct != null ? direct : (fallback != null ? fallback : "");
+        }
+
+        final Object raw = section.isConfigurationSection(path)
+                ? section.getConfigurationSection(path)
+                : section.getString(path);
+
+        return me.chyxelmc.mmoblock.i18n.LocalizedString.resolve(
+                this.translationService, null, raw,
+                fallback != null ? fallback : "",
+                i18nKeyHint
+        );
+    }
+
+    /**
+     * Invoke registered config section parsers for custom sections within a block/node/drop/tool definition.
+     * This allows third-party addon plugins to process custom YAML sections.
+     */
+    private void invokeConfigSectionParsers(
+            final String fileName,
+            final String blockId,
+            final ConfigurationSection section,
+            final String configType,
+            final ValidationReport report
+    ) {
+        if (this.configSectionParserRegistry == null) {
+            return;
+        }
+        for (final String parserType : this.configSectionParserRegistry.getRegisteredTypes()) {
+            final ConfigurationSection customSection = section.getConfigurationSection(parserType);
+            if (customSection == null) {
+                continue;
+            }
+            final me.chyxelmc.mmoblock.api.config.ConfigSectionParser parser =
+                this.configSectionParserRegistry.getParser(parserType);
+            if (parser == null) {
+                continue;
+            }
+            try {
+                final Map<String, Object> rawValues = customSection.getValues(true);
+                final me.chyxelmc.mmoblock.api.config.ConfigParseContext context =
+                    new me.chyxelmc.mmoblock.api.config.ConfigParseContext(
+                        fileName, blockId, configType, customSection, rawValues
+                    );
+                parser.parse(context);
+            } catch (final Exception e) {
+                report.warn("Config section parser '" + parserType + "' threw an exception for '"
+                    + blockId + "': " + e.getMessage());
+            }
+        }
     }
 
     public static final class ValidationReport {

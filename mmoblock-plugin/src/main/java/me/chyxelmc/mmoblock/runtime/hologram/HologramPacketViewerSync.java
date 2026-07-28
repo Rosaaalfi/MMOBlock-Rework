@@ -143,7 +143,7 @@ final class HologramPacketViewerSync {
                 continue;
             }
             final String text = line.text();
-            if (text.contains("%mmoblock_") || text.contains("%") || text.contains("{condition_")) {
+            if (text.contains("%mmoblock_") || text.contains("%") || text.contains("{condition_") || text.contains(HologramRuntimeService.I18N_PREFIX)) {
                 return true;
             }
         }

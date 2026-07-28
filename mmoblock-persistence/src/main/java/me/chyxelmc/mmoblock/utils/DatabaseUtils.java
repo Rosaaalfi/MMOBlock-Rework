@@ -84,14 +84,20 @@ public final class DatabaseUtils {
         hikariConfig.setUsername(config.getString("username", "root"));
         hikariConfig.setPassword(config.getString("password", ""));
         hikariConfig.setPoolName("mmoblock-mysql");
-        hikariConfig.setMaximumPoolSize(12);
-        hikariConfig.setMinimumIdle(3);
+        // Conservative pool sizing — many MySQL hosts (especially shared hosting)
+        // limit max_user_connections to 5-10 per user. Setting this too high
+        // causes connection storms and SQLTransientConnectionException.
+        hikariConfig.setMaximumPoolSize(4);
+        hikariConfig.setMinimumIdle(1);
         hikariConfig.setIdleTimeout(300_000L);
         hikariConfig.setMaxLifetime(600_000L);
-        hikariConfig.setConnectionTimeout(10_000L);
+        hikariConfig.setConnectionTimeout(30_000L);
+        hikariConfig.setValidationTimeout(5_000L);
+        hikariConfig.setLeakDetectionThreshold(60_000L);
+        hikariConfig.setConnectionTestQuery("SELECT 1");
         hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
-        hikariConfig.addDataSourceProperty("prepStmtCacheSize", "128");
-        hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "4096");
+        hikariConfig.addDataSourceProperty("prepStmtCacheSize", "64");
+        hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
         hikariConfig.addDataSourceProperty("useServerPrepStmts", "true");
 
         this.dataSource = new HikariDataSource(hikariConfig);

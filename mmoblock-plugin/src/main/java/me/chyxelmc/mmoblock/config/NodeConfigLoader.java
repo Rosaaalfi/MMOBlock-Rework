@@ -1,6 +1,7 @@
 package me.chyxelmc.mmoblock.config;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,6 +12,7 @@ import java.util.Set;
 
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import me.chyxelmc.mmoblock.MMOBlock;
@@ -26,12 +28,20 @@ import me.chyxelmc.mmoblock.model.PlacedNodeModel.NodeDefinition;
  */
 public final class NodeConfigLoader {
 
+    static final String I18N_PLACEHOLDER_PREFIX = "{i18n:";
+    static final String I18N_PLACEHOLDER_SEPARATOR = "|||";
+
     private final MMOBlock plugin;
     private final Map<String, NodeDefinition> nodeDefinitions = new HashMap<>();
     private ValidationReport lastNodeReport = ValidationReport.empty();
+    private me.chyxelmc.mmoblock.i18n.TranslationService translationService;
 
     public NodeConfigLoader(final MMOBlock plugin) {
         this.plugin = plugin;
+    }
+
+    public void setTranslationService(final me.chyxelmc.mmoblock.i18n.TranslationService service) {
+        this.translationService = service;
     }
 
     public int reloadNodes() {
@@ -46,7 +56,13 @@ public final class NodeConfigLoader {
 
         int loaded = 0;
         for (final File file : files) {
-            final YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+            final YamlConfiguration yaml = new YamlConfiguration();
+            try {
+                yaml.load(file);
+            } catch (final IOException | InvalidConfigurationException e) {
+                report.error("Failed to parse YAML in '" + file.getName() + "': " + e.getMessage());
+                continue;
+            }
             for (final String key : yaml.getKeys(false)) {
                 final ConfigurationSection section = yaml.getConfigurationSection(key);
                 if (section == null) {
@@ -54,7 +70,7 @@ public final class NodeConfigLoader {
                 }
 
                 final ConfigurationSection itemSection = section.getConfigurationSection("item");
-                final String itemName = itemSection != null ? itemSection.getString("name") : null;
+                final String itemName = resolveLocalizedName(section, "item.name", null, "node_config." + key.toLowerCase(Locale.ROOT) + ".item_name");
                 final Material itemMaterial = itemSection != null ? parseMaterial(itemSection.getString("material")) : null;
                 if (itemSection != null && itemMaterial == null) {
                     report.warn("Node '" + key + "' has invalid item.material.");
@@ -193,6 +209,29 @@ public final class NodeConfigLoader {
         if (raw instanceof Boolean bool) {
             return bool ? "true" : null;
         }
+        // Mode 2: i18n key value (Map with "key" and optional "default")
+        // e.g. text: { key: "node_config.example_name", default: "&6Example" }
+        if (raw instanceof Map<?, ?> i18nMap) {
+            final Object keyObj = i18nMap.get("key");
+            final Object defaultObj = i18nMap.get("default");
+            if (keyObj != null) {
+                final String i18nKey = String.valueOf(keyObj).trim();
+                if (!i18nKey.isBlank()) {
+                    final String defValue = defaultObj != null ? String.valueOf(defaultObj).trim() : "";
+                    return I18N_PLACEHOLDER_PREFIX + i18nKey + I18N_PLACEHOLDER_SEPARATOR + defValue + "}";
+                }
+            }
+            return null;
+        }
+        // Handle ConfigurationSection for i18n (YAML with section as Map)
+        if (raw instanceof ConfigurationSection i18nSection) {
+            final String i18nKey = i18nSection.getString("key");
+            if (i18nKey != null && !i18nKey.isBlank()) {
+                final String defValue = i18nSection.getString("default", "");
+                return I18N_PLACEHOLDER_PREFIX + i18nKey + I18N_PLACEHOLDER_SEPARATOR + defValue + "}";
+            }
+            return null;
+        }
         final String value = String.valueOf(raw).trim();
         return value.isEmpty() ? null : value;
     }
@@ -231,6 +270,26 @@ public final class NodeConfigLoader {
 
     private void saveResourceWithReplace(final String resourcePath) {
         this.plugin.saveResource(resourcePath, true);
+    }
+
+    private String resolveLocalizedName(
+            final org.bukkit.configuration.ConfigurationSection section,
+            final String path,
+            final String fallback,
+            final String i18nKeyHint
+    ) {
+        if (this.translationService == null || section == null) {
+            final String direct = section.getString(path);
+            return direct != null ? direct : (fallback != null ? fallback : "");
+        }
+        final Object raw = section.isConfigurationSection(path)
+                ? section.getConfigurationSection(path)
+                : section.getString(path);
+        return me.chyxelmc.mmoblock.i18n.LocalizedString.resolve(
+                this.translationService, null, raw,
+                fallback != null ? fallback : "",
+                i18nKeyHint
+        );
     }
 
     private Material parseMaterial(final String raw) {

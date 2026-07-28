@@ -1,9 +1,10 @@
 exampleBDEngine:
   item:
-    name: "Example BDEngine"
+    name:
+     key: "block_config.example_bdengine_name" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+     default: "&6Example BDEngine"
     material: oak_sapling
   respawnTime: 1 # Time in seconds for the block to respawn after being broken
-  deadDelay: 5 # Time in seconds for the block to disappear after being broken
   randomLocation: # Whether the block should respawn at a random location around the original spawn location. If false, the block will respawn at the original spawn location.
     enabled: true
     radius: 1 # The radius in blocks around the original spawn location where the block can respawn. The block will respawn at a random location within this radius.
@@ -51,10 +52,18 @@ exampleBDEngine:
       operator: ">=" # The operator to use for the condition. Supported operators are: >, <, >=, <=, ==, !=, for String value, you can also use == and !=.
       compareTo: "10" #also support String value for compareTo, so you can use placeholder in compareTo as well, for example: %player_name%.
       placeholderText:
-        require: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Require Lvl 10</anim> &a✔"
-        notMet: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Require Lvl 10</anim> &c❌"
-      sendTitle: "&cYou are too weak to mine this block!"
-      sendSubtitle: "&7You need at least 10 level to mine this block."
+        require:
+          key: "block_config.example_bdengine_require_condition_1" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+          default: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Require Lvl 10</anim> &a✔"
+        notMet:
+          key: "block_config.example_bdengine_require_not_met_1" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+          default: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>Require Lvl 10</anim> &c❌"
+      sendTitle:
+        key: "block_config.example_bdengine_sendtitle_condition_1" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+        default: "&cYou are too weak to mine this block!"
+      sendSubtitle:
+        key: "block_config.example_bdengine_sendsubtitle_condition_1" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+        default: "&7You need at least 10 level to mine this block."
   display: # Use holograms to display information about the entity. You can have up to 4 lines of text.
     displayHeight: 2.1 # height of the all hologram lines above the entity's location. This will be the height of the first line of the hologram. The second line will be 0.25 blocks below the first line, the third line will be 0.25 blocks below the second line, and the fourth line will be 0.25 blocks below the third line.
     displayFacing: # hologram can teleport to the near player, display Per Player Facing, if player the player out of range unload/remove hologram
@@ -69,15 +78,27 @@ exampleBDEngine:
       - line: 2 #second line of the hologram, below the first line
         contents:
           #text: "&6Example Block"
-          text: "<anim:wave:&1;&b>Example BDEngine</anim>" # A wave-like animation during the color transition.
+          text:  # A wave-like animation during the color transition.
+            key: "block_config.example_bdengine_display_line_2" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+            default: "<anim:wave:&1;&b>Example BDEngine</anim>"
           click: hide #this key/field have to type store, hide as boolean true(true mean hide, false mean not hide and false trigger by fill with text string) and "Text" string text
       - line: 3 #third line of the hologram, below the second line
         contents:
-          text: "{condition_1}" #display the placeholder text from the condition if the condition is not met, and animate the text with a color changing animation. You can also use {condition_<id>} to display the placeholder text from the condition, and it will automatically update when the condition is met or not met.
-          click: "<anim:typewriter:&e;&6>Mining......</anim>"
+          text:
+            key: "block_config.example_bdengine_display_line_3" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+            default: "{condition_1}" #display the placeholder text from the condition if the condition is not met, and animate the text with a color changing animation. You can also use {condition_<id>} to display the placeholder text from the condition, and it will automatically update when the condition is met or not met.
+          click:
+            key: "block_config.example_bdengine_display_click_line_3" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+            default: "<anim:typewriter:&e;&6>Mining......</anim>"
       - line: 4 #fourth line of the hologram, below the third line
         contents:
-          text: "<anim:burn:#999bff;#ffe599>Click to Mine!</anim>" #<anim:name:args></anim>
+          text:  #<anim:name:args></anim>
+            key: "block_config.example_bdengine_display_line_4" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+            default: "<anim:burn:#999bff;#ffe599>Click to Mine!</anim>"
           #text: "&7Click to Mine!"
-          dead: "&7Respawns in: &c{respawn_time}s" # You can also use %mmoblock_respawn_time%.
-          click: "&7[&r{progress_bar}&7]" # You can also use %mmoblock_progress% and %mmoblock_max_progress%.
+          dead: # You can also use %mmoblock_respawn_time%.
+            key: "block_config.example_bdengine_display_dead_line_4" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+            default: "&7Respawns in: &c{respawn_time}s"
+          click: # You can also use %mmoblock_progress% and %mmoblock_max_progress%.
+            key: "block_config.example_bdengine_display_click_line_4" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+            default: "&7[&r{progress_bar}&7]"

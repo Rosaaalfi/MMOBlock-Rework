@@ -1,15 +1,40 @@
 debug:
   load: "&e[MMOBlock] &7デバッグモードが有効です。"
+
+logger:
+  debug_enabled: "&e[MMOBlock] デバッグモードを有効にしました"
+  debug_disabled: "&e[MMOBlock] デバッグモードを無効にしました"
+
+integration:
+  found: "{name} が見つかりました - 統合を有効化"
+  not_found: "{name} がインストールされていないか、有効になっていません。"
+  lang:
+    load_failed: "&e言語ファイル '{file}' の読み込みに失敗しました: {reason}"
+    fallback_missing: "&eフォールバック言語 'en-us.yml' が見つかりません！翻訳が不完全な可能性があります。"
+update:
+  new_version: "&a新しいバージョンが利用可能です: {latest} (現在: {current})。ダウンロード: {url}"
+  latest: "&a最新バージョンを実行中です ({version})。"
+  newer: "&aリポジトリより新しいバージョンを実行中です ({current} > {latest})。"
+
+targeted_store:
+  purchase_verified: "&a[Chyxel] 購入が確認されました！{buyer} さん、MMOBlock をご支援いただきありがとうございます。"
+  leaker: "&4[Chyxel] ライセンスが取り消されました — リークが検出されました！プラグインを無効にします。"
+
 commands:
   usage:
     block: "&e/mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]"
     node: "&e/mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
     reload: "&e/mmoblock reload [config|blocks|drops|lang|tools]"
-  unknown_subcommand: "&c不明なサブコマンドです。"
+  unknown_subcommand: "&c不明なサブコマンドです: {subcommand}"
   world_not_found: "&cワールドが見つかりません: {world}"
+  player_only: "&cプレイヤーのみ実行可能なコマンドです。"
+  world_required: "&cコンソールから実行するにはワールドの指定が必要です。"
+  invalid_facing: "&c向きが無効です: {facing} (north, south, east, west を使用)"
+  invalid_coordinate: "&c{name} が無効です: {value}"
+  node_runtime_unavailable: "&cノードランタイムが利用できません。"
   place:
     usage: "&e使用方法: /mmoblock block place <blockId> x y z [world] [facing]"
-    invalid_facing: "&c向きが無効です: {facing} (north, south, east, west)"
+    invalid_facing: "&c向きが無効です: {facing} (north, south, east, west を使用)"
     failed: "&cブロック設置に失敗しました: {reason}"
     success: "&a{id} を {world} {x} {y} {z} に設置しました"
   remove:
@@ -17,8 +42,9 @@ commands:
     not_found: "&cその座標にブロックが見つかりません。"
     success: "&a{id} を {world} {x} {y} {z} から削除しました"
   reload:
-    all: "&aconfig, blocks, drops, lang, tools を再読み込みしました。"
+    all: "&aconfig, blocks, drops, lang, tools, nodes を再読み込みしました。"
     config: "&aconfig.yml を再読み込みしました"
+    lang: "&a{lang_files} 個の言語ファイルと {i18n_files} 件の翻訳エントリを再読み込みしました。"
   node:
     usage: "&e使用方法: /mmoblock node <place|remove|get|list> <nodeId> x y z [world] [facing]"
     place:
@@ -42,3 +68,70 @@ blocks:
   tool_not_allowed: "&c[MMOBlock] このブロックにそのツールは使えません。"
   mining_progress: "&e[MMOBlock] 採掘進捗: {progress}/{needed} &7[{progress_bar}&7]"
   broken: "&a[MMOBlock] ブロックを破壊しました。{respawn}秒後にリスポーンします"
+
+  block:
+    not_found: "&cブロックが見つかりません: {token}"
+    no_item: "&cブロックアイテムが設定されていません: {token}"
+    list_header: "&eブロック一覧:"
+    list_empty: "&e配置されたブロックはありません。"
+  node:
+    not_found: "&cノードが見つかりません: {token}"
+    no_item: "&cノードアイテムが設定されていません: {token}"
+    list_header: "&eノード一覧:"
+    list_empty: "&e配置されたノードはありません。"
+  nodes:
+    place:
+      failed: "&cノード設置に失敗しました: {reason}"
+      success: "&aノード {id} を {world} {x} {y} {z} に設置しました"
+    remove:
+      not_found: "&cその座標にノードが見つかりません。"
+      success: "&aノード {id} を {world} {x} {y} {z} から削除しました"
+  debug:
+    usage: "&eデバッグコマンド:"
+    extracting: "&7デフォルトアセットを展開中..."
+    extracted: "&aデフォルトアセットの展開が完了しました。&7/mmoblock reload&a を実行して適用してください。"
+    placeholder_usage: "&e使用方法: /mmoblock debug placeholder parse <player> <placeholder>"
+    console_player_required: "&cコンソールから実行するにはプレイヤー名を指定してください。"
+    player_not_found: "&cプレイヤーが見つかりません: {player}"
+    mass_spawn_usage: "&c使用方法: /mmoblock debug mass-spawn <blockId> <count> [radius]"
+    count_range: "&cカウントは1～10000の間で指定してください。"
+    count_range_1000: "&cカウントは1～1000の間で指定してください。"
+    invalid_count: "&c無効なカウントです: {count}"
+    no_world: "&cワールドを特定できませんでした。"
+    no_blocks: "&cブロックタイプが設定されていません。"
+    db_stress_usage: "&c使用方法: /mmoblock debug db-stress <count>"
+    stress_info:
+      header: "&e&l=== MMOBlock 負荷情報 ==="
+      tps: "&7TPS: &e{tps}"
+      memory: "&7メモリ: &e{used}&7/&e{max} &7MB (&e{free} &7MB 空き)"
+      blocks: "&7設置ブロック数: &e{count}"
+      nodes: "&7設置ノード数: &e{count}"
+      types: "&7登録ブロックタイプ数: &e{count}"
+    chunk_stress:
+      start: "&eチャンク負荷テスト開始... &7{count} チャンク（半径 &e{radius}&7 チャンク）"
+      spiral: "&7スパイラルパターンでテレポートします。"
+      complete: "&aチャンク負荷テスト完了！ &7{count} &7チャンクを訪問しました。"
+      timeout: "&eチャンク負荷テストがタイムアウトしました。"
+
+block_config:
+  example_bdengine_name: "&6サンプル BDEngine"
+  example_bdengine_require_condition_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>必要Lv10</anim> &a✔"
+  example_bdengine_require_not_met_1: "<anim:colors:#999bff;#148a87;#81dd1a;#dd1aa9;#148a87>必要Lv10</anim> &c❌"
+  example_bdengine_sendtitle_condition_1: "&cこのブロックを採掘するには弱すぎます！"
+  example_bdengine_sendsubtitle_condition_1: "&7このブロックを採掘するには少なくともLv10が必要です。"
+  example_bdengine_display_line_2: "<anim:wave:&1;&b>サンプル BDEngine</anim>"
+  example_bdengine_display_line_3: "{condition_1}"
+  example_bdengine_display_click_line_3: "<anim:typewriter:&e;&6>採鉱中......</anim>"
+  example_bdengine_display_line_4: "<anim:burn:#999bff;#ffe599>クリックして採掘！</anim>"
+  example_bdengine_display_dead_line_4: "&7リスポーン: &c{respawn_time}秒"
+  example_bdengine_display_click_line_4: "&7[&r{progress_bar}&7]"
+
+drop_config:
+  example_drop_popup_item: "&a+{item_amount} &r{item_name}"
+  example_drop_popup_vanilla_experience: "&a+{vanilla_exp_amount} &rEXP"
+  example_drop_popup_command: "&a+5 &rダイヤモンド"
+
+node_config:
+  example_node_active_block_list: "&f{block_name} &a有効"
+  example_node_dead_block_list: "&f{block_name} &c{respawn_times}秒"
+  example_node_display_line_2: "<anim:wave:&1;&b>平地ノード:</anim>"

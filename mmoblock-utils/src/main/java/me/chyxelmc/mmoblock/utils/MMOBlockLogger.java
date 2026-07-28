@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -13,16 +14,23 @@ import java.util.Set;
  * and message deduplication. Designed as a singleton initialized during plugin startup.
  * </p>
  * <p>
+ * Supports i18n via {@link #setTranslator(Translator)}. When a translator is set,
+ * overloaded {@code info(String key, String defaultMessage)} and similar methods
+ * will translate the key through the translator using the configured console locale.
+ * </p>
+ * <p>
  * Usage:
  * <pre>{@code
  *   // Initialize in onEnable():
  *   MMOBlockLogger.init(this);
+ *   MMOBlockLogger.setTranslator((key, def, placeholders) -> translationService.translateConsole(key, def, placeholders));
  *
- *   // Static convenience methods:
+ *   // Plain text:
  *   MMOBlockLogger.info("Something happened");
- *   MMOBlockLogger.warning("Something might be wrong");
- *   MMOBlockLogger.error("Something failed: " + ex.getMessage());
- *   MMOBlockLogger.debug("Debug info (only shown when debug=true)");
+ *
+ *   // I18n-aware:
+ *   MMOBlockLogger.info("commands.reload.success", "&aReloaded successfully.");
+ *   MMOBlockLogger.info("commands.reload.success", "&aReloaded successfully.", Map.of("{target}", "config"));
  * }</pre>
  * </p>
  */
@@ -36,9 +44,26 @@ public final class MMOBlockLogger {
         SEVERE
     }
 
+    /**
+     * Functional interface for translating log messages. Set via {@link #setTranslator(Translator)}.
+     */
+    @FunctionalInterface
+    public interface Translator {
+        /**
+         * Translate a key into a localized message for the console's default locale.
+         *
+         * @param key            the translation key
+         * @param defaultMessage the fallback message if the key is not found
+         * @param placeholders   placeholder replacements (may be empty)
+         * @return the translated message
+         */
+        String translate(String key, String defaultMessage, Map<String, String> placeholders);
+    }
+
     private static JavaPlugin plugin;
     private static boolean debug;
     private static String parsedPrefix;
+    private static Translator translator;
     private static final Set<String> loggedMessages = new HashSet<>();
     private static final ColorLogger colorLogger = new ColorLogger();
     private static boolean initialized;
@@ -76,7 +101,29 @@ public final class MMOBlockLogger {
     }
 
     // -------------------------------------------------------------
-    // Convenience methods
+    // Translator
+    // -------------------------------------------------------------
+
+    /**
+     * Set the translator for i18n-aware logging. When set, the overloaded
+     * log methods (e.g. {@link #info(String, String)}) will use this
+     * translator to resolve keys into localized console messages.
+     *
+     * @param translator the translator, or null to disable i18n logging
+     */
+    public static void setTranslator(final Translator translator) {
+        MMOBlockLogger.translator = translator;
+    }
+
+    /**
+     * @return the current translator, or null if none is set
+     */
+    public static Translator getTranslator() {
+        return translator;
+    }
+
+    // -------------------------------------------------------------
+    // Convenience methods — plain text
     // -------------------------------------------------------------
 
     /**
@@ -133,6 +180,104 @@ public final class MMOBlockLogger {
      */
     public static void severe(final String message, final Throwable thrown) {
         log(Level.SEVERE, message, thrown);
+    }
+
+    // -------------------------------------------------------------
+    // Convenience methods — i18n-aware (key + defaultMessage)
+    // -------------------------------------------------------------
+
+    /**
+     * Log at DEBUG level using i18n translation. Falls back to {@code defaultMessage}
+     * if the key is not found or no translator is set.
+     */
+    public static void debug(final String key, final String defaultMessage) {
+        log(Level.DEBUG, translate(key, defaultMessage, Map.of()), null);
+    }
+
+    /**
+     * Log at DEBUG level using i18n translation with placeholders.
+     */
+    public static void debug(final String key, final String defaultMessage, final Map<String, String> placeholders) {
+        log(Level.DEBUG, translate(key, defaultMessage, placeholders), null);
+    }
+
+    /**
+     * Log at INFO level using i18n translation. Falls back to {@code defaultMessage}
+     * if the key is not found or no translator is set.
+     */
+    public static void info(final String key, final String defaultMessage) {
+        log(Level.INFO, translate(key, defaultMessage, Map.of()), null);
+    }
+
+    /**
+     * Log at INFO level using i18n translation with placeholders.
+     */
+    public static void info(final String key, final String defaultMessage, final Map<String, String> placeholders) {
+        log(Level.INFO, translate(key, defaultMessage, placeholders), null);
+    }
+
+    /**
+     * Log at WARNING level using i18n translation. Falls back to {@code defaultMessage}
+     * if the key is not found or no translator is set.
+     */
+    public static void warning(final String key, final String defaultMessage) {
+        log(Level.WARNING, translate(key, defaultMessage, Map.of()), null);
+    }
+
+    /**
+     * Log at WARNING level using i18n translation with placeholders.
+     */
+    public static void warning(final String key, final String defaultMessage, final Map<String, String> placeholders) {
+        log(Level.WARNING, translate(key, defaultMessage, placeholders), null);
+    }
+
+    /**
+     * Log at ERROR level using i18n translation. Falls back to {@code defaultMessage}
+     * if the key is not found or no translator is set.
+     */
+    public static void error(final String key, final String defaultMessage) {
+        log(Level.ERROR, translate(key, defaultMessage, Map.of()), null);
+    }
+
+    /**
+     * Log at ERROR level using i18n translation with placeholders.
+     */
+    public static void error(final String key, final String defaultMessage, final Map<String, String> placeholders) {
+        log(Level.ERROR, translate(key, defaultMessage, placeholders), null);
+    }
+
+    /**
+     * Log at SEVERE level using i18n translation. Falls back to {@code defaultMessage}
+     * if the key is not found or no translator is set.
+     */
+    public static void severe(final String key, final String defaultMessage) {
+        log(Level.SEVERE, translate(key, defaultMessage, Map.of()), null);
+    }
+
+    /**
+     * Log at SEVERE level using i18n translation with placeholders.
+     */
+    public static void severe(final String key, final String defaultMessage, final Map<String, String> placeholders) {
+        log(Level.SEVERE, translate(key, defaultMessage, placeholders), null);
+    }
+
+    // -------------------------------------------------------------
+    // Translation helper
+    // -------------------------------------------------------------
+
+    /**
+     * Translate a key using the configured translator, or return the default message
+     * if no translator is set.
+     */
+    private static String translate(final String key, final String defaultMessage, final Map<String, String> placeholders) {
+        if (translator == null) {
+            return defaultMessage;
+        }
+        try {
+            return translator.translate(key, defaultMessage, placeholders);
+        } catch (final Exception e) {
+            return defaultMessage;
+        }
     }
 
     // -------------------------------------------------------------
@@ -227,9 +372,9 @@ public final class MMOBlockLogger {
     public static void setDebugEnabled(final boolean enabled) {
         debug = enabled;
         if (enabled) {
-            info("Debug mode enabled");
+            info("logger.debug_enabled", "Debug mode enabled");
         } else {
-            info("Debug mode disabled");
+            info("logger.debug_disabled", "Debug mode disabled");
         }
     }
 
@@ -241,6 +386,7 @@ public final class MMOBlockLogger {
         plugin = null;
         debug = false;
         parsedPrefix = "";
+        translator = null;
         loggedMessages.clear();
     }
 }

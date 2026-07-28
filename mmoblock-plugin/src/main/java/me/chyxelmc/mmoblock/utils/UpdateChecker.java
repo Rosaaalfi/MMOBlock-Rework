@@ -117,13 +117,17 @@ public final class UpdateChecker {
 
             final int comparison = compareVersions(currentVersion, latestVersion);
             if (comparison < 0) {
-                MMOBlockLogger.info("A new version is available: " + latestVersion
-                        + " (current: " + currentVersion + "). Download at https://voxel.shop/product/6390/");
+                MMOBlockLogger.info("update.new_version", "A new version is available: " + latestVersion
+                        + " (current: " + currentVersion + "). Download at https://voxel.shop/product/6390/",
+                        java.util.Map.of("{latest}", latestVersion, "{current}", currentVersion,
+                                "{url}", "https://voxel.shop/product/6390/"));
             } else if (comparison == 0) {
-                MMOBlockLogger.info("You are running the latest version (" + currentVersion + ").");
+                MMOBlockLogger.info("update.latest", "You are running the latest version (" + currentVersion + ").",
+                        java.util.Map.of("{version}", currentVersion));
             } else {
-                MMOBlockLogger.info("You are running a newer version than the repository ("
-                        + currentVersion + " > " + latestVersion + ").");
+                MMOBlockLogger.info("update.newer", "You are running a newer version than the repository ("
+                        + currentVersion + " > " + latestVersion + ").",
+                        java.util.Map.of("{current}", currentVersion, "{latest}", latestVersion));
             }
 
         } catch (final Exception ex) {

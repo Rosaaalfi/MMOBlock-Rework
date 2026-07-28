@@ -345,12 +345,66 @@ public final class NodeRuntimeService {
             final boolean active = BlockLifecycleState.STATUS_ACTIVE.equalsIgnoreCase(placedBlock.status());
             final String template = active ? activeTemplate : deadTemplate;
             final long remaining = resolveRemainingSeconds(placedBlock, blockDefinition, now);
-            lines.add(template
-                    .replace("{block_name}", blockName)
-                    .replace("{respawn_times}", String.valueOf(remaining))
+            final Map<String, String> placeholders = Map.of(
+                    "{block_name}", blockName,
+                    "{respawn_times}", String.valueOf(remaining)
             );
+            lines.add(replacePlaceholders(
+                    resolveI18n(null, template, placeholders),
+                    placeholders
+            ));
         }
         return lines;
+    }
+
+    private String resolveI18n(final Player player, final String text, final Map<String, String> placeholders) {
+        if (text == null || !text.contains("{i18n:")) {
+            return text;
+        }
+        final StringBuilder sb = new StringBuilder(text.length() + 64);
+        int cursor = 0;
+        while (true) {
+            final int start = text.indexOf("{i18n:", cursor);
+            if (start < 0) {
+                sb.append(text, cursor, text.length());
+                break;
+            }
+            sb.append(text, cursor, start);
+            int depth = 0;
+            int end = start;
+            for (; end < text.length(); end++) {
+                final char c = text.charAt(end);
+                if (c == '{') {
+                    depth++;
+                } else if (c == '}') {
+                    depth--;
+                    if (depth == 0) {
+                        break;
+                    }
+                }
+            }
+            if (depth != 0 || end >= text.length()) {
+                sb.append(text, start, text.length());
+                break;
+            }
+            final String content = text.substring(start + "{i18n:".length(), end);
+            final String[] parts = content.split("\\|\\|\\|", 2);
+            final String key = parts[0].trim();
+            final String defaultText = parts.length > 1 ? parts[1].trim() : "";
+            sb.append(this.plugin.translationService().translate(player, key, defaultText, placeholders));
+            cursor = end + 1;
+        }
+        return sb.toString();
+    }
+
+    private static String replacePlaceholders(String text, final Map<String, String> placeholders) {
+        if (text == null || placeholders.isEmpty()) {
+            return text;
+        }
+        for (final Map.Entry<String, String> placeholder : placeholders.entrySet()) {
+            text = text.replace(placeholder.getKey(), placeholder.getValue());
+        }
+        return text;
     }
 
     private long resolveRemainingSeconds(final PlacedBlockModel placedBlock, final BlockDefinitionModel blockDefinition, final long now) {

@@ -6,7 +6,9 @@ exampleDrops:
     chances: 0.01 # 1% chance
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
-      text: "&a+{item_amount} &r{item_name}" # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
+      text: # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
+        key: "drops_config.example_drop_popup_item" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+        default: "&a+{item_amount} &r{item_name}"
     dropType: frontGround # inventory, frontGround(front of player), and centerGround(center of entity or block).
     perPlayer: true # default is false, only last player to break the block will get the drop and the drop cannot be claimed and seen by other players. If false, all players in the area will get the drop, can only be used with centerGround and frontGround dropType.
     effectExplosion: true # default is false, enable or disable the explosion velocity effect. If enabled, the drop will be launched into the air when it drops, can only be used with centerGround and frontGround dropType.
@@ -25,7 +27,9 @@ exampleDrops:
     chances: 0.4 # 40% chance
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
-      text: "&a+{item_amount} &r{item_name}" # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
+      text: # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
+        key: "drops_config.example_drop_popup_item" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+        default: "&a+{item_amount} &r{item_name}"
     dropType: centerGround # inventory, frontGround(front of player), and centerGround(center of entity or block).
     perPlayer: true # default is false, only last player to break the block will get the drop and the drop cannot be claimed and seen by other players. If false, all players in the area will get the drop, can only be used with centerGround and frontGround dropType.
     effectExplosion: true # default is false, enable or disable the explosion velocity effect. If enabled, the drop will be launched into the air when it drops, can only be used with centerGround and frontGround dropType.
@@ -44,7 +48,9 @@ exampleDrops:
     chances: 0.2 # 20% chance
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
-      text: "&a+{item_amount} &r{item_name}" # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
+      text: # text of the popup effect, can use {item_amount} and {item_name} as placeholders.
+        key: "drops_config.example_drop_popup_item" # language key for the item name, you can use this key to translate the item name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the item name will be used as the default name.
+        default: "&a+{item_amount} &r{item_name}"
     dropType: inventory # inventory, frontGround(front of player), and centerGround(center of entity or block).
 
   - experience: vanilla # type of experience, support vanilla and mmocore. If you want to use mmocore experience, you need to have MMOCore plugin installed and enabled.
@@ -52,11 +58,15 @@ exampleDrops:
     chances: 0.5 # 50% chance
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
-      text: "&a+{exp_amount} &rEXP" # text of the popup effect, can use {exp_amount} as placeholders.
+      text: # text of the popup effect, can use {exp_amount} as placeholders.
+        key: "drops_config.example_drop_popup_vanilla_experience" # language key for the experience name, you can use this key to translate the experience name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the experience name will be used as the default name.
+        default: "&a+{vanilla_exp_amount} &rEXP"
     dropType: frontGround #frontGround(front of player), and centerGround(center of entity or block).
 
   - command: "give %player% minecraft:diamond 5" # command to execute when the drop is successful. %player% will be replaced with the player's name.
     chances: 0.1 # 10% chance
     dropPopup:
       enabled: true # default is false, enable or disable the popup effect, can use with all dropTypes.
-      text: "&a+5 &rDiamonds" # text of the popup effect for the command drop does not support placeholders, you can use any text you want.
+      text: # text of the popup effect for the command drop does not support placeholders, you can use any text you want.
+        key: "drops_config.example_drop_popup_command" # language key for the command name, you can use this key to translate the command name in different languages. The translation will be loaded from the lang file, this is opsional, if not set, the command name will be used as the default name.
+        default: "&a+5 &rDiamonds"

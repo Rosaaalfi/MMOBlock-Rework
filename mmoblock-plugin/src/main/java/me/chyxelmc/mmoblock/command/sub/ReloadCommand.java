@@ -5,7 +5,9 @@ import me.chyxelmc.mmoblock.command.CommandArgs;
 import me.chyxelmc.mmoblock.command.CommandContext;
 import me.chyxelmc.mmoblock.command.SubCommand;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
+import me.chyxelmc.mmoblock.config.NodeConfigLoader;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
+import me.chyxelmc.mmoblock.utils.TextColor;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.jetbrains.annotations.NotNull;
@@ -72,13 +74,18 @@ public final class ReloadCommand implements SubCommand {
         if (ctx.nodeRuntimeService() != null) {
             ctx.nodeRuntimeService().reloadNodes();
         }
+        // Also reload translations
+        ctx.plugin().translationService().reload();
         final ReconcileResult result = ctx.runtimeCoordinator().reconcileAfterConfigReload(true);
         sender.sendMessage(ctx.configService().messageComponent(
-                "commands.reload.all", "Reloaded config, blocks, drops, lang, and tools."
+                "commands.reload.all", "&aReloaded config, blocks, drops, lang, tools, and nodes."
         ));
         sender.sendMessage(formatValidation("blocks", ctx.configService().lastBlockReport()));
         sender.sendMessage(formatValidation("tools", ctx.configService().lastToolReport()));
         sender.sendMessage(formatValidation("drops", ctx.configService().lastDropReport()));
+        if (ctx.nodeRuntimeService() != null) {
+            sender.sendMessage(formatNodeValidation(ctx.nodeConfigService().lastNodeReport()));
+        }
         return true;
     }
 
@@ -105,7 +112,16 @@ public final class ReloadCommand implements SubCommand {
     }
 
     private boolean handleLangReload(final CommandSender sender) {
-        sender.sendMessage(Component.text("Reloaded lang folder: " + ctx.configService().reloadLanguages() + " files"));
+        final int langFiles = ctx.configService().reloadLanguages();
+        final int i18nFiles = ctx.plugin().translationService().reload();
+        sender.sendMessage(ctx.configService().messageComponent(
+                "commands.reload.lang",
+                "&aReloaded {lang_files} language files and {i18n_files} translation entries.",
+                java.util.Map.of(
+                        "{lang_files}", String.valueOf(langFiles),
+                        "{i18n_files}", String.valueOf(i18nFiles)
+                )
+        ));
         return true;
     }
 
@@ -117,8 +133,13 @@ public final class ReloadCommand implements SubCommand {
     }
 
     private boolean handleNodesReload(final CommandSender sender) {
-        final int loaded = ctx.nodeRuntimeService() != null ? ctx.nodeRuntimeService().reloadNodes() : 0;
+        if (ctx.nodeRuntimeService() == null) {
+            sender.sendMessage(Component.text("Node runtime not available."));
+            return true;
+        }
+        final int loaded = ctx.nodeRuntimeService().reloadNodes();
         sender.sendMessage(Component.text("Reloaded nodes folder: " + loaded + " entries"));
+        sender.sendMessage(formatNodeValidation(ctx.nodeConfigService().lastNodeReport()));
         return true;
     }
 
@@ -127,8 +148,48 @@ public final class ReloadCommand implements SubCommand {
     // -------------------------------------------------------------
 
     private Component formatValidation(final String type, final BlockConfigLoader.ValidationReport report) {
-        return Component.text("Validation " + type + " -> errors=" + report.errorCount()
-                + ", warnings=" + report.warningCount());
+        final StringBuilder sb = new StringBuilder();
+        sb.append("Validation ")
+                .append(type)
+                .append(" -> errors=")
+                .append(report.errorCount())
+                .append(", warnings=")
+                .append(report.warningCount());
+        if (report.errorCount() > 0) {
+            sb.append(" \n");
+            for (final String err : report.errors()) {
+                sb.append("  &c✗ ").append(err).append("\n");
+            }
+        }
+        if (report.warningCount() > 0) {
+            sb.append(" \n");
+            for (final String warn : report.warnings()) {
+                sb.append("  &e⚠ ").append(warn).append("\n");
+            }
+        }
+        return TextColor.toComponent(sb.toString().trim());
+    }
+
+    private Component formatNodeValidation(final NodeConfigLoader.ValidationReport report) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("Validation nodes")
+                .append(" -> errors=")
+                .append(report.errorCount())
+                .append(", warnings=")
+                .append(report.warningCount());
+        if (report.errorCount() > 0) {
+            sb.append(" \n");
+            for (final String err : report.errors()) {
+                sb.append("  &c✗ ").append(err).append("\n");
+            }
+        }
+        if (report.warningCount() > 0) {
+            sb.append(" \n");
+            for (final String warn : report.warnings()) {
+                sb.append("  &e⚠ ").append(warn).append("\n");
+            }
+        }
+        return TextColor.toComponent(sb.toString().trim());
     }
 
     private Component formatReconcileResult(final ReconcileResult result) {

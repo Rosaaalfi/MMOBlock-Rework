@@ -1,4 +1,5 @@
 debug: false # logging debug info to console
+targeted-store: true # verify purchase on Voxel.shop/Polymart (disable for dev builds)
 bStats: true # send anonymous stats to bStats
 updateChecker: true # check for updates on https://voxel.shop/
 lang: en-us

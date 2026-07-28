@@ -2,6 +2,9 @@ package me.chyxelmc.mmoblock.api.model;
 
 import org.bukkit.Material;
 
+import java.util.Collections;
+import java.util.Map;
+
 public interface DropEntry {
     DropType type();
     Material material();
@@ -103,5 +106,35 @@ public interface DropEntry {
      */
     default DropPopup dropPopup() {
         return null;
+    }
+
+    // ---- Custom drop handler (third-party addon plugins) ----
+
+    /**
+     * The custom handler ID for {@link DropType#CUSTOM} drops.
+     * This should match a handler ID registered in
+     * {@link me.chyxelmc.mmoblock.api.registry.DropHandlerRegistry}.
+     *
+     * <p>When non-null and the drop type is {@link DropType#CUSTOM},
+     * the registered {@link me.chyxelmc.mmoblock.api.drop.DropHandler}
+     * is invoked instead of the built-in MATERIAL/EXPERIENCE/COMMAND logic.</p>
+     *
+     * @return the custom handler ID, or null if not set
+     */
+    default String customHandlerId() {
+        return null;
+    }
+
+    /**
+     * Custom configuration data for {@link DropType#CUSTOM} drops.
+     * This is a free-form map specified in the drops YAML under {@code customData}.
+     *
+     * <p>Third-party drop handlers can use this data to configure their behavior
+     * per drop entry (e.g., backpack type, slot count, GUI title).</p>
+     *
+     * @return an unmodifiable map of custom data, never null but may be empty
+     */
+    default Map<String, Object> customData() {
+        return Collections.emptyMap();
     }
 }

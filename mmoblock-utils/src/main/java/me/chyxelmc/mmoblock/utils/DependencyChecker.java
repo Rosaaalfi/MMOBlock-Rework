@@ -128,9 +128,9 @@ public final class DependencyChecker {
         for (final Map.Entry<String, Boolean> entry : deps.entrySet()) {
             final String name = entry.getKey();
             if (entry.getValue()) {
-                MMOBlockLogger.info(name + " found - integration enabled");
+                MMOBlockLogger.info("integration.found", name + " found - integration enabled", java.util.Map.of("{name}", name));
             } else {
-                MMOBlockLogger.warning(name + " is not installed or not enabled. ");
+                MMOBlockLogger.warning("integration.not_found", name + " is not installed or not enabled.", java.util.Map.of("{name}", name));
             }
         }
     }

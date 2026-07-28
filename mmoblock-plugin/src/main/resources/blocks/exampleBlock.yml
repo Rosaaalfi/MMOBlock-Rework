@@ -3,7 +3,6 @@ exampleBlock:
     name: "Example Block"
     material: diamond_ore
   respawnTime: 1 # Time in seconds for the block to respawn after being broken
-  deadDelay: 5 # Time in seconds for the block to disappear after being broken
   randomLocation: # Whether the block should respawn at a random location around the original spawn location. If false, the block will respawn at the original spawn location.
     enabled: true
     radius: 5 # The radius in blocks around the original spawn location where the block can respawn. The block will respawn at a random location within this radius.

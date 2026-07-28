@@ -53,6 +53,9 @@ final class HologramPacketLineFactory {
             if (text.contains("{condition_")) {
                 return true;
             }
+            if (text.contains(HologramRuntimeService.I18N_PREFIX)) {
+                return true;
+            }
         }
         return false;
     }

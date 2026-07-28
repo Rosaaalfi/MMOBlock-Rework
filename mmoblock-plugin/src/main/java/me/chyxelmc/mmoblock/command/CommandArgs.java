@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Static utility methods for parsing common command arguments (coordinates,
@@ -49,10 +50,22 @@ public final class CommandArgs {
      */
     @Nullable
     public static Double parseDouble(@NotNull final String raw, @NotNull final CommandSender sender, @NotNull final String name) {
+        return parseDouble(raw, sender, name, null);
+    }
+
+    @Nullable
+    public static Double parseDouble(@NotNull final String raw, @NotNull final CommandSender sender,
+                                      @NotNull final String name,
+                                      @Nullable final CommandContext ctx) {
         try {
             return Double.parseDouble(raw);
         } catch (final NumberFormatException exception) {
-            sender.sendMessage(Component.text("Invalid " + name + ": " + raw));
+            if (ctx != null) {
+                ctx.sendMessage(sender, "commands.invalid_coordinate", "Invalid {name}: {value}",
+                        Map.of("{name}", name, "{value}", raw));
+            } else {
+                sender.sendMessage(Component.text("Invalid " + name + ": " + raw));
+            }
             return null;
         }
     }
@@ -75,12 +88,20 @@ public final class CommandArgs {
             final int yArg,
             final int zArg
     ) {
-        final Double x = parseDouble(args[xArg], sender, "x");
-        final Double y = parseDouble(args[yArg], sender, "y");
-        final Double z = parseDouble(args[zArg], sender, "z");
-        if (x == null || y == null || z == null) {
-            return null;
-        }
+        return parseXYZ(sender, args, xArg, yArg, zArg, null);
+    }
+
+    @Nullable
+    public static double[] parseXYZ(
+            @NotNull final CommandSender sender,
+            @NotNull final String[] args,
+            final int xArg, final int yArg, final int zArg,
+            @Nullable final CommandContext ctx
+    ) {
+        final Double x = parseDouble(args[xArg], sender, "x", ctx);
+        final Double y = parseDouble(args[yArg], sender, "y", ctx);
+        final Double z = parseDouble(args[zArg], sender, "z", ctx);
+        if (x == null || y == null || z == null) return null;
         return new double[]{x, y, z};
     }
 
@@ -102,21 +123,35 @@ public final class CommandArgs {
             @Nullable final String worldName,
             @NotNull final me.chyxelmc.mmoblock.config.BlockConfigLoader configService
     ) {
+        return resolveWorld(sender, worldName, (CommandContext) null);
+    }
+
+    @Nullable
+    public static World resolveWorld(
+            @NotNull final CommandSender sender,
+            @Nullable final String worldName,
+            @Nullable final CommandContext ctx
+    ) {
         if (worldName != null) {
             final World world = Bukkit.getWorld(worldName);
             if (world == null) {
-                sender.sendMessage(configService.messageComponent(
-                        "commands.world_not_found",
-                        "World not found: {world}",
-                        java.util.Map.of(KEY_WORLD, worldName)
-                ));
+                if (ctx != null) {
+                    ctx.sendMessage(sender, "commands.world_not_found", "World not found: {world}",
+                            Map.of(KEY_WORLD, worldName));
+                } else {
+                    sender.sendMessage(Component.text("World not found: " + worldName));
+                }
             }
             return world;
         }
         if (sender instanceof Player player) {
             return player.getWorld();
         }
-        sender.sendMessage(Component.text("World is required for console usage."));
+        if (ctx != null) {
+            ctx.sendMessage(sender, "commands.world_required", "&cWorld is required for console usage.");
+        } else {
+            sender.sendMessage(Component.text("World is required for console usage."));
+        }
         return null;
     }
 
@@ -133,6 +168,12 @@ public final class CommandArgs {
      */
     @Nullable
     public static String resolveFacing(@NotNull final CommandSender sender, @Nullable final String raw) {
+        return resolveFacing(sender, raw, null);
+    }
+
+    @Nullable
+    public static String resolveFacing(@NotNull final CommandSender sender, @Nullable final String raw,
+                                        @Nullable final CommandContext ctx) {
         if (raw == null || raw.isBlank()) {
             if (sender instanceof Player player) {
                 return yawToFacing(player.getLocation().getYaw());
@@ -141,7 +182,13 @@ public final class CommandArgs {
         }
         final String facing = raw.toLowerCase(Locale.ROOT);
         if (!FACINGS.contains(facing)) {
-            sender.sendMessage(Component.text("Invalid facing: " + facing + " (use north, south, east, west)"));
+            if (ctx != null) {
+                ctx.sendMessage(sender, "commands.invalid_facing",
+                        "&cInvalid facing: {facing} (use north, south, east, west)",
+                        Map.of("{facing}", facing));
+            } else {
+                sender.sendMessage(Component.text("Invalid facing: " + facing + " (use north, south, east, west)"));
+            }
             return null;
         }
         return facing;

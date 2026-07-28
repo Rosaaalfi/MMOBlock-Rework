@@ -1,19 +1,20 @@
 package me.chyxelmc.mmoblock.runtime.hologram;
 
-import me.chyxelmc.mmoblock.MMOBlock;
-import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
-import me.chyxelmc.mmoblock.model.PlacedBlockModel;
-import me.chyxelmc.mmoblock.utils.HologramAnimationUtil;
-import me.chyxelmc.mmoblock.nms.NmsAdapter;
-import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
-import org.bukkit.Location;
-import org.bukkit.World;
-import org.bukkit.entity.Player;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
+
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.entity.Player;
+
+import me.chyxelmc.mmoblock.MMOBlock;
+import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.nms.NmsAdapter;
+import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
+import me.chyxelmc.mmoblock.utils.HologramAnimationUtil;
 
 public final class HologramRuntimeService {
 
@@ -143,7 +144,7 @@ public final class HologramRuntimeService {
         final Location location = resolveBaseLocation(block, definition, state, world);            final boolean animated = this.packetLineFactory.hasAnimatedText(renderedLines)
                     || hasItemDisplayLines(renderedLines);
             final boolean containsPlaceholderApiTokens = this.packetLineFactory.hasPlaceholderApiTokens(renderedLines);
-        final HologramPlaceholderValues placeholderValues = new HologramPlaceholderValues(progress, maxProgress, respawnTimeSeconds, state.name());
+        final HologramPlaceholderValues placeholderValues = new HologramPlaceholderValues(progress, maxProgress, respawnTimeSeconds, state.name(), progressBar);
 
         // If ECS integration available, create/update a HologramComponent entity.
         // Animated holograms are handled by packet backend because they need periodic
@@ -242,4 +243,7 @@ public final class HologramRuntimeService {
 
 
     static final Pattern CONDITION_PATTERN = Pattern.compile("\\{condition_(\\d+)}");
+    static final Pattern I18N_PATTERN = Pattern.compile("\\{i18n:([^}]+)\\}");
+    static final String I18N_PREFIX = "{i18n:";
+    static final String I18N_SEPARATOR = "|||";
 }

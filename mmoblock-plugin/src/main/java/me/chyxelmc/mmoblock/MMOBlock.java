@@ -41,6 +41,7 @@ import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
 import me.chyxelmc.mmoblock.utils.DatabaseUtils;
 import me.chyxelmc.mmoblock.utils.InternalPlaceholderResolver;
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
+import me.chyxelmc.mmoblock.utils.TargetedStore;
 import me.chyxelmc.mmoblock.utils.analytics.Metrics;
 import me.chyxelmc.mmoblock.utils.DependencyChecker;
 import me.chyxelmc.mmoblock.utils.UpdateChecker;
@@ -63,6 +64,7 @@ public final class MMOBlock extends JavaPlugin{
     private BlockRuntimeService blockRuntimeService;
     private me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService;
     private RuntimeCoordinator runtimeCoordinator;
+    private me.chyxelmc.mmoblock.i18n.TranslationService translationService;
     private HologramPlaceholderContextStore placeholderContextStore;
     private MMOBlockPlaceholderExpansion placeholderExpansion;
     private Method placeholderApiSetMethod;
@@ -84,8 +86,12 @@ public final class MMOBlock extends JavaPlugin{
     @Override
     public void onEnable() {
         initLogger();
+        if (!initTargetedStore()) {
+            return; // Plugin was disabled by TargetedStore (invalid license / leaker)
+        }
         checkDependencies();
         initCoreServices();
+        initI18n();
         loadConfigs();
         initDatabase();
         initRuntime();
@@ -93,6 +99,35 @@ public final class MMOBlock extends JavaPlugin{
         setupFakeBlockChecker();
         finalizeBootstrap();
         this.ready = true;
+    }
+
+    private boolean initTargetedStore() {
+        if (!getConfig().getBoolean("targeted-store", true)) {
+            return true; // TargetedStore disabled in config
+        }
+        try {
+            final var result = me.chyxelmc.mmoblock.utils.TargetedStore.verify(this);
+            switch (result) {
+                case VALID -> {
+                    MMOBlockLogger.info("targeted_store.purchase_verified",
+                            "[Chyxel] Purchase verified! Thank you " + TargetedStore.getBuyerName());
+                    return true;
+                }
+                case LEAKER -> {
+                    TargetedStore.handleResult(this, result);
+                    Bukkit.getPluginManager().disablePlugin(this);
+                    return false;
+                }
+                case INVALID -> {
+                    Bukkit.getPluginManager().disablePlugin(this);
+                    return false;
+                }
+            }
+        } catch (final NoClassDefFoundError e) {
+            // TargetedStore was excluded from build (-PnoTargetedStore), skip verification
+            return true;
+        }
+        return true;
     }
 
     private void initLogger() {
@@ -115,9 +150,19 @@ public final class MMOBlock extends JavaPlugin{
 
     private void loadConfigs() {
         this.blockConfigService = new BlockConfigLoader(this);
+        this.blockConfigService.setTranslationService(this.translationService);
         this.blockConfigService.reloadAll();
         this.nodeConfigService = new me.chyxelmc.mmoblock.config.NodeConfigLoader(this);
+        this.nodeConfigService.setTranslationService(this.translationService);
         this.nodeConfigService.reloadNodes();
+    }
+
+    private void initI18n() {
+        this.translationService = new me.chyxelmc.mmoblock.i18n.TranslationService(this);
+        this.translationService.reload();
+        // Wire MMOBlockLogger translator for console i18n logging
+        MMOBlockLogger.setTranslator((key, defaultMessage, placeholders) ->
+                this.translationService.translateConsole(key, defaultMessage, placeholders));
     }
 
     private void initDatabase() {
@@ -195,6 +240,11 @@ public final class MMOBlock extends JavaPlugin{
                 this.nodeConfigService
         );
         ApiProvider.register(this.apiImpl);
+
+        // Wire config section parser registry (created after API is initialized)
+        this.blockConfigService.setConfigSectionParserRegistry(
+                this.apiImpl.getConfigSectionParserRegistry()
+        );
 
         if (getConfig().getBoolean("bStats", true)) {
             new Metrics(this, 30727);
@@ -600,6 +650,10 @@ public final class MMOBlock extends JavaPlugin{
 
     public me.chyxelmc.mmoblock.config.BlockConfigLoader blockConfigService() {
         return this.blockConfigService;
+    }
+
+    public me.chyxelmc.mmoblock.i18n.TranslationService translationService() {
+        return this.translationService;
     }
 
     public HologramPlaceholderContextStore placeholderContextStore() {

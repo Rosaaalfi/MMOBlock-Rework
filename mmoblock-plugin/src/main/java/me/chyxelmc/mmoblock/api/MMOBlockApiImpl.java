@@ -1,5 +1,8 @@
 package me.chyxelmc.mmoblock.api;
 
+import me.chyxelmc.mmoblock.api.registry.*;
+import me.chyxelmc.mmoblock.api.service.BlockService;
+import me.chyxelmc.mmoblock.api.service.NodeService;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
 import me.chyxelmc.mmoblock.config.NodeConfigLoader;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
@@ -8,8 +11,6 @@ import me.chyxelmc.mmoblock.api.model.BlockDefinition;
 import me.chyxelmc.mmoblock.api.model.NodeDefinition;
 import me.chyxelmc.mmoblock.api.result.NodePlaceResult;
 import me.chyxelmc.mmoblock.api.result.PlaceResult;
-import me.chyxelmc.mmoblock.api.service.BlockService;
-import me.chyxelmc.mmoblock.api.service.NodeService;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -26,6 +27,13 @@ public final class MMOBlockApiImpl implements BlockService, NodeService, me.chyx
     private final NodeRuntimeService nodeRuntimeService;
     private final NodeConfigLoader nodeConfigService;
 
+    // ---- Extension Registries ----
+    private final DropHandlerRegistry dropHandlerRegistry;
+    private final ConditionEvaluatorRegistry conditionEvaluatorRegistry;
+    private final ModelRendererRegistry modelRendererRegistry;
+    private final ItemResolverRegistry itemResolverRegistry;
+    private final ConfigSectionParserRegistry configSectionParserRegistry;
+
     public MMOBlockApiImpl(
             final BlockRuntimeService blockRuntimeService,
             final BlockConfigLoader blockConfigService,
@@ -36,6 +44,13 @@ public final class MMOBlockApiImpl implements BlockService, NodeService, me.chyx
         this.blockConfigService = blockConfigService;
         this.nodeRuntimeService = nodeRuntimeService;
         this.nodeConfigService = nodeConfigService;
+
+        // Initialize extension registries
+        this.dropHandlerRegistry = new DropHandlerRegistryImpl();
+        this.conditionEvaluatorRegistry = new ConditionEvaluatorRegistryImpl();
+        this.modelRendererRegistry = new ModelRendererRegistryImpl();
+        this.itemResolverRegistry = new ItemResolverRegistryImpl();
+        this.configSectionParserRegistry = new ConfigSectionParserRegistryImpl();
     }
 
     // ================ MMOBlockApi ================
@@ -48,6 +63,31 @@ public final class MMOBlockApiImpl implements BlockService, NodeService, me.chyx
     @Override
     public NodeService getNodeService() {
         return this.nodeRuntimeService != null ? this : null;
+    }
+
+    @Override
+    public DropHandlerRegistry getDropHandlerRegistry() {
+        return this.dropHandlerRegistry;
+    }
+
+    @Override
+    public ConditionEvaluatorRegistry getConditionEvaluatorRegistry() {
+        return this.conditionEvaluatorRegistry;
+    }
+
+    @Override
+    public ModelRendererRegistry getModelRendererRegistry() {
+        return this.modelRendererRegistry;
+    }
+
+    @Override
+    public ItemResolverRegistry getItemResolverRegistry() {
+        return this.itemResolverRegistry;
+    }
+
+    @Override
+    public ConfigSectionParserRegistry getConfigSectionParserRegistry() {
+        return this.configSectionParserRegistry;
     }
 
     // ================ BlockService ================
