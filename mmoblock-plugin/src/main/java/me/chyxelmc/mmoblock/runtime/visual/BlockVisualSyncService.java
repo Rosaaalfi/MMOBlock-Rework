@@ -184,9 +184,13 @@ public final class BlockVisualSyncService {
         if (!usesRealBlockModel(definition)) {
             return;
         }
+
+        // Always clear the active block at its current position FIRST,
+        // regardless of whether a dead block model is configured.
+        clearRealBlockModel(placedBlock, definition, world);
+
         if (!hasDeadBlockModel(definition)) {
-            // No dead state configured — clear the block as before
-            clearRealBlockModel(placedBlock, definition, world);
+            // No dead state configured — block is now cleared; nothing more to do.
             return;
         }
 
