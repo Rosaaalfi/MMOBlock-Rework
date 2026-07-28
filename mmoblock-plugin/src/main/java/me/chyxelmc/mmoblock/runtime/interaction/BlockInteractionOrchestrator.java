@@ -17,6 +17,7 @@ import me.chyxelmc.mmoblock.ecs.component.InteractionComponent;
 import me.chyxelmc.mmoblock.ecs.component.PositionComponent;
 import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
+import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 
@@ -24,6 +25,7 @@ public final class BlockInteractionOrchestrator {
 
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
+    private final Scheduler scheduler;
     private final BlockVisualSyncService visualSyncSystem;
     private final BlockModelApplier modelApplier;
     private final NamespacedKey uniqueIdKey;
@@ -38,6 +40,7 @@ public final class BlockInteractionOrchestrator {
     ) {
         this.plugin = plugin;
         this.nmsAdapter = nmsAdapter;
+        this.scheduler = plugin.scheduler();
         this.visualSyncSystem = visualSyncSystem;
         this.modelApplier = modelApplier;
         this.uniqueIdKey = uniqueIdKey;
@@ -49,6 +52,13 @@ public final class BlockInteractionOrchestrator {
 
     public boolean spawn(final PlacedBlockModel placedBlock, final BlockDefinitionModel definition, final World world) {
         final Location location = new Location(world, placedBlock.x() + 0.5D, placedBlock.y(), placedBlock.z() + 0.5D);
+
+        // Folia thread safety: entity operations must run on the owning region's tick thread
+        if (!isOwnedByCurrentRegion(location)) {
+            this.scheduler.runAtLocation(location, () -> spawn(placedBlock, definition, world));
+            return true; // optimistic — actual failure will be logged by the scheduled call
+        }
+
         try {
             if (placedBlock.interactionEntityId() != null) {
                 this.nmsAdapter.removeInteraction(world, placedBlock.interactionEntityId());
@@ -96,6 +106,14 @@ public final class BlockInteractionOrchestrator {
         if (world == null) {
             return;
         }
+
+        // Folia thread safety: entity operations must run on the owning region's tick thread
+        final Location location = new Location(world, block.x(), block.y(), block.z());
+        if (!isOwnedByCurrentRegion(location)) {
+            this.scheduler.runAtLocation(location, () -> despawn(block));
+            return;
+        }
+
         final NmsAdapter.RemoveResult removeResult = this.nmsAdapter.removeInteraction(world, block.interactionEntityId());
         if (!removeResult.success()) {
             final Entity entity = world.getEntity(block.interactionEntityId());
@@ -229,5 +247,22 @@ public final class BlockInteractionOrchestrator {
                         + placedBlock.x() + "," + placedBlock.y() + "," + placedBlock.z()
                         + " reason=" + spawnResult.reason()
         );
+    }
+
+    /**
+     * Checks whether the current thread owns the region that contains the given location.
+     * On Paper (non-Folia) this always returns {@code true}.
+     */
+    private static boolean isOwnedByCurrentRegion(final Location location) {
+        if (location == null || location.getWorld() == null) return false;
+        try {
+            final java.lang.reflect.Method method = org.bukkit.Bukkit.class.getMethod("isOwnedByCurrentRegion", Location.class);
+            return Boolean.TRUE.equals(method.invoke(null, location));
+        } catch (final NoSuchMethodException ignored) {
+            return true; // Paper — single region
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("isOwnedByCurrentRegion failed at " + location + ": " + e.getMessage());
+            return false;
+        }
     }
 }
