@@ -1,12 +1,5 @@
 package me.chyxelmc.mmoblock.utils;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-
-import org.bukkit.Bukkit;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.java.JavaPlugin;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -17,6 +10,12 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 /**
  * Polymart / Voxel.shop purchase verification for MMOBlock.
@@ -32,8 +31,9 @@ import java.nio.charset.StandardCharsets;
  *   <li><b>No license / never purchased</b> — disable the plugin silently.</li>
  *   <li><b>Leaker (previously valid, now revoked)</b> — log an embarrassing
  *       message and disable the plugin.</li>
- *   <li><b>Not a Polymart build</b> (e.g. dev build) — skip verification
- *       and continue.</li>
+ *   <li><b>Not a Polymart build</b> (e.g. dev build with {@code -PnoTargetedStore})
+ *       — class is excluded from the JAR entirely; the caller catches
+ *       {@code NoClassDefFoundError} and skips verification.</li>
  * </ul>
  */
 public final class TargetedStore {
@@ -83,14 +83,10 @@ public final class TargetedStore {
      * @return the verification result (never null)
      */
     public static VerifyResult verify(final JavaPlugin plugin) {
-        // Not a Polymart build → skip
-        if (!IS_POLYMART_BUILD) {
-            return VerifyResult.VALID;
-        }
-
-        // Check if license placeholder was replaced
-        if (LICENSE.contains("%%__")) {
-            // License placeholder not replaced → not a valid Polymart download
+        // Check if license/user placeholders were replaced with valid values
+        if (LICENSE.contains("%%__") || USER.contains("%%__")
+                || LICENSE.isEmpty() || USER.isEmpty()) {
+            // Placeholder not replaced or empty → not a valid Polymart download
             return VerifyResult.INVALID;
         }
 
@@ -104,7 +100,7 @@ public final class TargetedStore {
             }
 
             // API returned failure — check if this was previously valid
-            if (hadPreviousValidation(plugin)) {
+            if (!LICENSE.isEmpty() && !USER.isEmpty() && hadPreviousValidation(plugin)) {
                 // Previously valid, now revoked → leaker
                 return VerifyResult.LEAKER;
             }
@@ -112,9 +108,8 @@ public final class TargetedStore {
             return VerifyResult.INVALID;
 
         } catch (final Exception e) {
-            // Network error, timeout, etc. → be permissive, allow startup
-            // If we have previous validation, assume still valid
-            if (hadPreviousValidation(plugin)) {
+            // Network error, timeout, etc. → be permissive only if placeholders are valid
+            if (!LICENSE.isEmpty() && !USER.isEmpty() && hadPreviousValidation(plugin)) {
                 return VerifyResult.VALID;
             }
             return VerifyResult.INVALID;
@@ -238,7 +233,10 @@ public final class TargetedStore {
         }
         try (final DataInputStream in = new DataInputStream(new FileInputStream(file))) {
             final String savedUser = in.readUTF();
-            // If the saved user matches the current user, it's a previous validation
+            // Reject empty saved user — placeholder was never properly replaced
+            if (savedUser.isEmpty()) {
+                return false;
+            }
             return savedUser.equals(USER) || savedUser.equals(getBuyerName());
         } catch (final IOException ignored) {
             return false;

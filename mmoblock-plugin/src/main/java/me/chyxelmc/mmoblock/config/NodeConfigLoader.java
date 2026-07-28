@@ -93,8 +93,12 @@ public final class NodeConfigLoader {
                         : 1.0D;
 
                 final ConfigurationSection blockList = section.getConfigurationSection("blockList");
-                final String blockListActive = blockList != null ? blockList.getString("active", "{block_name} Active") : "{block_name} Active";
-                final String blockListDead = blockList != null ? blockList.getString("dead", "{block_name} {respawn_times}s") : "{block_name} {respawn_times}s";
+                final String blockListActive = blockList != null
+                        ? fallback(valueAsString(blockList, blockList, "active"), "{block_name} Active")
+                        : "{block_name} Active";
+                final String blockListDead = blockList != null
+                        ? fallback(valueAsString(blockList, blockList, "dead"), "{block_name} {respawn_times}s")
+                        : "{block_name} {respawn_times}s";
 
                 final ConfigurationSection displaySection = section.getConfigurationSection("display");
                 final double displayHeight = displaySection != null
@@ -234,6 +238,10 @@ public final class NodeConfigLoader {
         }
         final String value = String.valueOf(raw).trim();
         return value.isEmpty() ? null : value;
+    }
+
+    private static String fallback(final String value, final String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private Object resolveValue(final Object source, final String key) {

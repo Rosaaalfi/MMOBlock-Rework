@@ -12,39 +12,39 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import me.chyxelmc.mmoblock.api.ApiProvider;
 import me.chyxelmc.mmoblock.api.MMOBlockApiImpl;
+import me.chyxelmc.mmoblock.api.integration.placeholder.HologramPlaceholderContextStore;
+import me.chyxelmc.mmoblock.api.integration.placeholder.MMOBlockPlaceholderExpansion;
 import me.chyxelmc.mmoblock.command.MMOBlockCommand;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
-import me.chyxelmc.mmoblock.listener.ChunkLifecycleListener;
-import me.chyxelmc.mmoblock.listener.PlatformSyncListener;
-import me.chyxelmc.mmoblock.listener.HologramCleanupListener;
-import me.chyxelmc.mmoblock.listener.InteractionListener;
-import me.chyxelmc.mmoblock.nms.NmsAdapter;
-import me.chyxelmc.mmoblock.nms.NmsAdapterRegistry;
 import me.chyxelmc.mmoblock.ecs.EntityManager;
 import me.chyxelmc.mmoblock.ecs.SystemManager;
+import me.chyxelmc.mmoblock.ecs.system.InteractionSpawnSystem;
+import me.chyxelmc.mmoblock.ecs.system.PacketHologramSyncSystem;
+import me.chyxelmc.mmoblock.ecs.system.PersistenceReadSystem;
+import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
+import me.chyxelmc.mmoblock.listener.ChunkLifecycleListener;
+import me.chyxelmc.mmoblock.listener.HologramCleanupListener;
+import me.chyxelmc.mmoblock.listener.InteractionListener;
+import me.chyxelmc.mmoblock.listener.PlatformSyncListener;
+import me.chyxelmc.mmoblock.nms.NmsAdapter;
+import me.chyxelmc.mmoblock.nms.NmsAdapterRegistry;
 import me.chyxelmc.mmoblock.persistence.BlockRepository;
 import me.chyxelmc.mmoblock.persistence.RespawnRepository;
 import me.chyxelmc.mmoblock.persistence.cache.DataCache;
 import me.chyxelmc.mmoblock.persistence.database.DatabaseManager;
-import me.chyxelmc.mmoblock.api.integration.placeholder.HologramPlaceholderContextStore;
-import me.chyxelmc.mmoblock.api.integration.placeholder.MMOBlockPlaceholderExpansion;
 import me.chyxelmc.mmoblock.platform.PlatformSchedulerProvider;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
 import me.chyxelmc.mmoblock.runtime.BlockServiceFactory;
 import me.chyxelmc.mmoblock.runtime.RuntimeCoordinator;
-import me.chyxelmc.mmoblock.ecs.system.InteractionSpawnSystem;
-import me.chyxelmc.mmoblock.ecs.system.PacketHologramSyncSystem;
-import me.chyxelmc.mmoblock.ecs.system.PersistenceReadSystem;
-import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
 import me.chyxelmc.mmoblock.utils.DatabaseUtils;
+import me.chyxelmc.mmoblock.utils.DependencyChecker;
 import me.chyxelmc.mmoblock.utils.InternalPlaceholderResolver;
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 import me.chyxelmc.mmoblock.utils.TargetedStore;
-import me.chyxelmc.mmoblock.utils.analytics.Metrics;
-import me.chyxelmc.mmoblock.utils.DependencyChecker;
 import me.chyxelmc.mmoblock.utils.UpdateChecker;
+import me.chyxelmc.mmoblock.utils.analytics.Metrics;
 
 public final class MMOBlock extends JavaPlugin{
 
@@ -109,8 +109,10 @@ public final class MMOBlock extends JavaPlugin{
             final var result = me.chyxelmc.mmoblock.utils.TargetedStore.verify(this);
             switch (result) {
                 case VALID -> {
-                    MMOBlockLogger.info("targeted_store.purchase_verified",
-                            "[Chyxel] Purchase verified! Thank you " + TargetedStore.getBuyerName());
+                    if (me.chyxelmc.mmoblock.utils.TargetedStore.IS_POLYMART_BUILD) {
+                        MMOBlockLogger.info("targeted_store.purchase_verified",
+                                "[Chyxel] Purchase verified! Thank you " + TargetedStore.getBuyerName());
+                    }
                     return true;
                 }
                 case LEAKER -> {
