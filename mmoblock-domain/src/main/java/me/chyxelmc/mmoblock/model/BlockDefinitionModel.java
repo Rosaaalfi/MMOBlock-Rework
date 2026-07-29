@@ -241,6 +241,7 @@ public record BlockDefinitionModel(
         int decreaseDurability,
         List<String> allowedDrops,
         String clickType,
+        boolean autoProgress,
         String itemsAdderId,
         String craftEngineId,
         String mmoItemsId

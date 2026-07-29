@@ -62,6 +62,10 @@ public final class BlockVisualSyncService {
                 if (location.getWorld() == null || location.distanceSquared(player.getLocation()) > syncRadiusSquared) {
                     continue;
                 }
+                if (!me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.contains(
+                        world.getName(), location.getBlockX(), location.getBlockY(), location.getBlockZ())) {
+                    continue;
+                }
                 this.nmsAdapter.showFakeBlock(world, location, definition.realBlockMaterial());
             } else if (BlockLifecycleState.STATUS_RESPAWNING.equalsIgnoreCase(placedBlock.status())) {
                 // Respawning (dead) block — sync the dead block model if configured
@@ -73,6 +77,10 @@ public final class BlockVisualSyncService {
                 // the block's current position (which may have moved due to randomLocation).
                 final Location location = originBaseLocation(placedBlock);
                 if (location.getWorld() == null || location.distanceSquared(player.getLocation()) > syncRadiusSquared) {
+                    continue;
+                }
+                if (!me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.contains(
+                        world.getName(), location.getBlockX(), location.getBlockY(), location.getBlockZ())) {
                     continue;
                 }
                 this.nmsAdapter.showFakeBlock(world, location, definition.realDeadBlockMaterial());
@@ -134,6 +142,10 @@ public final class BlockVisualSyncService {
         }
 
         final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
+        // Save the original block material BEFORE changing it, so clearRealBlockModel
+        // can restore it fully. Without this, blocks restored from persistence would
+        // leave permanent debris (the definition material) when removed.
+        saveOriginalMaterial(placedBlock.uniqueId(), loc);
         showFakeBlockAndRegister(placedBlock, world, loc, definition.realBlockMaterial());
     }
 
@@ -173,6 +185,7 @@ public final class BlockVisualSyncService {
         } catch (final Exception e) {
             MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
         }
+        restoreOriginalMaterial(placedBlock.uniqueId(), loc);
         this.nmsAdapter.clearFakeBlock(world, loc);
     }
 
@@ -240,8 +253,10 @@ public final class BlockVisualSyncService {
         }
         try {
             final Material material = location.getBlock().getType();
+            this.originalMaterials.put(blockUniqueId, material);
+            // For liquid blocks at or above this position, also save the liquid material
+            // to restore ItemsAdder/CraftEngine waterlogging correctly.
             if (isLiquidMaterial(material)) {
-                this.originalMaterials.put(blockUniqueId, material);
                 return;
             }
             final Block above = location.clone().add(0, 1, 0).getBlock();
@@ -357,6 +372,9 @@ public final class BlockVisualSyncService {
         try {
             this.plugin.scheduler().runAtLocationLater(loc, () -> {
                 try {
+                    if (!me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.contains(world.getName(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ())) {
+                        return;
+                    }
                     this.nmsAdapter.showFakeBlock(world, loc, material);
                 } catch (final Exception e) {
                     MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());

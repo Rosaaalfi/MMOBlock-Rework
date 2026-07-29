@@ -16,8 +16,7 @@ import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
-import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
-import me.chyxelmc.mmoblock.runtime.interaction.LegacyInteractionRaytrace;
+import me.chyxelmc.mmoblock.runtime.interaction.ServerSideFakeBlockService;
 import me.chyxelmc.mmoblock.runtime.visual.BdEngineService;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
 import me.chyxelmc.mmoblock.runtime.visual.SchematicService;
@@ -29,10 +28,16 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class BlockManagementService {
+
+    private static final long CLICK_DEDUPE_MILLIS = 150L;
+    private static final long CLICK_DEDUPE_RETENTION_MILLIS = 1_000L;
+    private static final int CLICK_DEDUPE_CLEANUP_THRESHOLD = 4_096;
 
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
@@ -44,20 +49,19 @@ public final class BlockManagementService {
     private final HologramRuntimeService hologramRuntimeService;
     private final SchematicService schematicService;
     private final BdEngineService bdEngineService;
+    private final ServerSideFakeBlockService serverSideFakeBlockService;
     private final BlockModelApplier modelApplier;
     private final BlockVisualSyncService visualSyncSystem;
-    private final BlockInteractionOrchestrator interactionOrchestrator;
     private final BlockMiningOrchestrator miningOrchestrator;
     private final BlockChunkLifecycleOrchestrator chunkLifecycleOrchestrator;
     private final BlockRespawnOrchestrator respawnOrchestrator;
-    private final BlockLookProtection lookProtection;
     private final BlockMiningProgressReset miningProgressReset;
-    private final LegacyInteractionRaytrace legacyInteractionRaytrace;
     private final BlockLifecycleState lifecycleSystem;
     private final PersistenceReadSystem persistenceReadSystem;
     private final PersistenceSystem persistenceSystem;
     private final ReconcileCoordinator reconcileSystem;
-    private SchedulerTask lookRaytraceTask;
+    private final Map<ClickDedupeKey, Long> recentClicks = new ConcurrentHashMap<>();
+    private SchedulerTask serverSideInteractionReconcileTask;
 
     public BlockManagementService(
             final MMOBlock plugin,
@@ -70,15 +74,13 @@ public final class BlockManagementService {
             final HologramRuntimeService hologramRuntimeService,
             final SchematicService schematicService,
             final BdEngineService bdEngineService,
+            final ServerSideFakeBlockService serverSideFakeBlockService,
             final BlockModelApplier modelApplier,
             final BlockVisualSyncService visualSyncSystem,
-            final BlockInteractionOrchestrator interactionOrchestrator,
             final BlockMiningOrchestrator miningOrchestrator,
             final BlockChunkLifecycleOrchestrator chunkLifecycleOrchestrator,
             final BlockRespawnOrchestrator respawnOrchestrator,
-            final BlockLookProtection lookProtection,
             final BlockMiningProgressReset miningProgressReset,
-            final LegacyInteractionRaytrace legacyInteractionRaytrace,
             final BlockLifecycleState lifecycleSystem,
             final PersistenceReadSystem persistenceReadSystem,
             final PersistenceSystem persistenceSystem,
@@ -94,15 +96,13 @@ public final class BlockManagementService {
         this.hologramRuntimeService = hologramRuntimeService;
         this.schematicService = schematicService;
         this.bdEngineService = bdEngineService;
+        this.serverSideFakeBlockService = serverSideFakeBlockService;
         this.modelApplier = modelApplier;
         this.visualSyncSystem = visualSyncSystem;
-        this.interactionOrchestrator = interactionOrchestrator;
         this.miningOrchestrator = miningOrchestrator;
         this.chunkLifecycleOrchestrator = chunkLifecycleOrchestrator;
         this.respawnOrchestrator = respawnOrchestrator;
-        this.lookProtection = lookProtection;
         this.miningProgressReset = miningProgressReset;
-        this.legacyInteractionRaytrace = legacyInteractionRaytrace;
         this.lifecycleSystem = lifecycleSystem;
         this.persistenceReadSystem = persistenceReadSystem;
         this.persistenceSystem = persistenceSystem;
@@ -110,61 +110,56 @@ public final class BlockManagementService {
     }
 
     // ============================================================
-    // ECS / Entity Management
+    // Real Block Mode Interaction
     // ============================================================
 
-    public void onInteractionSpawned(final UUID blockUniqueId, final UUID interactionUniqueId) {
-        try {
-            final PlacedBlockModel block = this.stateRegistry.getBlock(blockUniqueId);
-            if (block != null) {
-                block.setInteractionEntityId(interactionUniqueId);
-                try {
-                    final BlockDefinitionModel def = this.blockConfigService.findBlock(block.type());
-                    final World world = this.plugin.getServer().getWorld(block.world());
-                    if (def != null && world != null) {
-                        this.interactionOrchestrator.applyModelsAfterEcsSpawn(block, def, world);
-                    }
-                } catch (final Exception e) {
-                    MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
-                }
-            }
-        } catch (final Exception e) {
-            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
-        }
-    }
-
-    public void setEntityManager(final me.chyxelmc.mmoblock.ecs.EntityManager entityManager) {
-        this.interactionOrchestrator.setEntityManager(entityManager);
-        this.hologramRuntimeService.setEntityManager(entityManager);
-    }
-
-    // ============================================================
-    // Interaction / Mining
-    // ============================================================
-
-    public Component handleInteraction(final org.bukkit.entity.Entity clickedEntity, final Player player, final String clickType) {
-        final UUID uniqueId = this.queryService.resolveBlockUniqueId(clickedEntity);
-        if (uniqueId == null) {
-            return null;
-        }
-        final PlacedBlockModel block = this.stateRegistry.getBlock(uniqueId);
+    /**
+     * Handles a click on a real/fake block at a world position.
+     * Looks up the block in the state registry by position and delegates to the mining orchestrator.
+     *
+     * @param player    the clicking player
+     * @param clickType "left_click" or "right_click"
+     * @param world     the world
+     * @param x         block X coordinate
+     * @param y         block Y coordinate
+     * @param z         block Z coordinate
+     * @return a message component, or {@code null} if no block was found
+     */
+    public Component handleRealBlockClick(final Player player, final String clickType, final World world, final double x, final double y, final double z) {
+        final PlacedBlockModel block = this.stateRegistry.blockAt(world.getName(), x, y, z);
         if (block == null) {
             return null;
         }
-        return processMiningClick(block, player, clickType);
-    }
-
-    public Component handleLegacyFallbackInteraction(final Player player, final String clickType) {
-        final double reach = Math.max(1.5D, this.plugin.getConfig().getDouble("interaction.legacy-reach", 6.0D));
-        final PlacedBlockModel block = this.legacyInteractionRaytrace.findHit(player, reach);
-        if (block == null) {
-            return null;
+        if (isDuplicateClick(player, clickType, block)) {
+            return Component.empty();
         }
-        return processMiningClick(block, player, clickType);
-    }
-
-    private Component processMiningClick(final PlacedBlockModel block, final Player player, final String clickType) {
         return this.miningOrchestrator.processMiningClick(block, player, clickType);
+    }
+
+    public Component handleBlockBreakAttempt(final Player player, final World world, final double x, final double y, final double z) {
+        final PlacedBlockModel block = this.stateRegistry.blockAt(world.getName(), x, y, z);
+        if (block == null || !this.miningOrchestrator.canProcessBlockBreak(block, player)) {
+            return null;
+        }
+        if (isDuplicateClick(player, "block_break", block)) {
+            return Component.empty();
+        }
+        return this.miningOrchestrator.processBlockBreak(block, player);
+    }
+
+    private boolean isDuplicateClick(final Player player, final String clickType, final PlacedBlockModel block) {
+        final long now = System.currentTimeMillis();
+        cleanupRecentClicks(now);
+        final ClickDedupeKey key = new ClickDedupeKey(player.getUniqueId(), block.uniqueId(), clickType);
+        final Long previous = this.recentClicks.put(key, now);
+        return previous != null && now - previous <= CLICK_DEDUPE_MILLIS;
+    }
+
+    private void cleanupRecentClicks(final long now) {
+        if (this.recentClicks.size() < CLICK_DEDUPE_CLEANUP_THRESHOLD) {
+            return;
+        }
+        this.recentClicks.entrySet().removeIf(entry -> now - entry.getValue() > CLICK_DEDUPE_RETENTION_MILLIS);
     }
 
     // ============================================================
@@ -172,6 +167,7 @@ public final class BlockManagementService {
     // ============================================================
 
     public void handlePlayerQuit(final UUID playerUniqueId) {
+        this.miningOrchestrator.cancelAutoProgressForPlayer(playerUniqueId);
         this.hologramRuntimeService.handleViewerQuit(playerUniqueId);
         this.nmsAdapter.clearPacketHologramCacheForPlayer(playerUniqueId);
         this.nmsAdapter.clearPacketBdEngineModelCacheForPlayer(playerUniqueId);
@@ -189,7 +185,6 @@ public final class BlockManagementService {
                 }
             }
         }
-        this.lookProtection.unprotect(playerUniqueId);
     }
 
     // ============================================================
@@ -197,8 +192,9 @@ public final class BlockManagementService {
     // ============================================================
 
     public void shutdown() {
+        stopServerSideInteractionReconcileTask();
+        this.miningOrchestrator.cancelAllAutoProgress();
         this.miningProgressReset.stop();
-        stopLookRaytraceTask();
         final boolean serverStopping = Bukkit.isStopping();
         for (final PlacedBlockModel block : this.stateRegistry.blocks()) {
             this.placementService.cancelRespawnTask(block.uniqueId());
@@ -213,7 +209,6 @@ public final class BlockManagementService {
                 this.modelApplier.clearBetterModelModel(block, world);
                 this.modelApplier.clearBetterModelCollision(block, world);
             }
-            this.placementService.despawnInteraction(block);
         }
         this.hologramRuntimeService.shutdown();
         this.schematicService.clearAll();
@@ -224,6 +219,7 @@ public final class BlockManagementService {
             // BetterModel not installed or class loading failed
         }
         this.modelApplier.clearAllCollisions();
+        this.serverSideFakeBlockService.demoteAll();
         this.visualSyncSystem.clearOriginalMaterials();
         this.stateRegistry.clear();
         this.placementService.clearTransientState();
@@ -247,7 +243,7 @@ public final class BlockManagementService {
                 this.placementService::cleanupMissingDefinition,
                 this.lifecycleSystem::markActive,
                 this.persistenceSystem::persistBlockAsync,
-                (block, definition, world) -> isChunkLoaded(world, block.x(), block.z()) && this.placementService.spawnInteraction(block, definition, world),
+                (block, definition, world) -> isChunkLoaded(world, block.x(), block.z()),
                 (block, definition) -> {
                     final World world = this.plugin.getServer().getWorld(block.world());
                     if (world != null && isChunkLoaded(world, block.x(), block.z())) {
@@ -261,7 +257,7 @@ public final class BlockManagementService {
                     }
                 },
                 this.placementService::scheduleRespawn,
-                this.placementService::despawnInteraction
+                block -> { /* despawn no-op — interaction entities removed */ }
         );
     }
 
@@ -277,44 +273,38 @@ public final class BlockManagementService {
         this.chunkLifecycleOrchestrator.syncFakeBlocksForPlayerChunkWindow(player);
     }
 
+    public void syncServerSideInteractionBlocks(final Player player) {
+        this.serverSideFakeBlockService.syncForPlayer(player, this.blockConfigService.realBlockRadiusSquared());
+    }
+
+    public void syncServerSideInteractionBlocks(final World world) {
+        this.serverSideFakeBlockService.syncWorld(world, this.blockConfigService.realBlockRadiusSquared());
+    }
+
+    public boolean isServerSideInteractionBlock(final String worldName, final int x, final int y, final int z) {
+        return this.serverSideFakeBlockService.isPromoted(worldName, x, y, z);
+    }
+
     // ============================================================
     // Background Tasks (started after construction)
     // ============================================================
 
     public void startBackgroundTasks() {
-        startLookRaytraceTask();
-    }
-
-    private void startLookRaytraceTask() {
-        stopLookRaytraceTask();
-        final int interval = Math.max(1, this.plugin.getConfig().getInt("interaction.look-check-interval-ticks", 2));
-        this.lookRaytraceTask = this.scheduler.runTimer(
-                this::checkLookRaytrace,
+        stopServerSideInteractionReconcileTask();
+        this.serverSideInteractionReconcileTask = this.scheduler.runTimer(
+                () -> this.serverSideFakeBlockService.reconcile(
+                        this.plugin.getServer().getOnlinePlayers(),
+                        this.blockConfigService.realBlockRadiusSquared()
+                ),
                 1L,
-                interval
+                5L
         );
     }
 
-    private void stopLookRaytraceTask() {
-        if (this.lookRaytraceTask != null) {
-            this.lookRaytraceTask.cancel();
-            this.lookRaytraceTask = null;
-        }
-        this.lookProtection.clear();
-    }
-
-    private void checkLookRaytrace() {
-        final double defaultReach = Math.max(1.5D, this.plugin.getConfig().getDouble("interaction.reach", 6.0D));
-        for (final Player player : this.plugin.getServer().getOnlinePlayers()) {
-            try {
-                if (this.legacyInteractionRaytrace.findHit(player, defaultReach) != null) {
-                    this.lookProtection.protect(player.getUniqueId());
-                } else {
-                    this.lookProtection.unprotect(player.getUniqueId());
-                }
-            } catch (final Exception e) {
-                MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
-            }
+    private void stopServerSideInteractionReconcileTask() {
+        if (this.serverSideInteractionReconcileTask != null) {
+            this.serverSideInteractionReconcileTask.cancel();
+            this.serverSideInteractionReconcileTask = null;
         }
     }
 
@@ -324,5 +314,8 @@ public final class BlockManagementService {
 
     private static boolean isChunkLoaded(final World world, final double x, final double z) {
         return world != null && world.isChunkLoaded((int) Math.floor(x) >> 4, (int) Math.floor(z) >> 4);
+    }
+
+    private record ClickDedupeKey(UUID playerUniqueId, UUID blockUniqueId, String clickType) {
     }
 }

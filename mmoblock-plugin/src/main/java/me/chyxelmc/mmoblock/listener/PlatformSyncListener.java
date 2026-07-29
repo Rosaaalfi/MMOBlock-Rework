@@ -29,12 +29,14 @@ public final class PlatformSyncListener implements Listener {
 
     private static final long MOVE_SYNC_THROTTLE_MS = 100L;
     private static final double MOVE_SYNC_DISTANCE_SQUARED = 0.16D;
+    private static final long SERVER_SIDE_SYNC_THROTTLE_MS = 150L;
 
     private final BlockRuntimeService runtimeService;
     private final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService;
     private final org.bukkit.plugin.Plugin plugin;
     private final Scheduler scheduler;
     private final Map<UUID, Long> lastChunkSyncAt = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> lastServerSideSyncAt = new ConcurrentHashMap<>();
     private final Map<UUID, ChunkPos> lastKnownChunk = new ConcurrentHashMap<>();
 
     public PlatformSyncListener(final org.bukkit.plugin.Plugin plugin, final Scheduler scheduler, final BlockRuntimeService runtimeService, final me.chyxelmc.mmoblock.runtime.NodeRuntimeService nodeRuntimeService) {
@@ -60,12 +62,14 @@ public final class PlatformSyncListener implements Listener {
             // expected - NMS version may not have FakeBlockPacketHandler
         }
         syncNowAndDelayed(event.getPlayer());
+        syncServerSideInteractionBlocks(event.getPlayer());
         updateKnownChunk(event.getPlayer());
     }
 
     @EventHandler
     public void onTeleport(final PlayerTeleportEvent event) {
         syncNowAndDelayed(event.getPlayer());
+        syncServerSideInteractionBlocks(event.getPlayer());
         updateKnownChunk(event.getPlayer());
     }
 
@@ -73,12 +77,16 @@ public final class PlatformSyncListener implements Listener {
     public void onQuit(final PlayerQuitEvent event) {
         final UUID playerId = event.getPlayer().getUniqueId();
         this.lastChunkSyncAt.remove(playerId);
+        this.lastServerSideSyncAt.remove(playerId);
         this.lastKnownChunk.remove(playerId);
+        this.runtimeService.syncServerSideInteractionBlocks(event.getPlayer().getWorld());
     }
 
     @EventHandler
     public void onChangedWorld(final PlayerChangedWorldEvent event) {
+        this.runtimeService.syncServerSideInteractionBlocks(event.getFrom());
         syncNowAndDelayed(event.getPlayer());
+        syncServerSideInteractionBlocks(event.getPlayer());
         updateKnownChunk(event.getPlayer());
     }
 
@@ -89,6 +97,7 @@ public final class PlatformSyncListener implements Listener {
         }
         if (!event.getFrom().getWorld().equals(event.getTo().getWorld())) {
             syncNowAndDelayed(event.getPlayer());
+            syncServerSideInteractionBlocks(event.getPlayer());
             return;
         }
         if (event.getFrom().distanceSquared(event.getTo()) < MOVE_SYNC_DISTANCE_SQUARED) {
@@ -96,6 +105,7 @@ public final class PlatformSyncListener implements Listener {
         }
 
         final Player player = event.getPlayer();
+        syncServerSideInteractionBlocksThrottled(player);
         final ChunkPos currentChunk = new ChunkPos(event.getTo().getChunk().getX(), event.getTo().getChunk().getZ());
         final ChunkPos previousChunk = this.lastKnownChunk.put(player.getUniqueId(), currentChunk);
         if (currentChunk.equals(previousChunk)) {
@@ -114,21 +124,38 @@ public final class PlatformSyncListener implements Listener {
     private void syncNowAndDelayed(final Player player) {
         final var loc = player.getLocation();
         this.runtimeService.syncFakeBlocksForPlayer(player);
+        this.runtimeService.syncServerSideInteractionBlocks(player);
         if (this.nodeRuntimeService != null) {
             this.nodeRuntimeService.syncForPlayer(player);
         }
         this.scheduler.runAtLocationLater(loc, () -> {
             this.runtimeService.syncFakeBlocksForPlayer(player);
+            this.runtimeService.syncServerSideInteractionBlocks(player);
             if (this.nodeRuntimeService != null) {
                 this.nodeRuntimeService.syncForPlayer(player);
             }
         }, 2L);
         this.scheduler.runAtLocationLater(loc, () -> {
             this.runtimeService.syncFakeBlocksForPlayer(player);
+            this.runtimeService.syncServerSideInteractionBlocks(player);
             if (this.nodeRuntimeService != null) {
                 this.nodeRuntimeService.syncForPlayer(player);
             }
         }, 20L);
+    }
+
+    private void syncServerSideInteractionBlocksThrottled(final Player player) {
+        final long now = System.currentTimeMillis();
+        final Long last = this.lastServerSideSyncAt.get(player.getUniqueId());
+        if (last != null && (now - last) < SERVER_SIDE_SYNC_THROTTLE_MS) {
+            return;
+        }
+        this.lastServerSideSyncAt.put(player.getUniqueId(), now);
+        syncServerSideInteractionBlocks(player);
+    }
+
+    private void syncServerSideInteractionBlocks(final Player player) {
+        this.runtimeService.syncServerSideInteractionBlocks(player);
     }
 
     private void updateKnownChunk(final Player player) {

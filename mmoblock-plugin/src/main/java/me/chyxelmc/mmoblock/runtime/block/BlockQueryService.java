@@ -5,9 +5,7 @@ import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.persistence.cache.DataCache;
 import org.bukkit.NamespacedKey;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,20 +17,17 @@ public final class BlockQueryService {
     private final BlockStateRegistry stateRegistry;
     private final DataCache dataCache;
     private final BlockConfigLoader blockConfigService;
-    private final NamespacedKey uniqueIdKey;
     private final BlockLookProtection lookProtection;
 
     public BlockQueryService(
             final BlockStateRegistry stateRegistry,
             final DataCache dataCache,
             final BlockConfigLoader blockConfigService,
-            final NamespacedKey uniqueIdKey,
             final BlockLookProtection lookProtection
     ) {
         this.stateRegistry = stateRegistry;
         this.dataCache = dataCache;
         this.blockConfigService = blockConfigService;
-        this.uniqueIdKey = uniqueIdKey;
         this.lookProtection = lookProtection;
     }
 
@@ -42,21 +37,6 @@ public final class BlockQueryService {
             return block;
         }
         return this.dataCache.getBlock(uniqueId);
-    }
-
-    public UUID resolveBlockUniqueId(final Entity entity) {
-        if (entity == null) {
-            return null;
-        }
-        final String uniqueIdRaw = entity.getPersistentDataContainer().get(this.uniqueIdKey, PersistentDataType.STRING);
-        if (uniqueIdRaw == null) {
-            return null;
-        }
-        try {
-            return UUID.fromString(uniqueIdRaw);
-        } catch (final IllegalArgumentException exception) {
-            return null;
-        }
     }
 
     public List<String> blockIds() {

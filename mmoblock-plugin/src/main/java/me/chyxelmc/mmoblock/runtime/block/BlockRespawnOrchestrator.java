@@ -17,8 +17,10 @@ import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
 import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.runtime.block.RandomLocationContext;
+import me.chyxelmc.mmoblock.runtime.FakeBlockRegistry;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
-import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
+import me.chyxelmc.mmoblock.runtime.interaction.ServerSideFakeBlockService;
+import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
 
 public final class BlockRespawnOrchestrator {
 
@@ -33,7 +35,8 @@ public final class BlockRespawnOrchestrator {
     private final BlockVisualSyncService visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
     private final BlockRandomLocationResolver randomLocationResolver;
-    private final BlockInteractionOrchestrator interactionOrchestrator;
+    private final ServerSideFakeBlockService serverSideFakeBlockService;
+    private final BlockModelApplier modelApplier;
     private final BlockEventDispatcher eventDispatcher;
     private final BlockMiningOrchestrator miningOrchestrator;
     private final Map<UUID, RandomLocationContext> nodeRandomLocationContexts;
@@ -50,7 +53,8 @@ public final class BlockRespawnOrchestrator {
             final BlockVisualSyncService visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService,
             final BlockRandomLocationResolver randomLocationResolver,
-            final BlockInteractionOrchestrator interactionOrchestrator,
+            final ServerSideFakeBlockService serverSideFakeBlockService,
+            final BlockModelApplier modelApplier,
             final BlockEventDispatcher eventDispatcher,
             final BlockMiningOrchestrator miningOrchestrator,
             final Map<UUID, RandomLocationContext> nodeRandomLocationContexts,
@@ -66,7 +70,8 @@ public final class BlockRespawnOrchestrator {
         this.visualSyncSystem = visualSyncSystem;
         this.hologramRuntimeService = hologramRuntimeService;
         this.randomLocationResolver = randomLocationResolver;
-        this.interactionOrchestrator = interactionOrchestrator;
+        this.serverSideFakeBlockService = serverSideFakeBlockService;
+        this.modelApplier = modelApplier;
         this.eventDispatcher = eventDispatcher;
         this.miningOrchestrator = miningOrchestrator;
         this.nodeRandomLocationContexts = nodeRandomLocationContexts;
@@ -90,6 +95,17 @@ public final class BlockRespawnOrchestrator {
         final World world = Bukkit.getServer().getWorld(block.world());
         if (world != null && this.visualSyncSystem.hasDeadBlockModel(definition)) {
             this.visualSyncSystem.applyDeadBlockModel(block, definition, world);
+        }
+        if (world != null
+                && definition.schematicsEnabled()
+                && definition.schematicsDeadFile() != null
+                && !definition.schematicsDeadFile().isBlank()) {
+            this.modelApplier.applySchematicModel(block, definition, world, true);
+            this.serverSideFakeBlockService.syncNearbyPlayers(
+                    world,
+                    new Location(world, block.originX() + 0.5D, block.originY() + 0.5D, block.originZ() + 0.5D),
+                    this.blockConfigService.realBlockRadiusSquared()
+            );
         }
     }
 
@@ -125,6 +141,9 @@ public final class BlockRespawnOrchestrator {
         // Check whether a dead block model is configured before we potentially
         // change the block's position (so we can clear it at the old position)
         final boolean hadDeadModel = this.visualSyncSystem.hasDeadBlockModel(latestDefinition);
+        final boolean hadDeadSchematic = latestDefinition.schematicsEnabled()
+                && latestDefinition.schematicsDeadFile() != null
+                && !latestDefinition.schematicsDeadFile().isBlank();
 
         final RespawnTarget respawnTarget = resolveRespawnTarget(block, latestDefinition, world);
         if (respawnTarget != null) {
@@ -134,6 +153,13 @@ public final class BlockRespawnOrchestrator {
             // After clearing, the original current position is restored immediately.
             // This is safe because clearRealBlockModel only reads block.x/y/z and
             // performs no registry mutations.
+            if (hadDeadModel || hadDeadSchematic) {
+                this.serverSideFakeBlockService.demoteBlock(block);
+                // Remove from FakeBlockRegistry so the old dead-state position won't be
+                // re-promoted by the reconcile timer after the block has moved/respawned.
+                FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.originX()), (int) Math.floor(block.originY()), (int) Math.floor(block.originZ()));
+                FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.x()), (int) Math.floor(block.y()), (int) Math.floor(block.z()));
+            }
             if (hadDeadModel) {
                 final double currX = block.x();
                 final double currY = block.y();
@@ -141,6 +167,9 @@ public final class BlockRespawnOrchestrator {
                 block.setCurrentLocation(block.originX(), block.originY(), block.originZ());
                 this.visualSyncSystem.clearRealBlockModel(block, latestDefinition, world);
                 block.setCurrentLocation(currX, currY, currZ);
+            }
+            if (hadDeadSchematic) {
+                this.modelApplier.clearSchematicModel(block, world);
             }
             moveBlockToRespawnTarget(block, respawnTarget);
         }
@@ -150,15 +179,19 @@ public final class BlockRespawnOrchestrator {
             return;
         }
 
-        if (this.interactionOrchestrator.spawn(block, latestDefinition, world)) {
-            markActiveAndPersist(block);
-            this.hologramRuntimeService.showActive(block, latestDefinition);
-            this.miningOrchestrator.playConfiguredSound(world, block, latestDefinition.soundOnRespawn());
-            if (latestDefinition.breakAnimation()) {
-                this.visualSyncSystem.clearBreakAnimation(world, block);
-            }
-            this.eventDispatcher.callRespawn(block, latestDefinition);
+        applyVisuals(block, latestDefinition, world);
+        this.serverSideFakeBlockService.syncNearbyPlayers(
+                world,
+                new Location(world, block.x() + 0.5D, block.y() + 0.5D, block.z() + 0.5D),
+                this.blockConfigService.realBlockRadiusSquared()
+        );
+        markActiveAndPersist(block);
+        this.hologramRuntimeService.showActive(block, latestDefinition);
+        this.miningOrchestrator.playConfiguredSound(world, block, latestDefinition.soundOnRespawn());
+        if (latestDefinition.breakAnimation()) {
+            this.visualSyncSystem.clearBreakAnimation(world, block);
         }
+        this.eventDispatcher.callRespawn(block, latestDefinition);
     }
 
     private void moveBlockToRespawnTarget(final PlacedBlockModel block, final RespawnTarget respawnTarget) {
@@ -256,11 +289,7 @@ public final class BlockRespawnOrchestrator {
         final int originBlockZ = (int) Math.floor(block.originZ());
 
         if (!definition.randomLocationEnabled() || definition.randomLocationRadius() <= 0.0D) {
-            final Location safeOrigin = this.randomLocationResolver.findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false, DEFAULT_VERTICAL_RANGE);
-            final Location loc = safeOrigin != null
-                    ? safeOrigin
-                    : new Location(world, originBlockX, originBlockY, originBlockZ);
-            return new RespawnTarget(loc, block.facing());
+            return new RespawnTarget(new Location(world, originBlockX, originBlockY, originBlockZ), block.facing());
         }
 
         // Reuse resolveRandomContextLocation instead of duplicating random angle/distance logic.
@@ -299,6 +328,16 @@ public final class BlockRespawnOrchestrator {
         final double dx = (loc.getBlockX() + 0.5D) - (originBlockX + 0.5D);
         final double dz = (loc.getBlockZ() + 0.5D) - (originBlockZ + 0.5D);
         return (dx * dx) + (dz * dz) <= threshold * threshold;
+    }
+
+    private void applyVisuals(final PlacedBlockModel block, final BlockDefinitionModel definition, final World world) {
+        this.visualSyncSystem.applyRealBlockModel(block, definition, world);
+        this.modelApplier.applySchematicModel(block, definition, world, false);
+        this.modelApplier.applyBdEngineModel(block, definition, world);
+        this.modelApplier.applyModelEngineModel(block, definition, world);
+        this.modelApplier.applyModelEngineCollision(block, definition, world);
+        this.modelApplier.applyBetterModelModel(block, definition, world);
+        this.modelApplier.applyBetterModelCollision(block, definition, world);
     }
 
     private record RespawnTarget(Location location, String facing) {

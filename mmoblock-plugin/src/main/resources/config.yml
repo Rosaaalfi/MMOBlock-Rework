@@ -2,6 +2,9 @@ debug: false # logging debug info to console
 bStats: true # send anonymous stats to bStats
 updateChecker: true # check for updates on https://voxel.shop/
 interactionThrottleMs: 1000 # throttle interactions with blocks and entities to prevent spamming. Time in milliseconds.
+interaction:
+  real-block-radius: 7     # Radius (blocks) within which PlayerInteractEvent handles MMOBlock clicks. Beyond this, packet-level interception is used.
+  fake-block-radius: 48    # Radius (blocks) within which packet-level click interception works. Beyond this, no click processing.
 databases:
   mysql:
     enabled: false

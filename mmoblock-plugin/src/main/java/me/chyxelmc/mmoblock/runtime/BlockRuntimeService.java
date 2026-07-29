@@ -2,7 +2,6 @@ package me.chyxelmc.mmoblock.runtime;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
-import me.chyxelmc.mmoblock.ecs.EntityManager;
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.runtime.block.BlockLookProtection;
 import me.chyxelmc.mmoblock.runtime.block.BlockManagementService;
@@ -12,9 +11,7 @@ import me.chyxelmc.mmoblock.runtime.block.PlaceResult;
 import me.chyxelmc.mmoblock.runtime.block.ReconcileResult;
 import me.chyxelmc.mmoblock.runtime.block.RandomLocationContext;
 import net.kyori.adventure.text.Component;
-import org.bukkit.NamespacedKey;
 import org.bukkit.World;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -27,31 +24,17 @@ public final class BlockRuntimeService {
     private final BlockQueryService queryService;
     private final BlockManagementService managementService;
     private final BlockLookProtection lookProtection;
-    private final NamespacedKey uniqueIdKey;
 
     public BlockRuntimeService(final BlockServiceFactory factory, final JavaPlugin plugin) {
         this.placementService = factory.getPlacementService();
         this.queryService = factory.getQueryService();
         this.managementService = factory.getManagementService();
         this.lookProtection = factory.getLookProtection();
-        this.uniqueIdKey = factory.getUniqueIdKey();
 
         // Post-construction initialization (moved from old constructor)
         factory.getMiningProgressReset().start();
         this.managementService.startBackgroundTasks();
         plugin.getServer().getPluginManager().registerEvents(this.lookProtection, plugin);
-    }
-
-    // ============================================================
-    // ECS / Entity Management
-    // ============================================================
-
-    public void onInteractionSpawned(final UUID blockUniqueId, final UUID interactionUniqueId) {
-        this.managementService.onInteractionSpawned(blockUniqueId, interactionUniqueId);
-    }
-
-    public void setEntityManager(final EntityManager entityManager) {
-        this.managementService.setEntityManager(entityManager);
     }
 
     // ============================================================
@@ -108,10 +91,6 @@ public final class BlockRuntimeService {
         return this.queryService.findPlacedBlock(uniqueId);
     }
 
-    public UUID resolveBlockUniqueId(final Entity entity) {
-        return this.queryService.resolveBlockUniqueId(entity);
-    }
-
     public List<String> blockIds() {
         return this.queryService.blockIds();
     }
@@ -136,28 +115,32 @@ public final class BlockRuntimeService {
         return this.placementService.removeById(uniqueId);
     }
 
-    public boolean removeByInteractionEntity(final Entity entity) {
-        final UUID uniqueId = this.queryService.resolveBlockUniqueId(entity);
-        if (uniqueId == null) {
-            return false;
-        }
-        return this.placementService.removeById(uniqueId);
-    }
-
     public boolean remove(final String type, final World world, final double x, final double y, final double z) {
         return this.placementService.remove(type, world, x, y, z);
     }
 
     // ============================================================
-    // Interaction / Mining
+    // Real Block Mode Interaction
     // ============================================================
 
-    public Component handleInteraction(final Entity clickedEntity, final Player player, final String clickType) {
-        return this.managementService.handleInteraction(clickedEntity, player, clickType);
+    /**
+     * Handles a click on a real/fake block at a world position.
+     * Delegates to the management service for block lookup and mining click processing.
+     *
+     * @param player    the clicking player
+     * @param clickType "left_click" or "right_click"
+     * @param world     the world
+     * @param x         block X coordinate
+     * @param y         block Y coordinate
+     * @param z         block Z coordinate
+     * @return a message component, or {@code null} if no block was found
+     */
+    public Component handleRealBlockClick(final Player player, final String clickType, final World world, final double x, final double y, final double z) {
+        return this.managementService.handleRealBlockClick(player, clickType, world, x, y, z);
     }
 
-    public Component handleLegacyFallbackInteraction(final Player player, final String clickType) {
-        return this.managementService.handleLegacyFallbackInteraction(player, clickType);
+    public Component handleBlockBreakAttempt(final Player player, final World world, final double x, final double y, final double z) {
+        return this.managementService.handleBlockBreakAttempt(player, world, x, y, z);
     }
 
     // ============================================================
@@ -178,6 +161,18 @@ public final class BlockRuntimeService {
 
     public void syncFakeBlocksForPlayerChunkWindow(final Player player) {
         this.managementService.syncFakeBlocksForPlayerChunkWindow(player);
+    }
+
+    public void syncServerSideInteractionBlocks(final Player player) {
+        this.managementService.syncServerSideInteractionBlocks(player);
+    }
+
+    public void syncServerSideInteractionBlocks(final World world) {
+        this.managementService.syncServerSideInteractionBlocks(world);
+    }
+
+    public boolean isServerSideInteractionBlock(final String worldName, final int x, final int y, final int z) {
+        return this.managementService.isServerSideInteractionBlock(worldName, x, y, z);
     }
 
     // ============================================================

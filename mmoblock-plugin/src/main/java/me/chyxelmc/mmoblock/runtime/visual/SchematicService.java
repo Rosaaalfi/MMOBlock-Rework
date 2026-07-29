@@ -8,6 +8,7 @@ import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.nms.SchematicData;
 import me.chyxelmc.mmoblock.nms.SchematicData.SchematicBlock;
 import me.chyxelmc.mmoblock.runtime.FakeBlockRegistry;
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -35,12 +36,14 @@ public final class SchematicService {
 
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
+    private final BlockStateRegistry stateRegistry;
     private final Map<String, SchematicData> schematicCache = new HashMap<>();
     private final Map<String, List<SchematicBlockEntry>> activeSchematicBlocks = new HashMap<>();
 
-    public SchematicService(final MMOBlock plugin, final NmsAdapter nmsAdapter) {
+    public SchematicService(final MMOBlock plugin, final NmsAdapter nmsAdapter, final BlockStateRegistry stateRegistry) {
         this.plugin = plugin;
         this.nmsAdapter = nmsAdapter;
+        this.stateRegistry = stateRegistry;
     }
 
     public void showSchematic(final String blockUniqueId, final BlockDefinitionModel definition, final World world, final double x, final double y, final double z, final boolean dead) {
@@ -68,9 +71,14 @@ public final class SchematicService {
             if (material == null || !material.isBlock()) continue;
 
             final Location loc = new Location(world, worldX, worldY, worldZ);
+            final Material configuredServerMaterial = dead ? definition.realDeadBlockMaterial() : definition.realBlockMaterial();
+            final Material serverMaterial = configuredServerMaterial != null ? configuredServerMaterial : material;
+            FakeBlockRegistry.add(world.getName(), worldX, worldY, worldZ, material.name(), serverMaterial.name());
             this.nmsAdapter.showFakeBlock(world, loc, material);
-
-            FakeBlockRegistry.add(world.getName(), worldX, worldY, worldZ, material.name());
+            try {
+                this.stateRegistry.addAdditionalPosition(world.getName(), worldX, worldY, worldZ, java.util.UUID.fromString(blockUniqueId));
+            } catch (final IllegalArgumentException ignored) {
+            }
             entries.add(new SchematicBlockEntry(worldX, worldY, worldZ, material.name()));
         }
 
@@ -95,6 +103,7 @@ public final class SchematicService {
                             try {
                                 final Material mat = Material.matchMaterial(entry.materialName());
                                 if (mat == null || !mat.isBlock()) continue;
+                                if (!FakeBlockRegistry.contains(w.getName(), entry.x(), entry.y(), entry.z())) continue;
                                 this.nmsAdapter.showFakeBlock(w,
                                         new Location(w, entry.x(), entry.y(), entry.z()), mat);
                             } catch (final Exception ignored) {
@@ -115,6 +124,7 @@ public final class SchematicService {
         for (final SchematicBlockEntry entry : entries) {
             final Location loc = new Location(world, entry.x(), entry.y(), entry.z());
             FakeBlockRegistry.remove(world.getName(), entry.x(), entry.y(), entry.z());
+            this.stateRegistry.removeAdditionalPosition(world.getName(), entry.x(), entry.y(), entry.z());
             this.nmsAdapter.clearFakeBlock(world, loc);
         }
     }
@@ -151,6 +161,7 @@ public final class SchematicService {
             if (material == null || !material.isBlock()) continue;
 
             final Location loc = new Location(world, worldX, worldY, worldZ);
+            if (!FakeBlockRegistry.contains(world.getName(), worldX, worldY, worldZ)) continue;
             this.nmsAdapter.showFakeBlock(player, world, loc, material);
         }
     }

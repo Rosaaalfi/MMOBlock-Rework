@@ -55,6 +55,8 @@ public final class BlockConfigLoader {
     private ValidationReport lastToolReport = ValidationReport.empty();
     private ValidationReport lastDropReport = ValidationReport.empty();
     private long interactionThrottleMs;
+    private double realBlockRadiusSquared;
+    private double fakeBlockRadiusSquared;
     private me.chyxelmc.mmoblock.api.registry.ConfigSectionParserRegistry configSectionParserRegistry;
     private me.chyxelmc.mmoblock.i18n.TranslationService translationService;
 
@@ -90,6 +92,11 @@ public final class BlockConfigLoader {
 
         this.interactionThrottleMs = this.plugin.getConfig()
                 .getLong("interactionThrottleMs", 1000L);
+
+        final double realBlockRadius = this.plugin.getConfig().getDouble("interaction.real-block-radius", 5.0D);
+        this.realBlockRadiusSquared = realBlockRadius * realBlockRadius;
+        final double fakeBlockRadius = this.plugin.getConfig().getDouble("interaction.fake-block-radius", 48.0D);
+        this.fakeBlockRadiusSquared = fakeBlockRadius * fakeBlockRadius;
 
         reloadBlocks();
         reloadDrops();
@@ -527,7 +534,7 @@ public final class BlockConfigLoader {
                         continue;
                     }
                 }
-                if ("both_click".equals(action.clickType()) || clickType.equals(action.clickType())) {
+                if (matchesActionType(action, clickType)) {
                     return action;
                 }
             }
@@ -553,7 +560,7 @@ public final class BlockConfigLoader {
                 if (action.material() != material) {
                     continue;
                 }
-                if ("both_click".equals(action.clickType()) || clickType.equals(action.clickType())) {
+                if (matchesActionType(action, clickType)) {
                     return action;
                 }
             }
@@ -689,7 +696,15 @@ public final class BlockConfigLoader {
         parseToolAction(raw, groupId, "both_click", material, itemsAdderId, craftEngineId, mmoItemsId, allowedDrops, actions, report);
         parseToolAction(raw, groupId, "left_click", material, itemsAdderId, craftEngineId, mmoItemsId, allowedDrops, actions, report);
         parseToolAction(raw, groupId, "right_click", material, itemsAdderId, craftEngineId, mmoItemsId, allowedDrops, actions, report);
+        parseToolAction(raw, groupId, "block_break", material, itemsAdderId, craftEngineId, mmoItemsId, allowedDrops, actions, report);
         return actions;
+    }
+
+    private boolean matchesActionType(final ToolAction action, final String clickType) {
+        if ("block_break".equals(clickType)) {
+            return "block_break".equals(action.clickType());
+        }
+        return clickType.equals(action.clickType()) || "both_click".equals(action.clickType());
     }
 
     private void parseToolAction(
@@ -709,13 +724,15 @@ public final class BlockConfigLoader {
             return;
         }
 
-        final int clickNeeded = parseInteger(section.get("clickNeeded"), 1);
+        final boolean blockBreak = "block_break".equals(clickType);
+        final int clickNeeded = blockBreak ? 1 : parseInteger(section.get("clickNeeded"), 1);
         final int decreaseDurability = parseInteger(section.get("decreaseDurability"), 0);
         if (clickNeeded <= 0) {
             report.error("Tool group '" + groupId + "' has invalid clickNeeded <= 0 for " + clickType);
             return;
         }
-        actions.add(new ToolAction(material, clickNeeded, decreaseDurability, allowedDrops, clickType, itemsAdderId, craftEngineId, mmoItemsId));
+        final boolean autoProgress = !blockBreak && parseBoolean(section.get("autoProgress"), false);
+        actions.add(new ToolAction(material, clickNeeded, decreaseDurability, allowedDrops, clickType, autoProgress, itemsAdderId, craftEngineId, mmoItemsId));
     }
 
     private DropEntry parseDropEntry(final Map<?, ?> raw, final String dropId, final ValidationReport report) {
@@ -1247,6 +1264,22 @@ public final class BlockConfigLoader {
 
     public long interactionThrottleMs() {
         return this.interactionThrottleMs;
+    }
+
+    /**
+     * Returns the squared distance for real-block interaction mode.
+     * Players within this radius use PlayerInteractEvent for click detection.
+     */
+    public double realBlockRadiusSquared() {
+        return this.realBlockRadiusSquared;
+    }
+
+    /**
+     * Returns the squared distance for fake-block (packet-level) interaction mode.
+     * Players beyond real-block-radius but within this radius use packet interception.
+     */
+    public double fakeBlockRadiusSquared() {
+        return this.fakeBlockRadiusSquared;
     }
 
     /**

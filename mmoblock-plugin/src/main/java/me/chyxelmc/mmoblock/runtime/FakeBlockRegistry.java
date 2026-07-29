@@ -12,6 +12,7 @@ public final class FakeBlockRegistry {
     // Map key -> material name (e.g. "STONE"). Storing material allows NMS handler
     // to re-create the exact fake BlockState when replacing outbound packets.
     private static final Map<String, String> POSITIONS = new ConcurrentHashMap<>();
+    private static final Map<String, String> SERVER_MATERIALS = new ConcurrentHashMap<>();
 
     private FakeBlockRegistry() {}
 
@@ -21,11 +22,27 @@ public final class FakeBlockRegistry {
 
     public static void add(final String world, final int x, final int y, final int z, final String materialName) {
         if (materialName == null) return;
-        POSITIONS.put(key(world, x, y, z), materialName);
+        add(world, x, y, z, materialName, materialName);
+    }
+
+    public static void add(
+            final String world,
+            final int x,
+            final int y,
+            final int z,
+            final String materialName,
+            final String serverMaterialName
+    ) {
+        if (materialName == null) return;
+        final String key = key(world, x, y, z);
+        POSITIONS.put(key, materialName);
+        SERVER_MATERIALS.put(key, serverMaterialName != null ? serverMaterialName : materialName);
     }
 
     public static void remove(final String world, final int x, final int y, final int z) {
-        POSITIONS.remove(key(world, x, y, z));
+        final String key = key(world, x, y, z);
+        POSITIONS.remove(key);
+        SERVER_MATERIALS.remove(key);
     }
 
     public static boolean contains(final String world, final int x, final int y, final int z) {
@@ -38,6 +55,12 @@ public final class FakeBlockRegistry {
      */
     public static String getMaterial(final String world, final int x, final int y, final int z) {
         return POSITIONS.get(key(world, x, y, z));
+    }
+
+    public static String getServerMaterial(final String world, final int x, final int y, final int z) {
+        final String key = key(world, x, y, z);
+        final String serverMaterial = SERVER_MATERIALS.get(key);
+        return serverMaterial != null ? serverMaterial : POSITIONS.get(key);
     }
 
     /**
@@ -55,6 +78,6 @@ public final class FakeBlockRegistry {
 
     public static void clear() {
         POSITIONS.clear();
+        SERVER_MATERIALS.clear();
     }
 }
-

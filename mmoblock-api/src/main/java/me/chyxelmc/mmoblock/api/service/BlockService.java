@@ -27,8 +27,6 @@ public interface BlockService {
 
     boolean removeBlock(UUID uniqueId);
 
-    boolean removeBlockByInteractionEntity(org.bukkit.entity.Entity entity);
-
     List<? extends PlacedBlock> findBlocksByType(String type);
 
     List<? extends PlacedBlock> findBlocksInWorld(String worldName);

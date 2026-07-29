@@ -2,10 +2,10 @@ exampleTools:
   - item:
       type: vanilla
       material: DIAMOND_PICKAXE
-    # have 3 different click types, left_click, right_click, and both_click. You can choose to use one or more of them.
-    both_click:
+    both_click: # have 4 different events types, left_click, right_click, both_click, and block_break. You can choose to use one or more of them.
       decreaseDurability: 15
       clickNeeded: 4
+      autoProgress: true # auto progress the click progress when player interacting with the block.
     allowedDrops:
         - exampleDrops # Reference to the drops defined in exampleDrops.yml
   - item:
@@ -14,40 +14,52 @@ exampleTools:
     left_click:
       decreaseDurability: 10
       clickNeeded: 3
+      autoProgress: true # auto progress the click progress when player interacting with the block.
     allowedDrops:
         - exampleDrops
   - item:
       type: vanilla
       material: NETHERITE_PICKAXE
-    right_click:
+    right_click: # have 4 different events types, left_click, right_click, both_click, and block_break. You can choose to use one or more of them.
       decreaseDurability: 10
       clickNeeded: 3
+      autoProgress: true # auto progress the click progress when player interacting with the block.
+    allowedDrops: []
+
+  - item:
+      type: vanilla
+      material: IRON_PICKAXE
+    block_break: # This is the block break event, which is triggered when the player breaks a block with this tool. You can use this to define custom behavior when the player breaks a block with this tool. block break event does't have clickNeeded and autoProgress, because it is not a click event, it is a block break event.
+      decreaseDurability: 3 # block break event will decrease the durability of the tool by 3, this is not the vanilla durability, this is the custom durability from the plugin.
     allowedDrops: []
 
   # Custom item from ItemsAdder plugin, <namespace>:<item_id>. You can use this to define custom tools from ItemsAdder plugin.
   - item:
       type: itemsadder
       material: namespace:iron_pick # Reference to the custom item defined in ItemsAdder plugin, <namespace>:<item_id>.
-    both_click:
+    both_click: # have 4 different events types, left_click, right_click, both_click, and block_break. You can choose to use one or more of them.
       decreaseDurability: 10 # decrease the custom durability from ItemsAdder custom item, this is not the vanilla durability, this is the custom durability from ItemsAdder.
       clickNeeded: 3
+      autoProgress: true # auto progress the click progress when player interacting with the block.
     allowedDrops:
         - exampleDropsCustom # Reference to the drops defined in exampleDropsCustom.yml
   # Custom item from CraftEngine plugin, <namespace>:<item_id>. You can use this to define custom tools from CraftEngine plugin.
   - item:
       type: craftengine
       material: namespace:custom_pickaxe # Reference to the custom item defined in CraftEngine plugin, <namespace>:<item_id> namespace is not fixed in craftengine only.
-    both_click:
+    both_click: # have 4 different events types, left_click, right_click, both_click, and block_break. You can choose to use one or more of them.
       decreaseDurability: 10 # decrease the custom durability from CraftEngine custom item, this is not the vanilla durability, this is the custom durability from CraftEngine.
       clickNeeded: 3
+      autoProgress: true # auto progress the click progress when player interacting with the block.
     allowedDrops:
         - exampleDropsCustom # Reference to the drops defined in exampleDropsCustom.yml
   # Custom item from MMOItems plugin, <item_id>. You can use this to define custom tools from MMOItems plugin.
   - item:
       type: mmoitems
       material: custom_pickaxe # Reference to the custom item defined in MMOItems plugin, <item_id>.
-    both_click:
+    both_click: # have 4 different events types, left_click, right_click, both_click, and block_break. You can choose to use one or more of them.
       decreaseDurability: 10 # decrease the custom durability from MMOItems custom item, this is not the vanilla durability, this is the custom durability from MMOItems.
       clickNeeded: 3
+      autoProgress: true # auto progress the click progress when player interacting with the block.
     allowedDrops:
       - exampleDropsCustom # Reference to the drops defined in exampleDropsCustom.yml

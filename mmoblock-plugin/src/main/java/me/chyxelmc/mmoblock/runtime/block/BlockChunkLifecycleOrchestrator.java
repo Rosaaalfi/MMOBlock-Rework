@@ -20,9 +20,9 @@ import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
 import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
-import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
 import me.chyxelmc.mmoblock.runtime.visual.BdEngineService;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
+import me.chyxelmc.mmoblock.runtime.interaction.ServerSideFakeBlockService;
 import me.chyxelmc.mmoblock.runtime.visual.SchematicService;
 
 public final class BlockChunkLifecycleOrchestrator {
@@ -42,7 +42,7 @@ public final class BlockChunkLifecycleOrchestrator {
     private final BlockModelApplier modelApplier;
     private final SchematicService schematicService;
     private final BdEngineService bdEngineService;
-    private final BlockInteractionOrchestrator interactionOrchestrator;
+    private final ServerSideFakeBlockService serverSideFakeBlockService;
     private final BlockRespawnOrchestrator respawnOrchestrator;
 
     public BlockChunkLifecycleOrchestrator(
@@ -58,7 +58,7 @@ public final class BlockChunkLifecycleOrchestrator {
             final BlockModelApplier modelApplier,
             final SchematicService schematicService,
             final BdEngineService bdEngineService,
-            final BlockInteractionOrchestrator interactionOrchestrator,
+            final ServerSideFakeBlockService serverSideFakeBlockService,
             final BlockRespawnOrchestrator respawnOrchestrator
     ) {
         this.plugin = plugin;
@@ -73,7 +73,7 @@ public final class BlockChunkLifecycleOrchestrator {
         this.modelApplier = modelApplier;
         this.schematicService = schematicService;
         this.bdEngineService = bdEngineService;
-        this.interactionOrchestrator = interactionOrchestrator;
+        this.serverSideFakeBlockService = serverSideFakeBlockService;
         this.respawnOrchestrator = respawnOrchestrator;
     }
 
@@ -187,14 +187,14 @@ public final class BlockChunkLifecycleOrchestrator {
                 continue;
             }
             if (this.lifecycleSystem.isActive(block)) {
-                if (this.interactionOrchestrator.spawn(block, definition, world)) {
-                    this.hologramRuntimeService.showActive(block, definition);
-                    // Schedule a delayed visual re-apply 10 ticks later to handle startup
-                    // timing issues where the NMS layer or world may not be fully ready.
-                    // This is particularly important for schematics and CraftEngine blocks
-                    // on server restart where the initial apply may silently fail.
-                    scheduleDelayedVisualApply(block, definition, world);
-                }
+                applyVisuals(block, definition, world);
+                syncServerSideNearby(world, block);
+                this.hologramRuntimeService.showActive(block, definition);
+                // Schedule a delayed visual re-apply 10 ticks later to handle startup
+                // timing issues where the NMS layer or world may not be fully ready.
+                // This is particularly important for schematics and CraftEngine blocks
+                // on server restart where the initial apply may silently fail.
+                scheduleDelayedVisualApply(block, definition, world);
                 continue;
             }
 
@@ -206,8 +206,9 @@ public final class BlockChunkLifecycleOrchestrator {
     }
 
     public void handleChunkUnload(final World world, final int chunkX, final int chunkZ) {
+        this.serverSideFakeBlockService.demoteChunk(world, chunkX, chunkZ);
         for (final PlacedBlockModel block : this.stateRegistry.blocksInChunk(world.getName(), chunkX, chunkZ)) {
-            this.interactionOrchestrator.despawn(block);
+            this.serverSideFakeBlockService.demoteBlock(block);
             this.hologramRuntimeService.remove(block);
             this.visualSyncSystem.clearBreakAnimation(world, block);
             this.modelApplier.clearSchematicModel(block, world);
@@ -236,10 +237,10 @@ public final class BlockChunkLifecycleOrchestrator {
             if (!isChunkLoaded(world, block.x(), block.z())) {
                 return;
             }
-            if (this.interactionOrchestrator.spawn(block, definition, world)) {
-                this.hologramRuntimeService.showActive(block, definition);
-                scheduleDelayedVisualApply(block, definition, world);
-            }
+            applyVisuals(block, definition, world);
+            syncServerSideNearby(world, block);
+            this.hologramRuntimeService.showActive(block, definition);
+            scheduleDelayedVisualApply(block, definition, world);
         }, 20L);
     }
 
@@ -249,7 +250,7 @@ public final class BlockChunkLifecycleOrchestrator {
      * be fully ready during the initial spawn.
      * <p>
      * This runs 10 ticks after the successful spawn and re-applies the models that were
-     * already applied in {@link BlockInteractionOrchestrator#applySpawnedModels}.
+     * already applied during the initial spawn.
      * Non-fatal exceptions during re-application are silently ignored.
      */
     private void scheduleDelayedVisualApply(
@@ -270,10 +271,29 @@ public final class BlockChunkLifecycleOrchestrator {
                 if (def == null) return;
                 this.visualSyncSystem.applyRealBlockModel(current, def, w);
                 this.modelApplier.applySchematicModel(current, def, w, false);
+                syncServerSideNearby(w, current);
             } catch (final Exception ignored) {
                 // expected - non-critical retry
             }
         }, 10L);
+    }
+
+    private void applyVisuals(final PlacedBlockModel block, final BlockDefinitionModel definition, final World world) {
+        this.visualSyncSystem.applyRealBlockModel(block, definition, world);
+        this.modelApplier.applySchematicModel(block, definition, world, false);
+        this.modelApplier.applyBdEngineModel(block, definition, world);
+        this.modelApplier.applyModelEngineModel(block, definition, world);
+        this.modelApplier.applyModelEngineCollision(block, definition, world);
+        this.modelApplier.applyBetterModelModel(block, definition, world);
+        this.modelApplier.applyBetterModelCollision(block, definition, world);
+    }
+
+    private void syncServerSideNearby(final World world, final PlacedBlockModel block) {
+        this.serverSideFakeBlockService.syncNearbyPlayers(
+                world,
+                new Location(world, block.x() + 0.5D, block.y() + 0.5D, block.z() + 0.5D),
+                this.blockConfigService.realBlockRadiusSquared()
+        );
     }
 
     private static boolean isChunkLoaded(final World world, final double x, final double z) {

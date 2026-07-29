@@ -132,11 +132,6 @@ public final class MMOBlockApiImpl implements BlockService, NodeService, me.chyx
     }
 
     @Override
-    public boolean removeBlockByInteractionEntity(final org.bukkit.entity.Entity entity) {
-        return this.blockRuntimeService.removeByInteractionEntity(entity);
-    }
-
-    @Override
     public List<? extends me.chyxelmc.mmoblock.api.model.PlacedBlock> findBlocksByType(final String type) {
         return this.blockRuntimeService.placedBlocks().stream()
                 .filter(b -> b.type().equalsIgnoreCase(type))

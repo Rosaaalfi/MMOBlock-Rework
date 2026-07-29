@@ -1,6 +1,8 @@
 package me.chyxelmc.mmoblock.runtime.block;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -26,8 +28,11 @@ import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ConditionDefinition;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ToolAction;
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
+import me.chyxelmc.mmoblock.platform.scheduler.SchedulerTask;
+import me.chyxelmc.mmoblock.runtime.FakeBlockRegistry;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
-import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
+import me.chyxelmc.mmoblock.runtime.interaction.ServerSideFakeBlockService;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
 import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.utils.ConditionEvaluator;
@@ -38,6 +43,7 @@ import net.kyori.adventure.title.Title;
 public final class BlockMiningOrchestrator {
 
     private final MMOBlock plugin;
+    private final Scheduler scheduler;
     private final BlockConfigLoader blockConfigService;
     private final me.chyxelmc.mmoblock.i18n.TranslationService translationService;
     private final PersistenceSystem persistenceSystem;
@@ -46,16 +52,18 @@ public final class BlockMiningOrchestrator {
     private final BlockLifecycleState lifecycleSystem;
     private final BlockVisualSyncService visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
+    private final ServerSideFakeBlockService serverSideFakeBlockService;
     private final BlockModelApplier modelApplier;
-    private final BlockInteractionOrchestrator interactionOrchestrator;
     private final BlockEventDispatcher eventDispatcher;
     private final Predicate<UUID> transientBlockPredicate;
     private final Predicate<UUID> suppressDeadHologramPredicate;
     private final RespawnScheduler respawnScheduler;
     private final Particle breakParticle;
+    private final Map<AutoProgressKey, SchedulerTask> autoProgressTasks = new ConcurrentHashMap<>();
 
     public BlockMiningOrchestrator(
             final MMOBlock plugin,
+            final Scheduler scheduler,
             final BlockConfigLoader blockConfigService,
             final me.chyxelmc.mmoblock.i18n.TranslationService translationService,
             final PersistenceSystem persistenceSystem,
@@ -64,8 +72,8 @@ public final class BlockMiningOrchestrator {
             final BlockLifecycleState lifecycleSystem,
             final BlockVisualSyncService visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService,
+            final ServerSideFakeBlockService serverSideFakeBlockService,
             final BlockModelApplier modelApplier,
-            final BlockInteractionOrchestrator interactionOrchestrator,
             final BlockEventDispatcher eventDispatcher,
             final Predicate<UUID> transientBlockPredicate,
             final Predicate<UUID> suppressDeadHologramPredicate,
@@ -73,6 +81,7 @@ public final class BlockMiningOrchestrator {
             final Particle breakParticle
     ) {
         this.plugin = plugin;
+        this.scheduler = scheduler;
         this.blockConfigService = blockConfigService;
         this.translationService = translationService;
         this.persistenceSystem = persistenceSystem;
@@ -81,8 +90,8 @@ public final class BlockMiningOrchestrator {
         this.lifecycleSystem = lifecycleSystem;
         this.visualSyncSystem = visualSyncSystem;
         this.hologramRuntimeService = hologramRuntimeService;
+        this.serverSideFakeBlockService = serverSideFakeBlockService;
         this.modelApplier = modelApplier;
-        this.interactionOrchestrator = interactionOrchestrator;
         this.eventDispatcher = eventDispatcher;
         this.transientBlockPredicate = transientBlockPredicate;
         this.suppressDeadHologramPredicate = suppressDeadHologramPredicate;
@@ -91,22 +100,48 @@ public final class BlockMiningOrchestrator {
     }
 
     public Component processMiningClick(final PlacedBlockModel block, final Player player, final String clickType) {
+        return processMiningClick(block, player, clickType, false);
+    }
+
+    private Component processMiningClick(
+            final PlacedBlockModel block,
+            final Player player,
+            final String clickType,
+            final boolean autoProgressTick
+    ) {
         if (!this.lifecycleSystem.isActive(block)) {
+            cancelAutoProgress(block.uniqueId(), player.getUniqueId());
             return translate(player, "blocks.not_active", "&c[MMOBlock] Block is not active.");
         }
 
         final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
         if (definition == null) {
+            cancelAutoProgress(block.uniqueId(), player.getUniqueId());
             return translate(player, "blocks.config_missing", "&c[MMOBlock] Block config missing.");
         }
 
         if (!checkConditions(definition, player)) {
+            cancelAutoProgress(block.uniqueId(), player.getUniqueId());
             return Component.empty();
         }
 
         final ItemStack item = player.getInventory().getItemInMainHand();
         final ToolAction action = this.blockConfigService.resolveToolAction(definition, item, clickType);
         if (action == null) {
+            // If this is a left_click and the tool has a block_break action configured but no
+            // left_click/both_click action, we suppress the "tool not allowed" message and return
+            // empty to let the vanilla block break chain (BlockDamageEvent → BlockBreakEvent)
+            // handle the break via BlockLookProtection. This gives the player the vanilla break
+            // animation. Right-click with a block_break-only tool should still show the error.
+            //
+            // InteractionListener skips cancelling PlayerInteractEvent for this case so that
+            // BlockDamageEvent can fire. See hasBlockBreakOnly() in InteractionListener.
+            if ("left_click".equals(clickType) && this.blockConfigService.resolveToolAction(definition, item, "block_break") != null) {
+                cancelAutoProgress(block.uniqueId(), player.getUniqueId());
+                return Component.empty();
+            }
+
+            cancelAutoProgress(block.uniqueId(), player.getUniqueId());
             final Component toolNotAllowed = translate(player, "blocks.tool_not_allowed", "&cTool is not allowed for this block.");
             final Component subtitle = translate(player, "blocks.tool_not_allowed_subtitle", "&eGunakan alat yang sesuai");
             player.showTitle(Title.title(toolNotAllowed, subtitle));
@@ -114,10 +149,21 @@ public final class BlockMiningOrchestrator {
         }
 
         if (isThrottled(block.uniqueId(), player.getUniqueId())) {
+            if (autoProgressTick && action.autoProgress()) {
+                startAutoProgress(block, player, clickType, 1L);
+                return Component.empty();
+            }
             final Component tooFastTitle = translate(player, "blocks.too_fast", "&eHey slow down a bit.");
             final Component tooFastSubtitle = translate(player, "blocks.too_fast_subtitle", "&eHarap tunggu beberapa saat");
             player.showTitle(Title.title(tooFastTitle, tooFastSubtitle));
             return Component.empty();
+        }
+
+        // Play the player's arm swing animation on auto-progress ticks.
+        // When the server simulates a click (autoProgressTick=true), the client
+        // doesn't naturally play the swing animation, so we must send it manually.
+        if (autoProgressTick) {
+            player.swingMainHand();
         }
 
         playConfiguredSound(player.getWorld(), block, definition.soundOnClick());
@@ -149,12 +195,121 @@ public final class BlockMiningOrchestrator {
 
         if (progress < action.clickNeeded()) {
             showProgressHologram(block, definition, progress, action.clickNeeded());
+            if (action.autoProgress() && !autoProgressTick) {
+                startAutoProgress(block, player, clickType);
+            }
             return Component.empty();
         }
 
+        cancelAutoProgress(block.uniqueId(), player.getUniqueId());
         this.miningSystem.clearProgress(block.uniqueId(), player.getUniqueId());
         handleBlockBreak(block, definition, action, player);
         return Component.empty();
+    }
+
+    public Component processBlockBreak(final PlacedBlockModel block, final Player player) {
+        cancelAutoProgress(block.uniqueId(), player.getUniqueId());
+        if (!this.lifecycleSystem.isActive(block)) {
+            return translate(player, "blocks.not_active", "&c[MMOBlock] Block is not active.");
+        }
+
+        final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
+        if (definition == null) {
+            return translate(player, "blocks.config_missing", "&c[MMOBlock] Block config missing.");
+        }
+
+        if (!checkConditions(definition, player)) {
+            return Component.empty();
+        }
+
+        final ItemStack item = player.getInventory().getItemInMainHand();
+        final ToolAction action = this.blockConfigService.resolveToolAction(definition, item, "block_break");
+        if (action == null) {
+            final Component toolNotAllowed = translate(player, "blocks.tool_not_allowed", "&cTool is not allowed for this block.");
+            final Component subtitle = translate(player, "blocks.tool_not_allowed_subtitle", "&eGunakan alat yang sesuai");
+            player.showTitle(Title.title(toolNotAllowed, subtitle));
+            return Component.empty();
+        }
+
+        applyDurability(item, action.decreaseDurability());
+        handleBlockBreak(block, definition, action, player);
+        return Component.empty();
+    }
+
+    public boolean canProcessBlockBreak(final PlacedBlockModel block, final Player player) {
+        if (block == null || player == null || !this.lifecycleSystem.isActive(block)) {
+            return false;
+        }
+        final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
+        if (definition == null) {
+            return false;
+        }
+        return this.blockConfigService.resolveToolAction(definition, player.getInventory().getItemInMainHand(), "block_break") != null;
+    }
+
+    private void startAutoProgress(final PlacedBlockModel block, final Player player, final String clickType) {
+        final long periodTicks = Math.max(1L, (long) Math.ceil(this.blockConfigService.interactionThrottleMs() / 50.0D) + 1L);
+        startAutoProgress(block, player, clickType, periodTicks);
+    }
+
+    private void startAutoProgress(final PlacedBlockModel block, final Player player, final String clickType, final long delayTicks) {
+        final AutoProgressKey key = new AutoProgressKey(block.uniqueId(), player.getUniqueId());
+        if (this.autoProgressTasks.containsKey(key)) {
+            return;
+        }
+        final Location location = blockCenterLocation(block, player.getWorld());
+        final SchedulerTask task = this.scheduler.runAtLocationLater(location, () -> runAutoProgressTick(block, player, clickType, key), Math.max(1L, delayTicks));
+        this.autoProgressTasks.put(key, task);
+    }
+
+    private void runAutoProgressTick(
+            final PlacedBlockModel block,
+            final Player player,
+            final String clickType,
+            final AutoProgressKey key
+    ) {
+        this.autoProgressTasks.remove(key);
+        if (!this.plugin.isEnabled() || !player.isOnline() || !this.lifecycleSystem.isActive(block)) {
+            cancelAutoProgress(block.uniqueId(), player.getUniqueId());
+            return;
+        }
+        processMiningClick(block, player, clickType, true);
+        if (!this.lifecycleSystem.isActive(block)) {
+            cancelAutoProgress(block.uniqueId(), player.getUniqueId());
+            return;
+        }
+
+        final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
+        if (definition == null) {
+            cancelAutoProgress(block.uniqueId(), player.getUniqueId());
+            return;
+        }
+        final ToolAction action = this.blockConfigService.resolveToolAction(definition, player.getInventory().getItemInMainHand(), clickType);
+        if (action != null && action.autoProgress()) {
+            startAutoProgress(block, player, clickType);
+        }
+    }
+
+    private void cancelAutoProgress(final UUID blockId, final UUID playerId) {
+        final SchedulerTask task = this.autoProgressTasks.remove(new AutoProgressKey(blockId, playerId));
+        if (task != null) {
+            task.cancel();
+        }
+    }
+
+    public void cancelAutoProgressForPlayer(final UUID playerId) {
+        this.autoProgressTasks.entrySet().removeIf(entry -> {
+            if (!entry.getKey().playerUniqueId().equals(playerId)) {
+                return false;
+            }
+            entry.getValue().cancel();
+            return true;
+        });
+    }
+
+    public void cancelAllAutoProgress() {
+        this.autoProgressTasks.values().forEach(SchedulerTask::cancel);
+        this.autoProgressTasks.clear();
     }
 
     public void playConfiguredSound(final World world, final PlacedBlockModel block, final Sound sound) {
@@ -265,6 +420,12 @@ public final class BlockMiningOrchestrator {
 
         final World world = this.plugin.getServer().getWorld(block.world());
         if (world != null) {
+            this.serverSideFakeBlockService.demoteBlock(block);
+            // Remove from FakeBlockRegistry so the reconcile timer won't re-promote this
+            // block back to its fake visual. The block is now entering the dead state and
+            // should stay in that visual until it respawns.
+            FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.x()), (int) Math.floor(block.y()), (int) Math.floor(block.z()));
+            FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.originX()), (int) Math.floor(block.originY()), (int) Math.floor(block.originZ()));
             // Apply dead block model if configured, otherwise clear
             if (this.visualSyncSystem.hasDeadBlockModel(definition)) {
                 this.visualSyncSystem.applyDeadBlockModel(block, definition, world);
@@ -278,9 +439,13 @@ public final class BlockMiningOrchestrator {
             this.modelApplier.clearBetterModelModel(block, world);
             this.modelApplier.clearBetterModelCollision(block, world);
         }
-        this.interactionOrchestrator.despawn(block);
         if (world != null && definition.schematicsEnabled() && definition.schematicsDeadFile() != null && !definition.schematicsDeadFile().isBlank()) {
             this.modelApplier.applySchematicModel(block, definition, world, true);
+            this.serverSideFakeBlockService.syncNearbyPlayers(
+                    world,
+                    new Location(world, block.originX() + 0.5D, block.originY() + 0.5D, block.originZ() + 0.5D),
+                    this.blockConfigService.realBlockRadiusSquared()
+            );
         }
         if (this.suppressDeadHologramPredicate.test(block.uniqueId())) {
             this.hologramRuntimeService.remove(block);
@@ -424,5 +589,8 @@ public final class BlockMiningOrchestrator {
     @FunctionalInterface
     public interface RespawnScheduler {
         void schedule(PlacedBlockModel block, World world, long delayMillis);
+    }
+
+    private record AutoProgressKey(UUID blockUniqueId, UUID playerUniqueId) {
     }
 }

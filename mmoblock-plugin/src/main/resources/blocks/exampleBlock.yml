@@ -19,9 +19,6 @@ exampleBlock:
     onDead: block.stone.break # Sound to play when the entity is killed.
     onRespawn: block.stone.place # Sound to play when the entity respawns.
   breakAnimation: true # Whether to play the block breaking animation when the entity is click. using packet block breaking animation.
-  hitbox: # AABB hitbox for the entity. The hitbox will be centered on the entity's location.
-    width: 1.2 # The width of the entity's hitbox.
-    height: 1.2 # The height of the entity's hitbox.
   modelType:
     block:
       enabled: true

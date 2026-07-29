@@ -8,6 +8,7 @@ java {
 
 dependencies {
     implementation(project(":mmoblock-domain"))
+    implementation(project(":mmoblock-utils"))
     compileOnly(libs.paperApiV1194)
     compileOnly("com.zaxxer:HikariCP:7.0.2")
     compileOnly(libs.h2SqlLib)

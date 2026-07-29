@@ -21,7 +21,6 @@ import me.chyxelmc.mmoblock.command.MMOBlockCommand;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
 import me.chyxelmc.mmoblock.ecs.EntityManager;
 import me.chyxelmc.mmoblock.ecs.SystemManager;
-import me.chyxelmc.mmoblock.ecs.system.InteractionSpawnSystem;
 import me.chyxelmc.mmoblock.ecs.system.PacketHologramSyncSystem;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceReadSystem;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
@@ -100,6 +99,7 @@ public final class MMOBlock extends JavaPlugin{
         initRuntime();
         initPlaceholders();
         setupFakeBlockChecker();
+        setupFakeBlockClickHandler();
         finalizeBootstrap();
         this.ready = true;
     }
@@ -235,6 +235,104 @@ public final class MMOBlock extends JavaPlugin{
         }
     }
 
+    private void setupFakeBlockClickHandler() {
+        try {
+            final String handlerPkg = this.nmsAdapter.getClass().getPackage().getName();
+            final String handlerClassName = handlerPkg + ".FakeBlockPacketHandler";
+            final String clickHandlerClassName = "me.chyxelmc.mmoblock.nms.AbstractFakeBlockPacketHandler$FakeBlockClickHandler";
+            validateFakeHandlerClassName(handlerClassName);
+            validateFakeHandlerClassName(clickHandlerClassName);
+            final Class<?> handlerClass = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(handlerClassName);
+            final Class<?> clickHandlerIface = me.chyxelmc.mmoblock.utils.SafeClassLoader.loadTrusted(clickHandlerClassName);
+
+            // Capture config values for distance-tier logic
+            final double realBlockRadiusSq = this.blockConfigService.realBlockRadiusSquared();
+            final double fakeBlockRadiusSq = this.blockConfigService.fakeBlockRadiusSquared();
+
+            final Object clickProxy = java.lang.reflect.Proxy.newProxyInstance(
+                    clickHandlerIface.getClassLoader(),
+                    new Class[]{clickHandlerIface},
+                    (proxyObj, method, args) -> {
+                        try {
+                            final org.bukkit.entity.Player p = (org.bukkit.entity.Player) args[0];
+                            final int x = (int) args[1];
+                            final int y = (int) args[2];
+                            final int z = (int) args[3];
+                            final String clickType = (String) args[4];
+
+                            // Distance-tier check
+                            final double distSq = p.getLocation().distanceSquared(
+                                    new org.bukkit.Location(p.getWorld(), x + 0.5, y + 0.5, z + 0.5));
+
+                            // Beyond fake-block-radius: ignore click entirely
+                            if (distSq > fakeBlockRadiusSq) {
+                                return null;
+                            }
+
+                            // ============================================================
+                            // Custom item check (block_remover, node_remover)
+                            // ============================================================
+                            final org.bukkit.inventory.ItemStack heldItem = p.getInventory().getItemInMainHand();
+                            if (heldItem != null && !heldItem.getType().isAir()) {
+                                final org.bukkit.inventory.meta.ItemMeta heldMeta = heldItem.getItemMeta();
+                                if (heldMeta != null) {
+                                    final org.bukkit.persistence.PersistentDataContainer container = heldMeta.getPersistentDataContainer();
+                                    final String itemType = container.get(
+                                            new org.bukkit.NamespacedKey(this, "mmoblock_item_type"),
+                                            org.bukkit.persistence.PersistentDataType.STRING);
+                                    if (itemType != null) {
+                                        if ("block_remover".equals(itemType)) {
+                                            final var block = MMOBlock.this.blockRuntimeService.stateRegistry().blockAt(
+                                                    p.getWorld().getName(), x, y, z);
+                                            if (block != null) {
+                                                MMOBlock.this.blockRuntimeService.removeById(block.uniqueId());
+                                            }
+                                            return null;
+                                        }
+                                        if ("node_remover".equals(itemType) && MMOBlock.this.nodeRuntimeService != null) {
+                                            final var block = MMOBlock.this.blockRuntimeService.stateRegistry().blockAt(
+                                                    p.getWorld().getName(), x, y, z);
+                                            if (block != null) {
+                                                MMOBlock.this.nodeRuntimeService.removeNodeByBlockUniqueId(block.uniqueId());
+                                            }
+                                            return null;
+                                        }
+                                        // Other custom items (block/node placement): ignore in packet handler
+                                        return null;
+                                    }
+                                }
+                            }
+
+                            // ============================================================
+                            // Normal click handling: left/right click mining
+                            // ============================================================
+                            final String resolvedClickType = "interact".equals(clickType) ? "right_click" : clickType;
+
+                            // Check if this is a fake block (server-side air)
+                            final boolean isFakeBlock = me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.contains(
+                                    p.getWorld().getName(), x, y, z);
+
+                            if (isFakeBlock) {
+                                // Fake blocks: always process (PlayerInteractEvent won't fire)
+                                MMOBlock.this.blockRuntimeService.handleRealBlockClick(p, resolvedClickType, p.getWorld(), x, y, z);
+                            } else if (distSq > realBlockRadiusSq) {
+                                // Real blocks outside real-block-radius: process via packet handler
+                                MMOBlock.this.blockRuntimeService.handleRealBlockClick(p, resolvedClickType, p.getWorld(), x, y, z);
+                            }
+                            // Real blocks within real-block-radius: let PlayerInteractEvent handle it
+                            return null;
+                        } catch (final Exception t) {
+                            return null;
+                        }
+                    }
+            );
+            final java.lang.reflect.Method setClickHandler = handlerClass.getMethod("setClickHandler", clickHandlerIface);
+            setClickHandler.invoke(null, clickProxy);
+        } catch (final Exception e) {
+            MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
+        }
+    }
+
     private void finalizeBootstrap() {
         this.runtimeCoordinator = new RuntimeCoordinator(this.persistenceReadSystem, this.blockRuntimeService, this.nodeRuntimeService);
 
@@ -313,21 +411,7 @@ public final class MMOBlock extends JavaPlugin{
         try {
             this.entityManager = new EntityManager();
             this.systemManager = new SystemManager();
-            this.systemManager.register(new InteractionSpawnSystem(this.nmsAdapter, (blockId, nmsEntityId) -> {
-                try {
-                    if (this.blockRuntimeService != null) {
-                        this.blockRuntimeService.onInteractionSpawned(blockId, nmsEntityId);
-                    }
-                } catch (final Exception e) {
-                    MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
-                }
-            }));
             this.systemManager.register(new PacketHologramSyncSystem(this.nmsAdapter));
-            try {
-                this.blockRuntimeService.setEntityManager(this.entityManager);
-            } catch (final Exception e) {
-                MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
-            }
             try {
                 this.nodeRuntimeService.setEntityManager(this.entityManager);
             } catch (final Exception e) {

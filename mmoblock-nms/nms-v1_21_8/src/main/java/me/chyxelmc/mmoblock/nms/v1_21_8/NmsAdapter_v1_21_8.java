@@ -48,7 +48,6 @@ import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.util.CraftMagicNumbers;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
 import org.joml.Matrix4f;
@@ -71,9 +70,7 @@ import java.util.UUID;
 @SuppressWarnings("java:S101")
 public final class NmsAdapter_v1_21_8 extends AbstractPacketBasedNmsAdapter {
 
-    private static final EntityType<net.minecraft.world.entity.Interaction> CUSTOM_INTERACTION_TYPE = createCustomInteractionType();
-
-    @Override
+        @Override
     public String targetMinecraftVersion() {
         return "1.21.8";
     }
@@ -393,80 +390,13 @@ public final class NmsAdapter_v1_21_8 extends AbstractPacketBasedNmsAdapter {
         }
     }
 
-    @Override
-    public SpawnResult spawnInteraction(World world, Location location, float width, float height,
-            NamespacedKey uniqueIdKey, UUID blockUniqueId) {
-        final SpawnResult bukkitResult = spawnInteractionViaBukkit(world, location, width, height,
-                uniqueIdKey, blockUniqueId, "");
-        if (bukkitResult.success()) return bukkitResult;
-        try {
-            final ServerLevel level = ((CraftWorld) world).getHandle();
-            final OptimizedInteraction handle = new OptimizedInteraction(CUSTOM_INTERACTION_TYPE, level);
-            handle.setPos(location.getX(), location.getY(), location.getZ());
-            handle.setNoGravity(true);
-            handle.setSilent(true);
-            applyCustomAabb(handle, location, width, height);
-            level.addFreshEntity(handle);
-            if (!(handle.getBukkitEntity() instanceof Interaction interaction)) {
-                handle.discard();
-                return SpawnResult.failed("Spawned NMS entity is not Bukkit Interaction");
-            }
-            configureInteraction(interaction, width, height, uniqueIdKey, blockUniqueId);
-            return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
-        } catch (RuntimeException ex) {
-            return SpawnResult.failed(joinSpawnFailures(bukkitResult.reason(),
-                    "NMS spawn failed: " + ex.getMessage()));
-        }
-    }
-
-    @Override
-    public RemoveResult removeInteraction(World world, UUID uid) {
-        try {
-            final ServerLevel l = ((CraftWorld) world).getHandle();
-            final net.minecraft.world.entity.Entity e = l.getEntity(uid);
-            if (e == null) return RemoveResult.success(false, SpawnPath.NMS);
-            e.discard();
-            return RemoveResult.success(true, SpawnPath.NMS);
-        } catch (RuntimeException ex) {
-            return RemoveResult.failed("NMS remove failed: " + ex.getMessage());
-        }
-    }
-
     // ============================================================
     // Private helpers
     // ============================================================
 
-    private void applyCustomAabb(
-            final net.minecraft.world.entity.Interaction handle,
-            final Location location,
-            final float width,
-            final float height
-    ) {
-        final double half = width / 2.0D;
-        handle.setBoundingBox(new AABB(
-                location.getX() - half, location.getY(), location.getZ() - half,
-                location.getX() + half, location.getY() + height, location.getZ() + half
-        ));
-    }
-
-    private static EntityType<net.minecraft.world.entity.Interaction> createCustomInteractionType() {
-        try {
-            final ResourceKey<EntityType<?>> key = BuiltInRegistries.ENTITY_TYPE
-                    .getResourceKey(EntityType.INTERACTION).orElseThrow();
-            return EntityType.Builder.of(net.minecraft.world.entity.Interaction::new, MobCategory.MISC)
-                    .clientTrackingRange(2).build(key);
-        } catch (RuntimeException e) { return EntityType.INTERACTION; }
-    }
-
     // ============================================================
     // Inner classes
     // ============================================================
-
-    private static final class OptimizedInteraction extends net.minecraft.world.entity.Interaction {
-        OptimizedInteraction(EntityType<? extends net.minecraft.world.entity.Interaction> t, Level l) { super(t, l); }
-        @Override public void tick() {}
-        @Override public void inactiveTick() {}
-    }
 
     private static final class StaticItemEntity extends ItemEntity {
         StaticItemEntity(Level l, double x, double y, double z, net.minecraft.world.item.ItemStack s) {

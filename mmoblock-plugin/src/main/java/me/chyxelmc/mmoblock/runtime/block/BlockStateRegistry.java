@@ -24,6 +24,8 @@ public final class BlockStateRegistry {
     private final Map<PositionKey, UUID> blockIdByOriginPosition = new ConcurrentHashMap<>();
     private final Map<PositionKey, UUID> blockIdByCurrentPosition = new ConcurrentHashMap<>();
     private final Map<ChunkKey, Set<UUID>> blocksByChunk = new ConcurrentHashMap<>();
+    /** Additional positions for multi-block structures (collision barriers, schematics, etc.) */
+    private final Map<PositionKey, UUID> additionalPositions = new ConcurrentHashMap<>();
     private final Set<UUID> activeMiningBlockIds = ConcurrentHashMap.newKeySet();
     private final Map<UUID, MiningProgressComponent> miningComponents = new ConcurrentHashMap<>();
     private final Map<UUID, ClickThrottleComponent> throttleComponents = new ConcurrentHashMap<>();
@@ -67,6 +69,8 @@ public final class BlockStateRegistry {
             this.blockIdByOriginPosition.remove(positionKeyFor(removed.originX(), removed.originY(), removed.originZ(), removed.world()));
             this.blockIdByCurrentPosition.remove(positionKeyFor(removed.x(), removed.y(), removed.z(), removed.world()));
         }
+        // Remove all additional positions for this block
+        this.additionalPositions.entrySet().removeIf(entry -> entry.getValue().equals(uniqueId));
         this.activeMiningBlockIds.remove(uniqueId);
         this.miningComponents.remove(uniqueId);
         this.throttleComponents.remove(uniqueId);
@@ -86,12 +90,17 @@ public final class BlockStateRegistry {
         if (id == null) {
             id = this.blockIdByCurrentPosition.get(key);
         }
+        if (id == null) {
+            id = this.additionalPositions.get(key);
+        }
         return id == null ? null : this.blocks.get(id);
     }
 
     public boolean containsAt(final String worldName, final double x, final double y, final double z) {
         final PositionKey key = new PositionKey(worldName, toPositionBits(x), toPositionBits(y), toPositionBits(z));
-        return this.blockIdByOriginPosition.containsKey(key) || this.blockIdByCurrentPosition.containsKey(key);
+        return this.blockIdByOriginPosition.containsKey(key)
+                || this.blockIdByCurrentPosition.containsKey(key)
+                || this.additionalPositions.containsKey(key);
     }
 
     public Collection<PlacedBlockModel> blocksInChunk(final String worldName, final int chunkX, final int chunkZ) {
@@ -163,11 +172,35 @@ public final class BlockStateRegistry {
         return this.respawnComponents.remove(uniqueId);
     }
 
+    /**
+     * Register an additional position for a block (e.g., collision barrier, multi-block part).
+     */
+    public void addAdditionalPosition(final String worldName, final double x, final double y, final double z, final UUID blockId) {
+        this.additionalPositions.put(positionKeyFor(x, y, z, worldName), blockId);
+    }
+
+    /**
+     * Remove an additional position registration.
+     */
+    public void removeAdditionalPosition(final String worldName, final double x, final double y, final double z) {
+        this.additionalPositions.remove(positionKeyFor(x, y, z, worldName));
+    }
+
+    /**
+     * Check whether the given position is an additional (multi-block) position rather than
+     * the block's origin or current position. Used by {@code ServerSideFakeBlockService}
+     * to avoid promoting schematic/collision positions through the fake-block system.
+     */
+    public boolean isAdditionalPosition(final String worldName, final int x, final int y, final int z) {
+        return this.additionalPositions.containsKey(positionKeyFor(x, y, z, worldName));
+    }
+
     public void clear() {
         this.blocks.clear();
         this.blockIdByOriginPosition.clear();
         this.blockIdByCurrentPosition.clear();
         this.blocksByChunk.clear();
+        this.additionalPositions.clear();
         this.activeMiningBlockIds.clear();
         this.miningComponents.clear();
         this.throttleComponents.clear();

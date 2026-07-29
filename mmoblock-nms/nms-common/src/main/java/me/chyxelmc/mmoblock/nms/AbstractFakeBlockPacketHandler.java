@@ -98,6 +98,17 @@ public abstract class AbstractFakeBlockPacketHandler extends ChannelDuplexHandle
         CHECKER = checker;
     }
 
+    @FunctionalInterface
+    public interface FakeBlockClickHandler {
+        void onBlockClick(Player player, int x, int y, int z, String clickType);
+    }
+
+    private static volatile FakeBlockClickHandler CLICK_HANDLER = null;
+
+    public static void setClickHandler(final FakeBlockClickHandler handler) {
+        CLICK_HANDLER = handler;
+    }
+
     // ============================================================
     // Instance injection / uninjection
     // ============================================================
@@ -183,6 +194,24 @@ public abstract class AbstractFakeBlockPacketHandler extends ChannelDuplexHandle
         try {
             if (isFakeBlockOrContains(player, pos)) {
                 sendFakeRefreshToPlayer(player, getServerLevel(player.getWorld()), pos);
+                // Dispatch click to plugin if handler is set
+                if (CLICK_HANDLER != null) {
+                    final String clickType = isServerBoundPlayerAction(msg) ? "left_click" : "right_click";
+                    final int bx = posX(pos), by = posY(pos), bz = posZ(pos);
+                    final Player ref = this.playerRef.get();
+                    if (ref != null) {
+                        final Plugin plugin = Bukkit.getPluginManager().getPlugin(PLUGIN_NAME);
+                        if (plugin != null) {
+                            final UUID playerId = ref.getUniqueId();
+                            FoliaSafeScheduler.runTask(plugin, () -> {
+                                final Player p = Bukkit.getPlayer(playerId);
+                                if (p != null) {
+                                    CLICK_HANDLER.onBlockClick(p, bx, by, bz, clickType);
+                                }
+                            });
+                        }
+                    }
+                }
             } else if (isServerBoundUseItem(msg)) {
                 handleUseItemPacket(player);
             }
@@ -366,7 +395,8 @@ public abstract class AbstractFakeBlockPacketHandler extends ChannelDuplexHandle
             int px = posX(pos), py = posY(pos), pz = posZ(pos);
             if (isDebouncedAndMark(pu, wn, px, py, pz)) return;
             Object handle = getServerPlayer(player);
-            Object state = forcedState == null ? getBlockState(level, pos) : forcedState;
+            Object state = forcedState == null ? computeSendState(level, pos, registryGetMaterial(wn, px, py, pz)) : forcedState;
+            if (state == null) return;
             sendPacket(handle, createBlockUpdatePacket(pos, state));
             Plugin plugin = Bukkit.getPluginManager().getPlugin(PLUGIN_NAME);
             if (plugin != null) FoliaSafeScheduler.runTaskLater(plugin, () -> {

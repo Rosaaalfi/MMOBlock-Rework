@@ -11,6 +11,10 @@ public interface ToolAction {
     List<String> allowedDrops();
     String clickType();
 
+    default boolean autoProgress() {
+        return false;
+    }
+
     // ---- Third-party tool IDs ----
 
     /**

@@ -10,7 +10,6 @@ import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
-import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
 import me.chyxelmc.mmoblock.runtime.visual.BdEngineService;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
 import me.chyxelmc.mmoblock.runtime.visual.SchematicService;
@@ -36,7 +35,6 @@ public final class BlockPlacementService {
     private final BlockVisualSyncService visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
     private final BlockModelApplier modelApplier;
-    private final BlockInteractionOrchestrator interactionOrchestrator;
     private final BlockEventDispatcher eventDispatcher;
     private final BlockRandomLocationResolver randomLocationResolver;
     private final BlockChunkLifecycleOrchestrator chunkLifecycleOrchestrator;
@@ -59,7 +57,6 @@ public final class BlockPlacementService {
             final BlockVisualSyncService visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService,
             final BlockModelApplier modelApplier,
-            final BlockInteractionOrchestrator interactionOrchestrator,
             final BlockEventDispatcher eventDispatcher,
             final BlockRandomLocationResolver randomLocationResolver,
             final BlockChunkLifecycleOrchestrator chunkLifecycleOrchestrator,
@@ -81,7 +78,6 @@ public final class BlockPlacementService {
         this.visualSyncSystem = visualSyncSystem;
         this.hologramRuntimeService = hologramRuntimeService;
         this.modelApplier = modelApplier;
-        this.interactionOrchestrator = interactionOrchestrator;
         this.eventDispatcher = eventDispatcher;
         this.randomLocationResolver = randomLocationResolver;
         this.chunkLifecycleOrchestrator = chunkLifecycleOrchestrator;
@@ -209,14 +205,6 @@ public final class BlockPlacementService {
     // ============================================================
     // Methods used by BlockManagementService and BlockServiceFactory
     // ============================================================
-
-    public boolean spawnInteraction(final PlacedBlockModel placedBlock, final me.chyxelmc.mmoblock.model.BlockDefinitionModel definition, final World world) {
-        return this.interactionOrchestrator.spawn(placedBlock, definition, world);
-    }
-
-    public void despawnInteraction(final PlacedBlockModel block) {
-        this.interactionOrchestrator.despawn(block);
-    }
 
     public void cleanupMissingDefinition(final PlacedBlockModel block) {
         this.lifecycleOrchestrator.cleanupMissingDefinition(block);

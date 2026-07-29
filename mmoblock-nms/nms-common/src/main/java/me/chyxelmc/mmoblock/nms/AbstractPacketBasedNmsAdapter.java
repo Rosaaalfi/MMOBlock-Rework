@@ -7,11 +7,8 @@ import me.chyxelmc.mmoblock.nms.utils.HologramColorUtil;
 import me.chyxelmc.mmoblock.nms.utils.NmsLogger;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.World;
-import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
-import org.bukkit.persistence.PersistentDataType;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * <ul>
  *   <li>{@link #targetMinecraftVersion()} and {@link #validateNms()}</li>
  *   <li>The "hook" factory methods below for version-specific NMS operations</li>
- *   <li>{@link #spawnInteraction} / {@link #removeInteraction} (version-specific entity creation)</li>
  * </ul>
  *
  * <p>All NMS types are represented as {@code Object} in the hook signatures
@@ -586,51 +582,7 @@ public abstract class AbstractPacketBasedNmsAdapter implements NmsAdapter {
     }
 
     // ============================================================
-    // INTERACTION SPAWN/REMOVE helpers (shared fallback logic)
-    // ============================================================
-
-    protected SpawnResult spawnInteractionViaBukkit(
-            final World world,
-            final Location location,
-            final float width,
-            final float height,
-            final NamespacedKey uniqueIdKey,
-            final UUID blockUniqueId,
-            final String nmsFailure
-    ) {
-        try {
-            // Use 2-arg spawn(Location, Class) which is available in all Bukkit API versions.
-            // The 3-arg Consumer variant (spawn(Location, Class, Consumer)) was added in a
-            // later API version and does not exist on Paper/Folia 1.20.4.
-            final Interaction interaction = world.spawn(location, Interaction.class);
-            if (interaction != null) {
-                configureInteraction(interaction, width, height, uniqueIdKey, blockUniqueId);
-            }
-            return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
-        } catch (final RuntimeException fallbackException) {
-            return SpawnResult.failed(joinSpawnFailures(nmsFailure, "Bukkit spawn failed: " + fallbackException.getMessage()));
-        }
-    }
-
-    protected static void configureInteraction(
-            final Interaction interaction,
-            final float width,
-            final float height,
-            final NamespacedKey uniqueIdKey,
-            final UUID blockUniqueId
-    ) {
-        interaction.setInteractionWidth(Math.max(0.25F, width));
-        interaction.setInteractionHeight(Math.max(0.25F, height));
-        interaction.setResponsive(true);
-        interaction.setPersistent(false);
-        interaction.getPersistentDataContainer().set(uniqueIdKey, PersistentDataType.STRING, blockUniqueId.toString());
-    }
-
-    protected static String joinSpawnFailures(final String first, final String second) {
-        if (first == null || first.isBlank()) return second == null ? "" : second;
-        if (second == null || second.isBlank()) return first;
-        return first + " | " + second;
-    }
+    // DISPATCHER METHODS
 
     protected static boolean isOwnedByCurrentRegion(final Location location) {
         if (location == null || location.getWorld() == null) return false;

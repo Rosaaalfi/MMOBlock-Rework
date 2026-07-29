@@ -24,17 +24,6 @@ public interface NmsAdapter {
 
     void sendSystemMessage(Player player, String message);
 
-    SpawnResult spawnInteraction(
-            final World world,
-            final Location location,
-            final float width,
-            final float height,
-            final NamespacedKey uniqueIdKey,
-            final UUID blockUniqueId
-    );
-
-    RemoveResult removeInteraction(World world, UUID interactionUniqueId);
-
     void sendBreakAnimation(World world, Location location, int entityId, int stage);
 
     void showFakeBlock(World world, Location location, Material material);
@@ -212,31 +201,4 @@ public interface NmsAdapter {
         TEXT,
         ITEM,
         BLOCK
-    }
-
-    enum SpawnPath {
-        NMS
-    }
-
-    record SpawnResult(boolean success, String reason, UUID interactionUniqueId, SpawnPath path) {
-
-        public static SpawnResult success(final UUID interactionUniqueId, final SpawnPath path) {
-            return new SpawnResult(true, "", interactionUniqueId, path);
-        }
-
-        public static SpawnResult failed(final String reason) {
-            return new SpawnResult(false, reason, null, SpawnPath.NMS);
-        }
-    }
-
-    record RemoveResult(boolean success, boolean removed, String reason, SpawnPath path) {
-
-        public static RemoveResult success(final boolean removed, final SpawnPath path) {
-            return new RemoveResult(true, removed, "", path);
-        }
-
-        public static RemoveResult failed(final String reason) {
-            return new RemoveResult(false, false, reason, SpawnPath.NMS);
-        }
-    }
-}
+    }}

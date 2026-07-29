@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 import org.bukkit.Location;
@@ -19,6 +20,8 @@ import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.runtime.BlockRuntimeService;
+import me.chyxelmc.mmoblock.runtime.FakeBlockRegistry;
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 
 /**
@@ -34,6 +37,7 @@ public final class BlockModelApplier {
 
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
+    private final BlockStateRegistry stateRegistry;
     private final SchematicService schematicService;
     private final BdEngineService bdEngineService;
 
@@ -43,14 +47,19 @@ public final class BlockModelApplier {
     // BetterModel collision tracking
     private final Map<UUID, List<CollisionEntry>> betterModelCollisions = new HashMap<>();
 
+    // ModelEngine entity tracking — maps block UUID to Marker entity
+    private final Map<UUID, org.bukkit.entity.Marker> modelEngineEntities = new ConcurrentHashMap<>();
+
     public BlockModelApplier(
             final MMOBlock plugin,
             final NmsAdapter nmsAdapter,
+            final BlockStateRegistry stateRegistry,
             final SchematicService schematicService,
             final BdEngineService bdEngineService
     ) {
         this.plugin = plugin;
         this.nmsAdapter = nmsAdapter;
+        this.stateRegistry = stateRegistry;
         this.schematicService = schematicService;
         this.bdEngineService = bdEngineService;
     }
@@ -67,9 +76,9 @@ public final class BlockModelApplier {
                     block.uniqueId().toString(),
                     definition,
                     world,
-                    block.x(),
-                    block.y(),
-                    block.z(),
+                    dead ? block.originX() : block.x(),
+                    dead ? block.originY() : block.y(),
+                    dead ? block.originZ() : block.z(),
                     dead
             );
         } catch (final Throwable ignored) {
@@ -136,73 +145,64 @@ public final class BlockModelApplier {
         } catch (final Throwable ignored) {
             return;
         }
-        final Entity entity = world.getEntity(block.interactionEntityId());
-        if (entity == null) {
-            MMOBlockLogger.warning("[ModelEngine] Entity not found for block " + block.uniqueId()
-                    + " (id=" + block.interactionEntityId() + ")");
-            return;
-        }
-        if (!(entity instanceof org.bukkit.entity.Interaction)) {
-            MMOBlockLogger.warning("[ModelEngine] Entity " + block.interactionEntityId()
-                    + " is not an Interaction: " + entity.getType());
-            return;
-        }
+
+        // Remove any existing Marker for this block before creating a new one
+        clearModelEngineModel(block, world);
+
+        final Location location = new Location(world, block.x() + 0.5D, block.y(), block.z() + 0.5D);
+        final org.bukkit.entity.Marker marker = world.spawn(location, org.bukkit.entity.Marker.class);
         try {
             ModelEngineIntegration.showModel(
-                    entity,
+                    marker,
                     definition.modelEngineModelId(),
                     definition.modelEngineModelSize()
             );
-            playModelEngineAnimation(
-                    block,
-                    definition,
-                    definition.modelEngineOnSpawnName(),
-                    definition.modelEngineOnSpawnLerpIn(),
-                    definition.modelEngineOnSpawnLerpOut(),
-                    definition.modelEngineOnSpawnSpeed()
-            );
+            this.modelEngineEntities.put(block.uniqueId(), marker);
         } catch (final Throwable ex) {
+            marker.remove();
             MMOBlockLogger.warning("[ModelEngine] Failed to show model '" + definition.modelEngineModelId()
-                    + "' on " + block.interactionEntityId() + ": " + ex.getMessage());
+                    + "' for block " + block.uniqueId() + ": " + ex.getMessage());
         }
     }
 
     public void clearModelEngineModel(final PlacedBlockModel block, final World world) {
-        if (block == null || block.interactionEntityId() == null) return;
+        if (block == null) return;
+        final org.bukkit.entity.Marker marker = this.modelEngineEntities.remove(block.uniqueId());
+        if (marker == null) return;
         try {
-            if (!ModelEngineIntegration.isAvailable()) return;
+            if (ModelEngineIntegration.isAvailable()) {
+                ModelEngineIntegration.removeModel(marker);
+            }
         } catch (final Throwable ignored) {
-            return;
+            // ModelEngine not available or integration error
         }
-        final Entity entity = world.getEntity(block.interactionEntityId());
-        if (entity == null) return;
-        try {
-            ModelEngineIntegration.removeModel(entity);
-        } catch (final Throwable ex) {
-            /*
-            MMOBlockLogger.warning("[ModelEngine] Failed to remove model from "
-                    + block.interactionEntityId() + ": " + ex.getMessage());
-            */
+        if (marker.isValid()) {
+            marker.remove();
         }
     }
 
     public void playModelEngineAnimation(final PlacedBlockModel block, final BlockDefinitionModel definition, final String animationName, final double lerpIn, final double lerpOut, final double speed) {
         if (block == null || animationName == null || animationName.isBlank()) return;
         if (definition == null || !definition.modelEngineEnabled()) return;
+        final org.bukkit.entity.Marker marker = this.modelEngineEntities.get(block.uniqueId());
+        if (marker == null || !marker.isValid()) return;
         try {
             if (!ModelEngineIntegration.isAvailable()) return;
         } catch (final Throwable ignored) {
             return;
         }
-        final World world = this.plugin.getServer().getWorld(block.world());
-        if (world == null) return;
-        final Entity entity = world.getEntity(block.interactionEntityId());
-        if (entity == null) return;
         try {
-            ModelEngineIntegration.playAnimation(entity, definition.modelEngineModelId(), animationName, lerpIn, lerpOut, speed);
+            ModelEngineIntegration.playAnimation(
+                    marker,
+                    definition.modelEngineModelId(),
+                    animationName,
+                    lerpIn,
+                    lerpOut,
+                    speed
+            );
         } catch (final Throwable ex) {
             MMOBlockLogger.warning("[ModelEngine] Failed to play animation '" + animationName
-                    + "' on " + block.interactionEntityId() + ": " + ex.getMessage());
+                    + "' for block " + block.uniqueId() + ": " + ex.getMessage());
         }
     }
 
@@ -225,11 +225,19 @@ public final class BlockModelApplier {
             final int worldY = (int) Math.floor(y) + offset[1];
             final int worldZ = (int) Math.floor(z) + offset[2];
             final Location location = new Location(world, worldX, worldY, worldZ);
+            if (FakeBlockRegistry.contains(world.getName(), worldX, worldY, worldZ)) {
+                continue;
+            }
             this.nmsAdapter.showFakeBlock(world, location, Material.BARRIER);
+            FakeBlockRegistry.add(world.getName(), worldX, worldY, worldZ, Material.BARRIER.name());
             entries.add(new CollisionEntry(block.uniqueId(), world.getName(), worldX, worldY, worldZ));
         }
         if (!entries.isEmpty()) {
             this.modelEngineCollisions.put(block.uniqueId(), entries);
+            // Register collision positions in state registry for multi-block click detection
+            for (final CollisionEntry entry : entries) {
+                this.stateRegistry.addAdditionalPosition(entry.worldName(), entry.x(), entry.y(), entry.z(), block.uniqueId());
+            }
         }
     }
 
@@ -244,6 +252,8 @@ public final class BlockModelApplier {
             if (entryWorld != null) {
                 this.nmsAdapter.clearFakeBlock(entryWorld, new Location(entryWorld, entry.x(), entry.y(), entry.z()));
             }
+            FakeBlockRegistry.remove(entry.worldName(), entry.x(), entry.y(), entry.z());
+            this.stateRegistry.removeAdditionalPosition(entry.worldName(), entry.x(), entry.y(), entry.z());
         }
     }
 
@@ -258,11 +268,10 @@ public final class BlockModelApplier {
         } catch (final Throwable ignored) {
             return;
         }
-        final Entity entity = world.getEntity(block.interactionEntityId());
         final Location location = new Location(world, block.x() + 0.5D, block.y(), block.z() + 0.5D);
         try {
-            final boolean applied = BetterModelIntegration.showModel(
-                    entity,
+            BetterModelIntegration.showModel(
+                    null,
                     location,
                     definition.betterModelModelId(),
                     block.uniqueId(),
@@ -332,11 +341,19 @@ public final class BlockModelApplier {
             final int worldY = (int) Math.floor(y) + offset[1];
             final int worldZ = (int) Math.floor(z) + offset[2];
             final Location location = new Location(world, worldX, worldY, worldZ);
+            if (FakeBlockRegistry.contains(world.getName(), worldX, worldY, worldZ)) {
+                continue;
+            }
             this.nmsAdapter.showFakeBlock(world, location, Material.BARRIER);
+            FakeBlockRegistry.add(world.getName(), worldX, worldY, worldZ, Material.BARRIER.name());
             entries.add(new CollisionEntry(block.uniqueId(), world.getName(), worldX, worldY, worldZ));
         }
         if (!entries.isEmpty()) {
             this.betterModelCollisions.put(block.uniqueId(), entries);
+            // Register collision positions in state registry for multi-block click detection
+            for (final CollisionEntry entry : entries) {
+                this.stateRegistry.addAdditionalPosition(entry.worldName(), entry.x(), entry.y(), entry.z(), block.uniqueId());
+            }
         }
     }
 
@@ -351,6 +368,8 @@ public final class BlockModelApplier {
             if (entryWorld != null) {
                 this.nmsAdapter.clearFakeBlock(entryWorld, new Location(entryWorld, entry.x(), entry.y(), entry.z()));
             }
+            FakeBlockRegistry.remove(entry.worldName(), entry.x(), entry.y(), entry.z());
+            this.stateRegistry.removeAdditionalPosition(entry.worldName(), entry.x(), entry.y(), entry.z());
         }
     }
 
@@ -382,6 +401,8 @@ public final class BlockModelApplier {
             if (world != null) {
                 for (final CollisionEntry c : entry.getValue()) {
                     this.nmsAdapter.clearFakeBlock(world, new Location(world, c.x(), c.y(), c.z()));
+                    FakeBlockRegistry.remove(c.worldName(), c.x(), c.y(), c.z());
+                    this.stateRegistry.removeAdditionalPosition(c.worldName(), c.x(), c.y(), c.z());
                 }
             }
         }
@@ -391,6 +412,8 @@ public final class BlockModelApplier {
             if (world != null) {
                 for (final CollisionEntry c : entry.getValue()) {
                     this.nmsAdapter.clearFakeBlock(world, new Location(world, c.x(), c.y(), c.z()));
+                    FakeBlockRegistry.remove(c.worldName(), c.x(), c.y(), c.z());
+                    this.stateRegistry.removeAdditionalPosition(c.worldName(), c.x(), c.y(), c.z());
                 }
             }
         }

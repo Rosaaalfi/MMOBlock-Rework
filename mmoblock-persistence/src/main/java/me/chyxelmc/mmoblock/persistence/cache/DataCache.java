@@ -1,10 +1,10 @@
 package me.chyxelmc.mmoblock.persistence.cache;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.model.PlacedNodeModel;
+import me.chyxelmc.mmoblock.utils.CacheFactory;
 
 import java.time.Duration;
 import java.util.List;
@@ -22,31 +22,11 @@ public final class DataCache {
     private final Map<String, Long> dbTimestamps;
 
     public DataCache() {
-        this.blockCache = Caffeine.newBuilder()
-                .maximumSize(2048)
-                .expireAfterWrite(Duration.ofMinutes(5))
-                .recordStats()
-                .build();
-        this.respawnCache = Caffeine.newBuilder()
-                .maximumSize(512)
-                .expireAfterWrite(Duration.ofMinutes(2))
-                .recordStats()
-                .build();
-        this.blocksByTypeCache = Caffeine.newBuilder()
-                .maximumSize(512)
-                .expireAfterWrite(Duration.ofMinutes(2))
-                .recordStats()
-                .build();
-        this.allBlocksCache = Caffeine.newBuilder()
-                .maximumSize(512)
-                .expireAfterWrite(Duration.ofMinutes(2))
-                .recordStats()
-                .build();
-        this.allNodesCache = Caffeine.newBuilder()
-                .maximumSize(512)
-                .expireAfterWrite(Duration.ofMinutes(2))
-                .recordStats()
-                .build();
+        this.blockCache = CacheFactory.create(2048, Duration.ofMinutes(5));
+        this.respawnCache = CacheFactory.of(CacheFactory.Size.SMALL);
+        this.blocksByTypeCache = CacheFactory.of(CacheFactory.Size.SMALL);
+        this.allBlocksCache = CacheFactory.of(CacheFactory.Size.SMALL);
+        this.allNodesCache = CacheFactory.of(CacheFactory.Size.SMALL);
         this.dbTimestamps = new ConcurrentHashMap<>();
     }
 

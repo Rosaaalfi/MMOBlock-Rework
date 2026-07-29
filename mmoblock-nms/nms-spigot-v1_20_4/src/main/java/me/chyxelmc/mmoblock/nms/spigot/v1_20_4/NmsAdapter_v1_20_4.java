@@ -45,7 +45,6 @@ import org.bukkit.craftbukkit.v1_20_R3.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_20_R3.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.v1_20_R3.util.CraftMagicNumbers;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
 import org.joml.Matrix4f;
@@ -95,45 +94,6 @@ public final class NmsAdapter_v1_20_4 extends AbstractPacketBasedNmsAdapter {
                     team, entity.getUniqueId().toString(), ClientboundSetPlayerTeamPacket.Action.ADD));
         } catch (final RuntimeException exception) {
             super.applyEntityGlow(player, entity, colorName);
-        }
-    }
-
-    @Override
-    public SpawnResult spawnInteraction(
-            final World world, final Location location, final float width, final float height,
-            final NamespacedKey uniqueIdKey, final UUID blockUniqueId
-    ) {
-        final SpawnResult bukkitResult = spawnInteractionViaBukkit(world, location, width, height, uniqueIdKey, blockUniqueId, "");
-        if (bukkitResult.success()) return bukkitResult;
-        try {
-            final ServerLevel level = ((CraftWorld) world).getHandle();
-            final OptimizedInteraction handle = new OptimizedInteraction(EntityType.INTERACTION, level);
-            handle.setPos(location.getX(), location.getY(), location.getZ());
-            handle.setNoGravity(true);
-            handle.setSilent(true);
-            applyCustomAabb(handle, location, width, height);
-            level.addFreshEntity(handle);
-            if (!(handle.getBukkitEntity() instanceof Interaction interaction)) {
-                handle.discard();
-                return SpawnResult.failed("Spawned NMS entity is not Bukkit Interaction");
-            }
-            configureInteraction(interaction, width, height, uniqueIdKey, blockUniqueId);
-            return SpawnResult.success(interaction.getUniqueId(), SpawnPath.NMS);
-        } catch (final RuntimeException exception) {
-            return SpawnResult.failed(joinSpawnFailures(bukkitResult.reason(), "NMS spawn failed: " + exception.getMessage()));
-        }
-    }
-
-    @Override
-    public RemoveResult removeInteraction(final World world, final UUID interactionUniqueId) {
-        try {
-            final ServerLevel level = ((CraftWorld) world).getHandle();
-            final net.minecraft.world.entity.Entity entity = level.getEntity(interactionUniqueId);
-            if (entity == null) return RemoveResult.success(false, SpawnPath.NMS);
-            entity.discard();
-            return RemoveResult.success(true, SpawnPath.NMS);
-        } catch (final RuntimeException exception) {
-            return RemoveResult.failed("NMS remove failed: " + exception.getMessage());
         }
     }
 
@@ -474,24 +434,6 @@ public final class NmsAdapter_v1_20_4 extends AbstractPacketBasedNmsAdapter {
         if (accessor != null) {
             display.getEntityData().set(accessor, color);
         }
-    }
-
-    private void applyCustomAabb(
-            final net.minecraft.world.entity.Interaction handle,
-            final Location location,
-            final float width,
-            final float height
-    ) {
-        final double half = width / 2.0D;
-        handle.setBoundingBox(new AABB(
-                location.getX() - half, location.getY(), location.getZ() - half,
-                location.getX() + half, location.getY() + height, location.getZ() + half));
-    }
-
-    private static final class OptimizedInteraction extends net.minecraft.world.entity.Interaction {
-        private OptimizedInteraction(EntityType<? extends net.minecraft.world.entity.Interaction> type, Level level) { super(type, level); }
-        @Override public void tick() {}
-        @Override public void inactiveTick() {}
     }
 
     private static final class StaticItemEntity extends ItemEntity {

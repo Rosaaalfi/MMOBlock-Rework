@@ -2,7 +2,10 @@ package me.chyxelmc.mmoblock.runtime.block;
 
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 
-import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
+import me.chyxelmc.mmoblock.model.PlacedBlockModel;
+import me.chyxelmc.mmoblock.runtime.FakeBlockRegistry;
+import me.chyxelmc.mmoblock.runtime.interaction.ServerSideFakeBlockService;
+import net.kyori.adventure.text.Component;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -11,53 +14,84 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 public final class BlockLookProtection implements Listener {
 
+    private final ServerSideFakeBlockService serverSideFakeBlockService;
     private final BlockStateRegistry stateRegistry;
-    private final Set<UUID> protectedPlayers = new HashSet<>();
+    private final BlockMiningOrchestrator miningOrchestrator;
 
-    public BlockLookProtection(final BlockStateRegistry stateRegistry) {
+    public BlockLookProtection(
+            final ServerSideFakeBlockService serverSideFakeBlockService,
+            final BlockStateRegistry stateRegistry,
+            final BlockMiningOrchestrator miningOrchestrator
+    ) {
+        this.serverSideFakeBlockService = serverSideFakeBlockService;
         this.stateRegistry = stateRegistry;
-    }
-
-    public void protect(final UUID playerUniqueId) {
-        this.protectedPlayers.add(playerUniqueId);
-    }
-
-    public void unprotect(final UUID playerUniqueId) {
-        this.protectedPlayers.remove(playerUniqueId);
-    }
-
-    public void clear() {
-        this.protectedPlayers.clear();
+        this.miningOrchestrator = miningOrchestrator;
     }
 
     public boolean isProtected(final Player player) {
-        return player != null && this.protectedPlayers.contains(player.getUniqueId());
+        return false;
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockDamage(final BlockDamageEvent event) {
-        cancelIfPlacedBlock(event.getBlock(), event::setCancelled);
+        final Block block = event.getBlock();
+        if (!isPluginVisualBlock(block)) {
+            return;
+        }
+
+        final PlacedBlockModel placedBlock = placedBlockAt(block);
+        if (!this.miningOrchestrator.canProcessBlockBreak(placedBlock, event.getPlayer())) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(final BlockBreakEvent event) {
-        cancelIfPlacedBlock(event.getBlock(), event::setCancelled);
+        final Block block = event.getBlock();
+        if (!isPluginVisualBlock(block)) {
+            return;
+        }
+
+        event.setCancelled(true);
+        final PlacedBlockModel placedBlock = placedBlockAt(block);
+        if (placedBlock == null) {
+            return;
+        }
+        final Component message = this.miningOrchestrator.processBlockBreak(placedBlock, event.getPlayer());
+        if (message != null && !Component.empty().equals(message)) {
+            event.getPlayer().sendMessage(message);
+        }
     }
 
     private void cancelIfPlacedBlock(final Block block, final CancelAction cancelAction) {
         try {
-            if (this.stateRegistry.containsAt(block.getWorld().getName(), block.getX(), block.getY(), block.getZ())) {
+            if (isPluginVisualBlock(block)) {
                 cancelAction.cancel(true);
             }
         } catch (final Exception e) {
             MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
-        }  }
+        }
+    }
+
+    private boolean isPluginVisualBlock(final Block block) {
+        final String worldName = block.getWorld().getName();
+        final int x = block.getX();
+        final int y = block.getY();
+        final int z = block.getZ();
+        return FakeBlockRegistry.contains(worldName, x, y, z)
+                || this.serverSideFakeBlockService.isPromoted(worldName, x, y, z);
+    }
+
+    private PlacedBlockModel placedBlockAt(final Block block) {
+        return this.stateRegistry.blockAt(
+                block.getWorld().getName(),
+                block.getX(),
+                block.getY(),
+                block.getZ()
+        );
+    }
 
     @FunctionalInterface
     private interface CancelAction {

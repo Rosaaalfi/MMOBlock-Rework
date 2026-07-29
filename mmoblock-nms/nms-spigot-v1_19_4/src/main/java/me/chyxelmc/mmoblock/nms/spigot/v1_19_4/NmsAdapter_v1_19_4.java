@@ -44,7 +44,6 @@ import org.bukkit.craftbukkit.v1_19_R3.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_19_R3.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.v1_19_R3.util.CraftMagicNumbers;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
 import org.bukkit.persistence.PersistentDataType;
 import org.joml.Matrix4f;
@@ -67,9 +66,6 @@ import java.util.UUID;
  */
 @SuppressWarnings({"java:S101", "deprecation"})
 public final class NmsAdapter_v1_19_4 extends AbstractPacketBasedNmsAdapter {
-
-    private static final EntityType<net.minecraft.world.entity.Interaction> CUSTOM_INTERACTION_TYPE =
-            EntityType.INTERACTION;
 
     // In 1.19.4, ItemEntity visual center on legacy clients is ~0.08 above Y (vs 0.16 on modern)
     private static final double ITEM_ENTITY_Y_OFFSET_LEGACY_1_19 = 0.08D;
@@ -364,68 +360,13 @@ public final class NmsAdapter_v1_19_4 extends AbstractPacketBasedNmsAdapter {
         } catch (RuntimeException ex) { super.applyEntityGlow(player, entity, colorName); }
     }
 
-    @Override
-    public SpawnResult spawnInteraction(World world, Location loc, float w, float h,
-            NamespacedKey key, UUID blockId) {
-        final SpawnResult br = spawnInteractionViaBukkit(world, loc, w, h, key, blockId, "");
-        if (br.success()) return br;
-
-        String nmsErr = "";
-        try {
-            final ServerLevel l = ((CraftWorld) world).getHandle();
-            final OptimizedInteraction handle = new OptimizedInteraction(CUSTOM_INTERACTION_TYPE, l);
-            handle.setPos(loc.getX(), loc.getY(), loc.getZ());
-            handle.setNoGravity(true);
-            handle.setSilent(true);
-            applyCustomAabb(handle, loc, w, h);
-            l.addFreshEntity(handle);
-
-            if (!(handle.getBukkitEntity() instanceof Interaction i)) {
-                handle.discard();
-                nmsErr = "Spawned NMS entity is not Bukkit Interaction";
-                return spawnInteractionViaBukkit(world, loc, w, h, key, blockId, nmsErr);
-            }
-            configureInteraction(i, w, h, key, blockId);
-            return SpawnResult.success(i.getUniqueId(), SpawnPath.NMS);
-        } catch (RuntimeException ex) {
-            nmsErr = "NMS spawn failed: " + ex.getMessage();
-        }
-        return SpawnResult.failed(joinSpawnFailures(br.reason(), nmsErr));
-    }
-
-    @Override
-    public RemoveResult removeInteraction(World world, UUID uid) {
-        try {
-            final ServerLevel l = ((CraftWorld) world).getHandle();
-            final net.minecraft.world.entity.Entity e = l.getEntity(uid);
-            if (e == null) return RemoveResult.success(false, SpawnPath.NMS);
-            e.discard();
-            return RemoveResult.success(true, SpawnPath.NMS);
-        } catch (RuntimeException ex) {
-            return RemoveResult.failed("NMS remove failed: " + ex.getMessage());
-        }
-    }
-
     // ============================================================
     // Private helpers
     // ============================================================
 
-    private void applyCustomAabb(net.minecraft.world.entity.Interaction h, Location loc, float w, float ht) {
-        final double half = w / 2.0D;
-        h.setBoundingBox(new AABB(
-                loc.getX() - half, loc.getY(), loc.getZ() - half,
-                loc.getX() + half, loc.getY() + ht, loc.getZ() + half));
-    }
-
     // ============================================================
     // Inner classes
     // ============================================================
-
-    private static final class OptimizedInteraction extends net.minecraft.world.entity.Interaction {
-        OptimizedInteraction(EntityType<? extends net.minecraft.world.entity.Interaction> t, Level l) { super(t, l); }
-        @Override public void tick() {}
-        @Override public void inactiveTick() {}
-    }
 
     private static final class StaticItemEntity extends ItemEntity {
         StaticItemEntity(Level l, double x, double y, double z, net.minecraft.world.item.ItemStack s) {

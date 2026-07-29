@@ -2,10 +2,10 @@ exampleToolsAxe:
   - item:
       type: vanilla
       material: DIAMOND_AXE
-    # have 3 different click types, left_click, right_click, and both_click. You can choose to use one or more of them.
-    both_click:
+    both_click: # have 4 different events types, left_click, right_click, both_click, and block_break. You can choose to use one or more of them.
       decreaseDurability: 15
       clickNeeded: 4
+      autoProgress: true # auto progress the click progress when player interacting with the block.
     allowedDrops:
       - exampleDropsWood # Reference to the drops defined in exampleDropsWood.yml
   - item:
@@ -14,6 +14,7 @@ exampleToolsAxe:
     left_click:
       decreaseDurability: 10
       clickNeeded: 3
+      autoProgress: true # auto progress the click progress when player interacting with the block.
     allowedDrops:
       - exampleDropsWood
   - item:
@@ -22,4 +23,5 @@ exampleToolsAxe:
     right_click:
       decreaseDurability: 10
       clickNeeded: 3
+      autoProgress: true # auto progress the click progress when player interacting with the block.
     allowedDrops: []

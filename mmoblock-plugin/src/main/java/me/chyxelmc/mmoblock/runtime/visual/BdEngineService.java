@@ -31,6 +31,8 @@ import com.google.gson.JsonObject;
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
+import me.chyxelmc.mmoblock.runtime.FakeBlockRegistry;
+import me.chyxelmc.mmoblock.runtime.block.BlockStateRegistry;
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 
 public final class BdEngineService {
@@ -43,14 +45,16 @@ public final class BdEngineService {
 
     private final MMOBlock plugin;
     private final NmsAdapter nmsAdapter;
+    private final BlockStateRegistry stateRegistry;
     private final Map<String, BdEngineModel> modelCache = new HashMap<>();
     private final Map<UUID, PacketModelState> activeModels = new HashMap<>();
     private final Map<UUID, List<BdEngineCollisionEntry>> activeCollisions = new HashMap<>();
     private boolean warnedUnsupportedAdapter;
 
-    public BdEngineService(final MMOBlock plugin, final NmsAdapter nmsAdapter) {
+    public BdEngineService(final MMOBlock plugin, final NmsAdapter nmsAdapter, final BlockStateRegistry stateRegistry) {
         this.plugin = plugin;
         this.nmsAdapter = nmsAdapter;
+        this.stateRegistry = stateRegistry;
     }
 
     public void showModel(
@@ -163,6 +167,9 @@ public final class BdEngineService {
         if (collisions != null) {
             for (final BdEngineCollisionEntry entry : collisions) {
                 if (player.getWorld().getName().equals(entry.worldName())) {
+                    if (!FakeBlockRegistry.contains(entry.worldName(), entry.x(), entry.y(), entry.z())) {
+                        continue;
+                    }
                     this.nmsAdapter.showFakeBlock(player, player.getWorld(), new Location(player.getWorld(), entry.x(), entry.y(), entry.z()), entry.material());
                 }
             }
@@ -353,11 +360,19 @@ public final class BdEngineService {
             final int worldY = (int) Math.floor(y) + offset[1];
             final int worldZ = (int) Math.floor(z) + offset[2];
             final Location location = new Location(world, worldX, worldY, worldZ);
+            if (FakeBlockRegistry.contains(world.getName(), worldX, worldY, worldZ)) {
+                continue;
+            }
             this.nmsAdapter.showFakeBlock(world, location, Material.BARRIER);
+            FakeBlockRegistry.add(world.getName(), worldX, worldY, worldZ, Material.BARRIER.name());
             entries.add(new BdEngineCollisionEntry(world.getName(), worldX, worldY, worldZ, Material.BARRIER));
         }
         if (!entries.isEmpty()) {
             this.activeCollisions.put(blockUniqueId, entries);
+            // Register collision positions in state registry for multi-block click detection
+            for (final BdEngineCollisionEntry entry : entries) {
+                this.stateRegistry.addAdditionalPosition(entry.worldName(), entry.x(), entry.y(), entry.z(), blockUniqueId);
+            }
         }
     }
 
@@ -373,6 +388,8 @@ public final class BdEngineService {
             if (entryWorld != null) {
                 this.nmsAdapter.clearFakeBlock(entryWorld, new Location(entryWorld, entry.x(), entry.y(), entry.z()));
             }
+            FakeBlockRegistry.remove(entry.worldName(), entry.x(), entry.y(), entry.z());
+            this.stateRegistry.removeAdditionalPosition(entry.worldName(), entry.x(), entry.y(), entry.z());
         }
     }
 

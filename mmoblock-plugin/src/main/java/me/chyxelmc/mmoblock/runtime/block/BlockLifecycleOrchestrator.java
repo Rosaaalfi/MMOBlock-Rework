@@ -15,8 +15,9 @@ import me.chyxelmc.mmoblock.runtime.block.BlockLifecycleState;
 import me.chyxelmc.mmoblock.ecs.system.PersistenceSystem;
 import me.chyxelmc.mmoblock.runtime.visual.BlockVisualSyncService;
 import me.chyxelmc.mmoblock.runtime.block.PlaceResult;
+import me.chyxelmc.mmoblock.runtime.FakeBlockRegistry;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
-import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
+import me.chyxelmc.mmoblock.runtime.interaction.ServerSideFakeBlockService;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
 
 public final class BlockLifecycleOrchestrator {
@@ -29,8 +30,8 @@ public final class BlockLifecycleOrchestrator {
     private final BlockLifecycleState lifecycleSystem;
     private final BlockVisualSyncService visualSyncSystem;
     private final HologramRuntimeService hologramRuntimeService;
+    private final ServerSideFakeBlockService serverSideFakeBlockService;
     private final BlockModelApplier modelApplier;
-    private final BlockInteractionOrchestrator interactionOrchestrator;
     private final BlockEventDispatcher eventDispatcher;
     private final Set<UUID> transientBlocks;
     private final Set<UUID> suppressDeadHologram;
@@ -44,8 +45,8 @@ public final class BlockLifecycleOrchestrator {
             final BlockLifecycleState lifecycleSystem,
             final BlockVisualSyncService visualSyncSystem,
             final HologramRuntimeService hologramRuntimeService,
+            final ServerSideFakeBlockService serverSideFakeBlockService,
             final BlockModelApplier modelApplier,
-            final BlockInteractionOrchestrator interactionOrchestrator,
             final BlockEventDispatcher eventDispatcher,
             final Set<UUID> transientBlocks,
             final Set<UUID> suppressDeadHologram
@@ -58,8 +59,8 @@ public final class BlockLifecycleOrchestrator {
         this.lifecycleSystem = lifecycleSystem;
         this.visualSyncSystem = visualSyncSystem;
         this.hologramRuntimeService = hologramRuntimeService;
+        this.serverSideFakeBlockService = serverSideFakeBlockService;
         this.modelApplier = modelApplier;
-        this.interactionOrchestrator = interactionOrchestrator;
         this.eventDispatcher = eventDispatcher;
         this.transientBlocks = transientBlocks;
         this.suppressDeadHologram = suppressDeadHologram;
@@ -89,9 +90,13 @@ public final class BlockLifecycleOrchestrator {
 
         this.stateRegistry.putBlock(placedBlock);
 
-        if (isChunkLoaded(world, x, z) && !this.interactionOrchestrator.spawn(placedBlock, definition, world)) {
-            this.stateRegistry.removeBlock(placedBlock.uniqueId());
-            return PlaceResult.error("Failed to spawn interaction entity");
+        if (isChunkLoaded(world, x, z)) {
+            applyVisuals(placedBlock, definition, world);
+            this.serverSideFakeBlockService.syncNearbyPlayers(
+                    world,
+                    new org.bukkit.Location(world, placedBlock.x() + 0.5D, placedBlock.y() + 0.5D, placedBlock.z() + 0.5D),
+                    this.blockConfigService.realBlockRadiusSquared()
+            );
         }
 
         this.eventDispatcher.callPlace(placedBlock, definition);
@@ -119,7 +124,6 @@ public final class BlockLifecycleOrchestrator {
         }
 
         clearVisuals(placedBlock);
-        this.interactionOrchestrator.despawn(placedBlock);
         this.respawnSystem.cancel(placedBlock.uniqueId());
         this.stateRegistry.removeBlock(placedBlock.uniqueId());
         this.eventDispatcher.callRemove(placedBlock);
@@ -135,7 +139,6 @@ public final class BlockLifecycleOrchestrator {
     public void cleanupMissingDefinition(final PlacedBlockModel block) {
         this.respawnSystem.cancel(block.uniqueId());
         clearVisuals(block);
-        this.interactionOrchestrator.despawn(block);
         this.stateRegistry.removeBlock(block.uniqueId());
         this.hologramRuntimeService.remove(block);
         this.persistenceSystem.deleteBlockAsync(block.uniqueId());
@@ -158,12 +161,26 @@ public final class BlockLifecycleOrchestrator {
         this.suppressDeadHologram.remove(blockUniqueId);
     }
 
+    private void applyVisuals(final PlacedBlockModel block, final BlockDefinitionModel definition, final World world) {
+        this.visualSyncSystem.applyRealBlockModel(block, definition, world);
+        this.modelApplier.applySchematicModel(block, definition, world, false);
+        this.modelApplier.applyBdEngineModel(block, definition, world);
+        this.modelApplier.applyModelEngineModel(block, definition, world);
+        this.modelApplier.applyModelEngineCollision(block, definition, world);
+        this.modelApplier.applyBetterModelModel(block, definition, world);
+        this.modelApplier.applyBetterModelCollision(block, definition, world);
+    }
+
     private void clearVisuals(final PlacedBlockModel block) {
         final World world = this.plugin.getServer().getWorld(block.world());
         if (world == null) {
             return;
         }
         final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
+        this.serverSideFakeBlockService.demoteBlock(block);
+        // Remove from FakeBlockRegistry so the reconcile timer won't re-promote this block
+        FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.x()), (int) Math.floor(block.y()), (int) Math.floor(block.z()));
+        FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.originX()), (int) Math.floor(block.originY()), (int) Math.floor(block.originZ()));
         if (definition != null) {
             this.visualSyncSystem.clearRealBlockModel(block, definition, world);
         }

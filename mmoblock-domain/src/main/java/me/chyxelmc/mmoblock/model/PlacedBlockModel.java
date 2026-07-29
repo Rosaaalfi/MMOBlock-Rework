@@ -24,7 +24,6 @@ public final class PlacedBlockModel implements me.chyxelmc.mmoblock.api.model.Pl
     private double z;
     private final String facing;
     private String status;
-    private UUID interactionEntityId;
     private Long respawnAt;
 
     public PlacedBlockModel(
@@ -112,14 +111,6 @@ public final class PlacedBlockModel implements me.chyxelmc.mmoblock.api.model.Pl
 
     public void setStatus(final String status) {
         this.status = status;
-    }
-
-    public UUID interactionEntityId() {
-        return interactionEntityId;
-    }
-
-    public void setInteractionEntityId(final UUID interactionEntityId) {
-        this.interactionEntityId = interactionEntityId;
     }
 
     public Long respawnAt() {

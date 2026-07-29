@@ -16,7 +16,6 @@ public interface PlacedBlock {
     double originZ();
     String facing();
     String status();
-    UUID interactionEntityId();
     Long respawnAt();
     Location toLocation();
 }

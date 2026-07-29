@@ -27,8 +27,7 @@ import me.chyxelmc.mmoblock.runtime.block.BlockRandomLocationResolver;
 import me.chyxelmc.mmoblock.runtime.block.BlockRespawnOrchestrator;
 import me.chyxelmc.mmoblock.runtime.block.RandomLocationContext;
 import me.chyxelmc.mmoblock.runtime.hologram.HologramRuntimeService;
-import me.chyxelmc.mmoblock.runtime.interaction.BlockInteractionOrchestrator;
-import me.chyxelmc.mmoblock.runtime.interaction.LegacyInteractionRaytrace;
+import me.chyxelmc.mmoblock.runtime.interaction.ServerSideFakeBlockService;
 import me.chyxelmc.mmoblock.runtime.visual.BdEngineService;
 import me.chyxelmc.mmoblock.runtime.visual.BlockModelApplier;
 import me.chyxelmc.mmoblock.runtime.visual.SchematicService;
@@ -68,11 +67,10 @@ public final class BlockServiceFactory {
     private SchematicService schematicService;
     private BdEngineService bdEngineService;
     private BlockModelApplier modelApplier;
-    private BlockInteractionOrchestrator interactionOrchestrator;
     private BlockRandomLocationResolver randomLocationResolver;
     private BlockEventDispatcher eventDispatcher;
     private BlockLookProtection lookProtection;
-    private LegacyInteractionRaytrace legacyInteractionRaytrace;
+    private ServerSideFakeBlockService serverSideFakeBlockService;
 
     // Orchestrators
     private BlockLifecycleOrchestrator lifecycleOrchestrator;
@@ -147,25 +145,13 @@ public final class BlockServiceFactory {
 
     private void createRuntimeServices() {
         this.hologramRuntimeService = new HologramRuntimeService(this.plugin, this.nmsAdapter, this.scheduler);
-        this.schematicService = new SchematicService(this.plugin, this.nmsAdapter);
-        this.bdEngineService = new BdEngineService(this.plugin, this.nmsAdapter);
-        this.modelApplier = new BlockModelApplier(this.plugin, this.nmsAdapter, this.schematicService, this.bdEngineService);
+        this.schematicService = new SchematicService(this.plugin, this.nmsAdapter, this.stateRegistry);
+        this.bdEngineService = new BdEngineService(this.plugin, this.nmsAdapter, this.stateRegistry);
+        this.modelApplier = new BlockModelApplier(this.plugin, this.nmsAdapter, this.stateRegistry, this.schematicService, this.bdEngineService);
+        this.serverSideFakeBlockService = new ServerSideFakeBlockService(this.plugin, this.nmsAdapter, this.scheduler, this.stateRegistry);
         this.dropSystem = new DropService(this.plugin, this.blockConfigService, this.scheduler, this.nmsAdapter);
         this.randomLocationResolver = new BlockRandomLocationResolver(this.stateRegistry);
-        this.lookProtection = new BlockLookProtection(this.stateRegistry);
         this.eventDispatcher = new BlockEventDispatcher(this.plugin);
-        this.legacyInteractionRaytrace = new LegacyInteractionRaytrace(
-                this.stateRegistry,
-                this.blockConfigService,
-                this.lifecycleSystem
-        );
-        this.interactionOrchestrator = new BlockInteractionOrchestrator(
-                this.plugin,
-                this.nmsAdapter,
-                this.visualSyncSystem,
-                this.modelApplier,
-                this.uniqueIdKey
-        );
     }
 
     private void createOrchestrators() {
@@ -179,8 +165,8 @@ public final class BlockServiceFactory {
                 this.lifecycleSystem,
                 this.visualSyncSystem,
                 this.hologramRuntimeService,
+                this.serverSideFakeBlockService,
                 this.modelApplier,
-                this.interactionOrchestrator,
                 this.eventDispatcher,
                 this.transientBlocks,
                 this.suppressDeadHologram
@@ -215,6 +201,7 @@ public final class BlockServiceFactory {
         // Step 1: Create miningOrchestrator with forward refs through AtomicReference
         final BlockMiningOrchestrator miningOrchestrator = new BlockMiningOrchestrator(
                 this.plugin,
+                this.scheduler,
                 this.blockConfigService,
                 this.plugin.translationService(),
                 this.persistenceSystem,
@@ -223,8 +210,8 @@ public final class BlockServiceFactory {
                 this.lifecycleSystem,
                 this.visualSyncSystem,
                 this.hologramRuntimeService,
+                this.serverSideFakeBlockService,
                 this.modelApplier,
-                this.interactionOrchestrator,
                 this.eventDispatcher,
                 uniqueId -> {
                     final BlockPlacementService ps = this.placementServiceRef.get();
@@ -242,6 +229,11 @@ public final class BlockServiceFactory {
                 },
                 BREAK_PARTICLE
         );
+        this.lookProtection = new BlockLookProtection(
+                this.serverSideFakeBlockService,
+                this.stateRegistry,
+                miningOrchestrator
+        );
 
         // Step 2: Create respawnOrchestrator with forward refs to placementService
         final BlockRespawnOrchestrator respawnOrchestrator = new BlockRespawnOrchestrator(
@@ -253,7 +245,8 @@ public final class BlockServiceFactory {
                 this.visualSyncSystem,
                 this.hologramRuntimeService,
                 this.randomLocationResolver,
-                this.interactionOrchestrator,
+                this.serverSideFakeBlockService,
+                this.modelApplier,
                 this.eventDispatcher,
                 miningOrchestrator,
                 this.nodeRandomLocationContexts,
@@ -287,7 +280,7 @@ public final class BlockServiceFactory {
                 this.modelApplier,
                 this.schematicService,
                 this.bdEngineService,
-                this.interactionOrchestrator,
+                this.serverSideFakeBlockService,
                 respawnOrchestrator
         );
 
@@ -302,7 +295,6 @@ public final class BlockServiceFactory {
                 this.visualSyncSystem,
                 this.hologramRuntimeService,
                 this.modelApplier,
-                this.interactionOrchestrator,
                 this.eventDispatcher,
                 this.randomLocationResolver,
                 this.chunkLifecycleOrchestrator,
@@ -324,7 +316,6 @@ public final class BlockServiceFactory {
                 this.stateRegistry,
                 this.dataCache,
                 this.blockConfigService,
-                this.uniqueIdKey,
                 this.lookProtection
         );
 
@@ -340,15 +331,13 @@ public final class BlockServiceFactory {
                 this.hologramRuntimeService,
                 this.schematicService,
                 this.bdEngineService,
+                this.serverSideFakeBlockService,
                 this.modelApplier,
                 this.visualSyncSystem,
-                this.interactionOrchestrator,
                 miningOrchestrator,
                 this.chunkLifecycleOrchestrator,
                 respawnOrchestrator,
-                this.lookProtection,
                 this.miningProgressReset,
-                this.legacyInteractionRaytrace,
                 this.lifecycleSystem,
                 this.persistenceReadSystem,
                 this.persistenceSystem,
