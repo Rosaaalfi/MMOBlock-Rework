@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"me.chyxelmc.mmoblock.api"},{"l":"me.chyxelmc.mmoblock.api.event"},{"l":"me.chyxelmc.mmoblock.api.model"},{"l":"me.chyxelmc.mmoblock.api.result"},{"l":"me.chyxelmc.mmoblock.api.service"}];updateSearchResults();
