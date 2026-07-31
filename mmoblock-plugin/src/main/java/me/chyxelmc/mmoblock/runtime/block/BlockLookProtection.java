@@ -13,6 +13,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
+import org.bukkit.event.block.LeavesDecayEvent;
 
 public final class BlockLookProtection implements Listener {
 
@@ -62,6 +63,15 @@ public final class BlockLookProtection implements Listener {
         final Component message = this.miningOrchestrator.processBlockBreak(placedBlock, event.getPlayer());
         if (message != null && !Component.empty().equals(message)) {
             event.getPlayer().sendMessage(message);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onLeavesDecay(final LeavesDecayEvent event) {
+        final Block block = event.getBlock();
+        if (this.serverSideFakeBlockService.isPromoted(
+                block.getWorld().getName(), block.getX(), block.getY(), block.getZ())) {
+            event.setCancelled(true);
         }
     }
 

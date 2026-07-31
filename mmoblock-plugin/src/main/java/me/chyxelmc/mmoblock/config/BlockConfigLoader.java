@@ -27,6 +27,7 @@ import me.chyxelmc.mmoblock.api.model.DropBeam;
 import me.chyxelmc.mmoblock.api.model.DropGlow;
 import me.chyxelmc.mmoblock.api.model.DropPopup;
 import me.chyxelmc.mmoblock.api.model.DropType;
+import me.chyxelmc.mmoblock.config.tool.ToolActionResolver;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel.ConditionDefinition;
 import me.chyxelmc.mmoblock.model.BlockDefinitionModel.DisplayLine;
@@ -48,8 +49,10 @@ public final class BlockConfigLoader {
 
     private final MMOBlock plugin;
     private final Map<String, BlockDefinitionModel> blockDefinitions = new HashMap<>();
+    private final Map<String, String> localizedBlockListNames = new HashMap<>();
     private final Map<String, List<DropEntry>> drops = new HashMap<>();
     private final Map<String, List<ToolAction>> tools = new HashMap<>();
+    private final ToolActionResolver toolActionResolver = new ToolActionResolver(this.tools);
     private final Map<String, YamlConfiguration> languages = new HashMap<>();
     private ValidationReport lastBlockReport = ValidationReport.empty();
     private ValidationReport lastToolReport = ValidationReport.empty();
@@ -93,9 +96,9 @@ public final class BlockConfigLoader {
         this.interactionThrottleMs = this.plugin.getConfig()
                 .getLong("interactionThrottleMs", 1000L);
 
-        final double realBlockRadius = this.plugin.getConfig().getDouble("interaction.real-block-radius", 5.0D);
+        final double realBlockRadius = this.plugin.getConfig().getDouble("interaction.real-block-radius", 12.0D);
         this.realBlockRadiusSquared = realBlockRadius * realBlockRadius;
-        final double fakeBlockRadius = this.plugin.getConfig().getDouble("interaction.fake-block-radius", 48.0D);
+        final double fakeBlockRadius = this.plugin.getConfig().getDouble("interaction.fake-block-radius", 64.0D);
         this.fakeBlockRadiusSquared = fakeBlockRadius * fakeBlockRadius;
 
         reloadBlocks();
@@ -108,6 +111,7 @@ public final class BlockConfigLoader {
     public int reloadBlocks() {
         final ValidationReport report = ValidationReport.empty();
         this.blockDefinitions.clear();
+        this.localizedBlockListNames.clear();
         ensureResourceFolder("blocks");
         final File folder = new File(this.plugin.getDataFolder(), "blocks");
         final File[] files = folder.listFiles((dir, name) -> name.endsWith(".yml"));
@@ -323,6 +327,14 @@ public final class BlockConfigLoader {
                 if (itemSection != null && itemMaterial == null) {
                     report.warn("Block '" + key + "' has invalid item.material.");
                 }
+                final String localizedBlockListName = firstNonBlank(
+                        resolveConfigString(rawValue(section, "item.name")),
+                        resolveConfigString(rawValue(section, "name")),
+                        itemName,
+                        displayName,
+                        key
+                );
+                this.localizedBlockListNames.put(key.toLowerCase(Locale.ROOT), localizedBlockListName);
 
                 this.blockDefinitions.put(
                         key.toLowerCase(Locale.ROOT),
@@ -488,58 +500,34 @@ public final class BlockConfigLoader {
         return this.blockDefinitions.get(id.toLowerCase(Locale.ROOT));
     }
 
+    public String blockListName(final String id) {
+        if (id == null) {
+            return null;
+        }
+        return this.localizedBlockListNames.get(id.toLowerCase(Locale.ROOT));
+    }
+
+    private static Object rawValue(final ConfigurationSection section, final String path) {
+        return section.isConfigurationSection(path)
+                ? section.getConfigurationSection(path)
+                : section.get(path);
+    }
+
+    private static String firstNonBlank(final String... values) {
+        for (final String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
     public Set<String> blockIds() {
         return Collections.unmodifiableSet(this.blockDefinitions.keySet());
     }
 
     public ToolAction resolveToolAction(final BlockDefinitionModel blockDefinition, final org.bukkit.inventory.ItemStack item, final String clickType) {
-        final Material material = item == null ? null : item.getType();
-
-        for (final String toolId : blockDefinition.allowedTools()) {
-            final List<ToolAction> actions = this.tools.get(toolId.toLowerCase(Locale.ROOT));
-            if (actions == null) {
-                continue;
-            }
-            for (final ToolAction action : actions) {
-                if (action.mmoItemsId() != null) {
-                    // MMOItems tool: match by custom item ID
-                    try {
-                        if (!me.chyxelmc.mmoblock.api.integration.MMOItemsIntegration.matchItem(item, action.mmoItemsId())) {
-                            continue;
-                        }
-                    } catch (final Throwable ignored) {
-                        continue;
-                    }
-                } else if (action.craftEngineId() != null) {
-                    // CraftEngine tool: match by custom item ID
-                    try {
-                        if (!me.chyxelmc.mmoblock.api.integration.CraftEngineIntegration.matchItem(item, action.craftEngineId())) {
-                            continue;
-                        }
-                    } catch (final Throwable ignored) {
-                        continue;
-                    }
-                } else if (action.itemsAdderId() != null) {
-                    // ItemsAdder tool: match by custom item ID
-                    try {
-                        if (!me.chyxelmc.mmoblock.api.integration.ItemsAdderIntegration.matchItem(item, action.itemsAdderId())) {
-                            continue;
-                        }
-                    } catch (final Throwable ignored) {
-                        continue;
-                    }
-                } else {
-                    // Vanilla tool: match by Material enum
-                    if (action.material() != material) {
-                        continue;
-                    }
-                }
-                if (matchesActionType(action, clickType)) {
-                    return action;
-                }
-            }
-        }
-        return null;
+        return this.toolActionResolver.resolve(blockDefinition, item, clickType);
     }
 
     /**
@@ -547,25 +535,7 @@ public final class BlockConfigLoader {
      * Used by external API consumers that do not have access to the full ItemStack.
      */
     public ToolAction resolveToolAction(final BlockDefinitionModel blockDefinition, final Material material, final String clickType) {
-        // MMOItems/ItemsAdder/CraftEngine tools cannot be matched by Material alone — fall through to null
-        for (final String toolId : blockDefinition.allowedTools()) {
-            final List<ToolAction> actions = this.tools.get(toolId.toLowerCase(Locale.ROOT));
-            if (actions == null) {
-                continue;
-            }
-            for (final ToolAction action : actions) {
-                if (action.mmoItemsId() != null || action.craftEngineId() != null || action.itemsAdderId() != null) {
-                    continue; // cannot match custom tools without ItemStack
-                }
-                if (action.material() != material) {
-                    continue;
-                }
-                if (matchesActionType(action, clickType)) {
-                    return action;
-                }
-            }
-        }
-        return null;
+        return this.toolActionResolver.resolveVanilla(blockDefinition, material, clickType);
     }
 
     public List<DropEntry> findDrops(final String dropId) {
@@ -698,13 +668,6 @@ public final class BlockConfigLoader {
         parseToolAction(raw, groupId, "right_click", material, itemsAdderId, craftEngineId, mmoItemsId, allowedDrops, actions, report);
         parseToolAction(raw, groupId, "block_break", material, itemsAdderId, craftEngineId, mmoItemsId, allowedDrops, actions, report);
         return actions;
-    }
-
-    private boolean matchesActionType(final ToolAction action, final String clickType) {
-        if ("block_break".equals(clickType)) {
-            return "block_break".equals(action.clickType());
-        }
-        return clickType.equals(action.clickType()) || "both_click".equals(action.clickType());
     }
 
     private void parseToolAction(
@@ -1245,7 +1208,7 @@ public final class BlockConfigLoader {
         extractResource("lang/ru-ru.yml", forceReplace);
         extractResource("lang/th-th.yml", forceReplace);
         extractResource("lang/vi-vn.yml", forceReplace);
-        extractResource("lang/en-ph.yml", forceReplace);
+        extractResource("lang/tl-ph.yml", forceReplace);
         extractResource("nodes/exampleNodes.yml", forceReplace);
         extractResource("models/bdengine/iron_ore.bdengine", forceReplace);
         extractResource("models/bdengine/tree.bdengine", forceReplace);

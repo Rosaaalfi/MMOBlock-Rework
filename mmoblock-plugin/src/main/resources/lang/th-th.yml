@@ -63,7 +63,7 @@ commands:
     get:
       usage: "&eวิธีใช้: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&cบล็อกไม่ได้เปิดใช้งาน"
+  not_active: "&cบล็อกยังไม่พร้อมใช้งาน"
   too_fast: "&cกรุณาช้าลงหน่อย"
   too_fast_subtitle: "&eกรุณารอสักครู่"
   tool_not_allowed: "&cไม่อนุญาตให้ใช้เครื่องมือนี้กับบล็อกนี้"

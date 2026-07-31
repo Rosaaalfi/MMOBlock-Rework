@@ -62,7 +62,7 @@ commands:
     get:
       usage: "&e使用方法: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&cブロックはまだ有効ではありません。"
+  not_active: "&cブロックはまだ準備できていません。"
   too_fast: "&c連打が速すぎます。"
   too_fast_subtitle: "&eしばらくお待ちください"
   tool_not_allowed: "&cこのブロックにはこのツールは使用できません。"

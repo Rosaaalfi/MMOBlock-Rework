@@ -7,6 +7,7 @@ import me.chyxelmc.mmoblock.utils.DependencyChecker;
 import org.bukkit.entity.Entity;
 
 import com.ticxo.modelengine.api.ModelEngineAPI;
+import com.ticxo.modelengine.api.generator.blueprint.ModelBlueprint;
 import com.ticxo.modelengine.api.model.ActiveModel;
 import com.ticxo.modelengine.api.model.ModeledEntity;
 
@@ -38,17 +39,20 @@ import com.ticxo.modelengine.api.model.ModeledEntity;
 public final class ModelEngineIntegration {
 
     private static final boolean AVAILABLE;
+    private static final String AVAILABILITY_FAILURE;
     private static final String ERR_ENTITY = "entity";
 
     static {
         boolean available = false;
+        String failure = "";
         try {
             Class.forName("com.ticxo.modelengine.api.ModelEngineAPI");
             available = true;
-        } catch (final ReflectiveOperationException | LinkageError ignored) {
-            // ModelEngine not installed or incompatible
+        } catch (final ReflectiveOperationException | LinkageError exception) {
+            failure = exception.getClass().getSimpleName() + ": " + exception.getMessage();
         }
         AVAILABLE = available;
+        AVAILABILITY_FAILURE = failure;
     }
 
     private ModelEngineIntegration() {
@@ -69,6 +73,60 @@ public final class ModelEngineIntegration {
         return true;
     }
 
+    public static String availabilityFailure() {
+        if (!AVAILABLE) {
+            return AVAILABILITY_FAILURE.isBlank() ? "ModelEngine API classes are unavailable" : AVAILABILITY_FAILURE;
+        }
+        if (DependencyChecker.isInitialized() && !DependencyChecker.isModelEngineAvailable()) {
+            return "ModelEngine plugin is missing or disabled";
+        }
+        return "";
+    }
+
+    public record ModelApplyResult(boolean applied, String detail) {
+    }
+
+    public static ModelApplyResult applyModel(final Entity entity, final String modelId, final double size) {
+        if (!isAvailable()) {
+            return new ModelApplyResult(false, availabilityFailure());
+        }
+        Objects.requireNonNull(entity, ERR_ENTITY);
+        Objects.requireNonNull(modelId, "modelId");
+        final ModelBlueprint blueprint = ModelEngineAPI.getBlueprint(modelId);
+        if (blueprint == null) {
+            return new ModelApplyResult(false, "blueprint was not found in the ModelEngine registry");
+        }
+        final ModeledEntity modeledEntity = ModelEngineAPI.getOrCreateModeledEntity(entity);
+        if (modeledEntity == null || modeledEntity.isDestroyed()) {
+            return new ModelApplyResult(false, "ModeledEntity creation failed or returned a destroyed instance");
+        }
+        final ActiveModel activeModel = ModelEngineAPI.createActiveModel(blueprint);
+        if (activeModel == null) {
+            return new ModelApplyResult(false, "ActiveModel creation returned null");
+        }
+        activeModel.setAutoRendererInitialization(false);
+        activeModel.setMainHitbox(false);
+        activeModel.setHitboxVisible(false);
+        activeModel.setCanHurt(false);
+        modeledEntity.setBaseEntityVisible(false);
+        final Optional<ActiveModel> replacedModel = modeledEntity.addModel(activeModel, false);
+        final Optional<ActiveModel> registeredModel = modeledEntity.getModel(modelId);
+        if (registeredModel.isEmpty() || registeredModel.get() != activeModel) {
+            activeModel.destroy();
+            return new ModelApplyResult(false, "ModeledEntity rejected the ActiveModel attachment");
+        }
+        if (size > 0.0D && Double.compare(size, 1.0D) != 0) {
+            activeModel.setScale(size);
+        }
+        activeModel.setOnFire(false);
+        activeModel.setRenderFire(false);
+        activeModel.setGlowing(false);
+        activeModel.initializeRenderer();
+        return new ModelApplyResult(true, "host=" + entity.getUniqueId()
+                + ", modeledEntityInitialized=" + modeledEntity.isInitialized()
+                + ", replacedExistingModel=" + replacedModel.isPresent());
+    }
+
     /**
      * Spawn a ModelEngine model on a {@link Entity} with the given scale.
      * <p>
@@ -77,32 +135,17 @@ public final class ModelEngineIntegration {
      * <p>
      * Equivalent to:
      * <pre>{@code
-     * ModelEngineAPI.getOrCreateModeledEntity(entity)
-     *     .addModel(ModelEngineAPI.createActiveModel(modelId), false);
+     * ModelEngineAPI.createModeledEntity(entity)
+     *     .addModel(ModelEngineAPI.createActiveModel(blueprint), false);
      * }</pre>
      *
      * @param entity  the Bukkit entity to attach the model to
      * @param modelId the model blueprint id (e.g. {@code "iron_crystal"})
      * @param size    model scale multiplier (1.0 = default). If &le; 0 or exactly 1.0 the scale is not changed.
+     * @return {@code true} when the model blueprint exists and is attached
      */
-    public static void showModel(final Entity entity, final String modelId, final double size) {
-        if (!AVAILABLE) return;
-        Objects.requireNonNull(entity, ERR_ENTITY);
-        Objects.requireNonNull(modelId, "modelId");
-
-        final ModeledEntity modeledEntity = ModelEngineAPI.getOrCreateModeledEntity(entity);
-        final ActiveModel activeModel = ModelEngineAPI.createActiveModel(modelId);
-        // Must attach the model to the entity BEFORE setting properties — some
-        // ActiveModel implementations are not fully initialised until they are
-        // registered with a ModeledEntity.
-        modeledEntity.addModel(activeModel, false);
-        // Apply configuration after the model is safely attached.
-        if (size > 0.0D && Double.compare(size, 1.0D) != 0) {
-            activeModel.setScale(size);
-        }
-        activeModel.setOnFire(false);
-        activeModel.setRenderFire(false);
-        activeModel.setGlowing(false);
+    public static boolean showModel(final Entity entity, final String modelId, final double size) {
+        return applyModel(entity, modelId, size).applied();
     }
 
     /**
@@ -111,8 +154,8 @@ public final class ModelEngineIntegration {
      * @param entity  the Bukkit entity to attach the model to
      * @param modelId the model blueprint id (e.g. {@code "iron_crystal"})
      */
-    public static void showModel(final Entity entity, final String modelId) {
-        showModel(entity, modelId, 1.0D);
+    public static boolean showModel(final Entity entity, final String modelId) {
+        return showModel(entity, modelId, 1.0D);
     }
 
     /**
@@ -147,20 +190,22 @@ public final class ModelEngineIntegration {
      * @param lerpOut       lerp-out duration in seconds
      * @param speed         speed multiplier (1.0 = default)
      */
-    public static void playAnimation(final Entity entity, final String modelId,
+    public static boolean playAnimation(final Entity entity, final String modelId,
                                      final String animationName,
                                      final double lerpIn, final double lerpOut,
                                      final double speed) {
-        if (!AVAILABLE) return;
+        if (!isAvailable()) return false;
         Objects.requireNonNull(entity, ERR_ENTITY);
         Objects.requireNonNull(modelId, "modelId");
         Objects.requireNonNull(animationName, "animationName");
 
         final ModeledEntity modeledEntity = ModelEngineAPI.getOrCreateModeledEntity(entity);
         final Optional<ActiveModel> modelOpt = modeledEntity.getModel(modelId);
-        modelOpt.ifPresent(activeModel ->
-                activeModel.getAnimationHandler()
-                        .playAnimation(animationName, lerpIn, lerpOut, speed, true)
-        );
+        if (modelOpt.isEmpty()) {
+            return false;
+        }
+        final var animationHandler = modelOpt.get().getAnimationHandler();
+        animationHandler.forceStopAllAnimations();
+        return animationHandler.playAnimation(animationName, lerpIn, lerpOut, speed, true) != null;
     }
 }

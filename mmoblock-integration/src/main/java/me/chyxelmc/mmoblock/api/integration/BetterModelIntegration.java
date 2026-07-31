@@ -50,6 +50,8 @@ public final class BetterModelIntegration {
      *  Type is {@code Object} to avoid forcing the JVM to resolve BetterModel API types
      *  at class-load time when BetterModel is not installed. */
     private static final Map<UUID, Object> ACTIVE_TRACKERS = new ConcurrentHashMap<>();
+    private static final Map<UUID, String> ACTIVE_ANIMATIONS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> ANIMATION_SEQUENCES = new ConcurrentHashMap<>();
 
     static {
         boolean available = false;
@@ -116,6 +118,8 @@ public final class BetterModelIntegration {
 
         // Close any previous tracker for this block (e.g. after config reload)
         final Object previous = ACTIVE_TRACKERS.remove(blockUuid);
+        ACTIVE_ANIMATIONS.remove(blockUuid);
+        ANIMATION_SEQUENCES.remove(blockUuid);
         if (previous != null) {
             try {
                 ((kr.toxicity.model.api.tracker.Tracker) previous).close();
@@ -153,6 +157,10 @@ public final class BetterModelIntegration {
                         }
                 );
             }
+            if (tracker instanceof kr.toxicity.model.api.tracker.EntityTracker entityTracker) {
+                removeGeneratedHitBoxes(entityTracker);
+                entityTracker.task(() -> removeGeneratedHitBoxes(entityTracker));
+            }
             ACTIVE_TRACKERS.put(blockUuid, tracker);
             return true;
         } catch (final Exception ex) {
@@ -178,6 +186,8 @@ public final class BetterModelIntegration {
         if (blockUuid == null) return;
 
         final Object tracker = ACTIVE_TRACKERS.remove(blockUuid);
+        ACTIVE_ANIMATIONS.remove(blockUuid);
+        ANIMATION_SEQUENCES.remove(blockUuid);
         if (tracker != null) {
             try {
                 ((kr.toxicity.model.api.tracker.Tracker) tracker).close();
@@ -204,11 +214,88 @@ public final class BetterModelIntegration {
             return false;
         }
         try {
-            return ((kr.toxicity.model.api.tracker.Tracker) tracker).animate(animationName, kr.toxicity.model.api.animation.AnimationModifier.DEFAULT_WITH_PLAY_ONCE);
+            final kr.toxicity.model.api.tracker.Tracker typedTracker =
+                    (kr.toxicity.model.api.tracker.Tracker) tracker;
+            final String previousAnimation = ACTIVE_ANIMATIONS.put(blockUuid, animationName);
+            if (previousAnimation != null) {
+                typedTracker.stopAnimation(previousAnimation);
+            }
+            final long sequence = ANIMATION_SEQUENCES.merge(blockUuid, 1L, Long::sum);
+            final boolean played = typedTracker.animate(
+                    animationName,
+                    kr.toxicity.model.api.animation.AnimationModifier.DEFAULT_WITH_PLAY_ONCE,
+                    () -> finishAnimation(blockUuid, animationName, sequence, typedTracker)
+            );
+            if (!played) {
+                ACTIVE_ANIMATIONS.remove(blockUuid, animationName);
+            }
+            return played;
         } catch (final Exception ex) {
             MMOBlockLogger.warning("[BetterModel] Exception playing animation '" + animationName + "' for block " + blockUuid + ": " + ex.getMessage(), ex);
             return false;
         }
+    }
+
+    public static double animationDurationSeconds(final String modelId, final String animationName) {
+        if (!AVAILABLE || modelId == null || animationName == null) {
+            return 0.0D;
+        }
+        try {
+            return kr.toxicity.model.api.BetterModel.model(modelId)
+                    .flatMap(renderer -> renderer.animation(animationName))
+                    .map(animation -> (double) animation.length())
+                    .orElse(0.0D);
+        } catch (final RuntimeException | LinkageError ignored) {
+            return 0.0D;
+        }
+    }
+
+    /**
+     * Discard every client-side display spawned by the current pipeline and
+     * request a complete base-pose update on the tracker's own worker thread.
+     * This is stronger than a normal force update because it cannot reuse a
+     * display entity whose interpolation state still contains an animation
+     * scale from a missed final frame.
+     */
+    public static void refreshViewers(final UUID blockUuid) {
+        if (!AVAILABLE || blockUuid == null) {
+            return;
+        }
+        final Object active = ACTIVE_TRACKERS.get(blockUuid);
+        if (!(active instanceof kr.toxicity.model.api.tracker.Tracker tracker)) {
+            return;
+        }
+        tracker.task(() -> {
+            if (ACTIVE_TRACKERS.get(blockUuid) != tracker || tracker.isClosed()) {
+                return;
+            }
+            tracker.despawn();
+            tracker.forceUpdate(true);
+        });
+    }
+
+    private static void removeGeneratedHitBoxes(
+            final kr.toxicity.model.api.tracker.EntityTracker tracker
+    ) {
+        for (final kr.toxicity.model.api.nms.HitBox hitBox
+                : java.util.List.copyOf(tracker.registry().hitBoxes())) {
+            hitBox.removeHitBox();
+        }
+    }
+
+    private static void finishAnimation(
+            final UUID blockUuid,
+            final String animationName,
+            final long sequence,
+            final kr.toxicity.model.api.tracker.Tracker tracker
+    ) {
+        if (!Objects.equals(ANIMATION_SEQUENCES.get(blockUuid), sequence)
+                || ACTIVE_TRACKERS.get(blockUuid) != tracker) {
+            return;
+        }
+        tracker.stopAnimation(animationName);
+        ACTIVE_ANIMATIONS.remove(blockUuid, animationName);
+        refreshViewers(blockUuid);
     }
 
     /**
@@ -224,6 +311,8 @@ public final class BetterModelIntegration {
             MMOBlockLogger.debug("Reflection fallback: " + e.getMessage());
             }      }
         ACTIVE_TRACKERS.clear();
+        ACTIVE_ANIMATIONS.clear();
+        ANIMATION_SEQUENCES.clear();
     }
 
     /**

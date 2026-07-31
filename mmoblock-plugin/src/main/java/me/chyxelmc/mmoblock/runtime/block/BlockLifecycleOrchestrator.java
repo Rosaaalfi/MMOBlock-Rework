@@ -180,7 +180,6 @@ public final class BlockLifecycleOrchestrator {
         this.serverSideFakeBlockService.demoteBlock(block);
         // Remove from FakeBlockRegistry so the reconcile timer won't re-promote this block
         FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.x()), (int) Math.floor(block.y()), (int) Math.floor(block.z()));
-        FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.originX()), (int) Math.floor(block.originY()), (int) Math.floor(block.originZ()));
         if (definition != null) {
             this.visualSyncSystem.clearRealBlockModel(block, definition, world);
         }

@@ -73,9 +73,7 @@ public final class BlockVisualSyncService {
                 if (!hasDeadBlockModel(definition)) continue;
                 if (definition.realDeadBlockMaterial() == null) continue;
 
-                // Dead block is shown at the ORIGIN (same as the dead hologram), not at
-                // the block's current position (which may have moved due to randomLocation).
-                final Location location = originBaseLocation(placedBlock);
+                final Location location = blockBaseLocation(placedBlock);
                 if (location.getWorld() == null || location.distanceSquared(player.getLocation()) > syncRadiusSquared) {
                     continue;
                 }
@@ -207,9 +205,9 @@ public final class BlockVisualSyncService {
             return;
         }
 
-        // Place the dead block at the ORIGIN position (same as where the dead hologram is shown),
-        // so it appears centered even when randomLocation has moved the block away from origin.
-        final Location loc = new Location(world, placedBlock.originX(), placedBlock.originY(), placedBlock.originZ());
+        // Keep the dead state at the position where the active block was mined.
+        // The origin may currently be occupied by another random node block.
+        final Location loc = new Location(world, placedBlock.x(), placedBlock.y(), placedBlock.z());
 
         if (definition.itemsAdderDeadBlockId() != null) {
             try {
@@ -339,11 +337,6 @@ public final class BlockVisualSyncService {
         return new Location(world, block.x(), block.y(), block.z());
     }
 
-    private Location originBaseLocation(final PlacedBlockModel block) {
-        final World world = this.plugin.getServer().getWorld(block.world());
-        return new Location(world, block.originX(), block.originY(), block.originZ());
-    }
-
     private int breakAnimationEntityId(final PlacedBlockModel block) {
         return Math.abs(block.uniqueId().hashCode());
     }
@@ -358,9 +351,7 @@ public final class BlockVisualSyncService {
         final Material material
     ) {
         this.nmsAdapter.showFakeBlock(world, loc, material);
-        // Use the loc coordinates (not placedBlock.x/y/z) so the FakeBlockRegistry
-        // entry matches where the fake block was actually shown. This is critical
-        // when the dead block is placed at the origin vs the block's current position.
+        // Use the supplied location so the registry always matches the rendered block.
         try {
             final int bx = loc.getBlockX();
             final int by = loc.getBlockY();

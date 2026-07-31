@@ -271,6 +271,9 @@ public final class BlockChunkLifecycleOrchestrator {
                 if (def == null) return;
                 this.visualSyncSystem.applyRealBlockModel(current, def, w);
                 this.modelApplier.applySchematicModel(current, def, w, false);
+                this.modelApplier.applyBdEngineModel(current, def, w);
+                this.modelApplier.applyModelEngineModel(current, def, w);
+                this.modelApplier.applyBetterModelModel(current, def, w);
                 syncServerSideNearby(w, current);
             } catch (final Exception ignored) {
                 // expected - non-critical retry

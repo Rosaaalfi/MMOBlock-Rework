@@ -133,7 +133,10 @@ public final class BlockManagementService {
         if (isDuplicateClick(player, clickType, block)) {
             return Component.empty();
         }
-        return this.miningOrchestrator.processMiningClick(block, player, clickType);
+        return this.miningOrchestrator.processMiningClick(
+                block, player, clickType,
+                (int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z)
+        );
     }
 
     public Component handleBlockBreakAttempt(final Player player, final World world, final double x, final double y, final double z) {

@@ -62,7 +62,7 @@ commands:
     get:
       usage: "&e用法: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c方块尚未激活。"
+  not_active: "&c方块尚未准备好。"
   too_fast: "&c操作过快，请稍等。"
   too_fast_subtitle: "&e请稍等片刻"
   tool_not_allowed: "&c该方块不允许使用此工具。"

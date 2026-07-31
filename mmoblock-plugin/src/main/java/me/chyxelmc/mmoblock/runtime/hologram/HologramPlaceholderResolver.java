@@ -1,7 +1,10 @@
 package me.chyxelmc.mmoblock.runtime.hologram;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -244,8 +247,13 @@ final class HologramPlaceholderResolver {
             final String input,
             final long animationStep
     ) {
-        if (input == null || !input.contains(HologramRuntimeService.I18N_PREFIX)) {
+        if (input == null) {
             return input;
+        }
+
+        final NodeArguments nodeArguments = extractNodeArguments(input);
+        if (!input.contains(HologramRuntimeService.I18N_PREFIX)) {
+            return resolveNodeArguments(viewer, values, input, animationStep, nodeArguments);
         }
 
         // Build a placeholder map from the hologram context so that i18n keys
@@ -264,6 +272,7 @@ final class HologramPlaceholderResolver {
         hologramPlaceholders.put(PH_RESPAWN_TIME, respawnStr);
         hologramPlaceholders.put("{respawn}", respawnStr);
         hologramPlaceholders.put("{respawn_time}", respawnStr);
+        hologramPlaceholders.putAll(nodeArguments.placeholders());
 
         // Use brace-counting to correctly handle nested {placeholders} inside
         // the default text — the I18N_PATTERN regex with [^}]+ would stop at
@@ -306,24 +315,78 @@ final class HologramPlaceholderResolver {
         if (!any) {
             return input;
         }
-        return sb.toString();
+        final String resolved = resolveNodeArguments(viewer, values, sb.toString(), animationStep, nodeArguments);
+        if (resolved.contains(HologramRuntimeService.I18N_PREFIX) && !resolved.equals(input)) {
+            return replaceI18nPlaceholders(viewer, values, resolved, animationStep);
+        }
+        return resolved;
+    }
+
+    private String resolveNodeArguments(
+            final Player viewer,
+            final HologramPlaceholderValues values,
+            String text,
+            final long animationStep,
+            final NodeArguments arguments
+    ) {
+        for (final Map.Entry<String, String> entry : arguments.markers().entrySet()) {
+            String value = entry.getValue();
+            if (value.contains(HologramRuntimeService.I18N_PREFIX)) {
+                value = replaceI18nPlaceholders(viewer, values, value, animationStep);
+            }
+            text = text.replace(entry.getKey(), value);
+        }
+        return text;
+    }
+
+    private static NodeArguments extractNodeArguments(final String input) {
+        final Map<String, String> placeholders = new java.util.HashMap<>();
+        final Map<String, String> markers = new java.util.HashMap<>();
+        int cursor = 0;
+        while (true) {
+            final int start = input.indexOf("{node_arg:", cursor);
+            if (start < 0) {
+                break;
+            }
+            final int end = input.indexOf('}', start);
+            if (end < 0) {
+                break;
+            }
+            final String marker = input.substring(start, end + 1);
+            final String raw = input.substring(start + "{node_arg:".length(), end);
+            final int separator = raw.indexOf(':');
+            if (separator > 0) {
+                try {
+                    final String name = raw.substring(0, separator);
+                    final String value = new String(
+                            Base64.getUrlDecoder().decode(raw.substring(separator + 1)),
+                            StandardCharsets.UTF_8
+                    );
+                    placeholders.put('{' + name + '}', value);
+                    markers.put(marker, value);
+                } catch (final IllegalArgumentException ignored) {
+                    // Keep malformed custom markers literal.
+                }
+            }
+            cursor = end + 1;
+        }
+        return new NodeArguments(placeholders, markers);
+    }
+
+    private record NodeArguments(Map<String, String> placeholders, Map<String, String> markers) {
     }
 
     private static int findI18nEnd(final String input, final int start) {
-        final int contentStart = start + HologramRuntimeService.I18N_PREFIX.length();
-        final int separator = input.indexOf(I18N_SEPARATOR, contentStart);
-        final int firstEnd = input.indexOf('}', contentStart);
-        if (separator < 0) {
-            return firstEnd;
+        int depth = 0;
+        for (int index = start; index < input.length(); index++) {
+            final char current = input.charAt(index);
+            if (current == '{') {
+                depth++;
+            } else if (current == '}' && --depth == 0) {
+                return index;
+            }
         }
-        final int defaultEnd = input.indexOf('}', separator + I18N_SEPARATOR.length());
-        if (defaultEnd < 0) {
-            return -1;
-        }
-        if (defaultEnd + 1 < input.length() && input.charAt(defaultEnd + 1) == '}') {
-            return defaultEnd + 1;
-        }
-        return defaultEnd;
+        return -1;
     }
 
     private static boolean playerIsLookingAt(final Player player, final Location target) {

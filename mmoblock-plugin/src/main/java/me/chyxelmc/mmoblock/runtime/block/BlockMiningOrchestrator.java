@@ -17,9 +17,12 @@ import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.config.BlockConfigLoader;
@@ -48,6 +51,7 @@ public final class BlockMiningOrchestrator {
     private final me.chyxelmc.mmoblock.i18n.TranslationService translationService;
     private final PersistenceSystem persistenceSystem;
     private final MiningProgressTracker miningSystem;
+    private final BlockStateRegistry stateRegistry;
     private final DropService dropSystem;
     private final BlockLifecycleState lifecycleSystem;
     private final BlockVisualSyncService visualSyncSystem;
@@ -60,6 +64,7 @@ public final class BlockMiningOrchestrator {
     private final RespawnScheduler respawnScheduler;
     private final Particle breakParticle;
     private final Map<AutoProgressKey, SchedulerTask> autoProgressTasks = new ConcurrentHashMap<>();
+    private final Map<AutoProgressKey, AutoProgressSession> autoProgressSessions = new ConcurrentHashMap<>();
 
     public BlockMiningOrchestrator(
             final MMOBlock plugin,
@@ -68,6 +73,7 @@ public final class BlockMiningOrchestrator {
             final me.chyxelmc.mmoblock.i18n.TranslationService translationService,
             final PersistenceSystem persistenceSystem,
             final MiningProgressTracker miningSystem,
+            final BlockStateRegistry stateRegistry,
             final DropService dropSystem,
             final BlockLifecycleState lifecycleSystem,
             final BlockVisualSyncService visualSyncSystem,
@@ -86,6 +92,7 @@ public final class BlockMiningOrchestrator {
         this.translationService = translationService;
         this.persistenceSystem = persistenceSystem;
         this.miningSystem = miningSystem;
+        this.stateRegistry = stateRegistry;
         this.dropSystem = dropSystem;
         this.lifecycleSystem = lifecycleSystem;
         this.visualSyncSystem = visualSyncSystem;
@@ -99,15 +106,25 @@ public final class BlockMiningOrchestrator {
         this.breakParticle = breakParticle;
     }
 
-    public Component processMiningClick(final PlacedBlockModel block, final Player player, final String clickType) {
-        return processMiningClick(block, player, clickType, false);
+    public Component processMiningClick(
+            final PlacedBlockModel block,
+            final Player player,
+            final String clickType,
+            final int targetX,
+            final int targetY,
+            final int targetZ
+    ) {
+        return processMiningClick(block, player, clickType, false, targetX, targetY, targetZ);
     }
 
     private Component processMiningClick(
             final PlacedBlockModel block,
             final Player player,
             final String clickType,
-            final boolean autoProgressTick
+            final boolean autoProgressTick,
+            final int targetX,
+            final int targetY,
+            final int targetZ
     ) {
         if (!this.lifecycleSystem.isActive(block)) {
             cancelAutoProgress(block.uniqueId(), player.getUniqueId());
@@ -150,7 +167,7 @@ public final class BlockMiningOrchestrator {
 
         if (isThrottled(block.uniqueId(), player.getUniqueId())) {
             if (autoProgressTick && action.autoProgress()) {
-                startAutoProgress(block, player, clickType, 1L);
+                startAutoProgress(block, player, clickType, targetX, targetY, targetZ, 1L);
                 return Component.empty();
             }
             final Component tooFastTitle = translate(player, "blocks.too_fast", "&eHey slow down a bit.");
@@ -196,7 +213,7 @@ public final class BlockMiningOrchestrator {
         if (progress < action.clickNeeded()) {
             showProgressHologram(block, definition, progress, action.clickNeeded());
             if (action.autoProgress() && !autoProgressTick) {
-                startAutoProgress(block, player, clickType);
+                startAutoProgress(block, player, clickType, targetX, targetY, targetZ);
             }
             return Component.empty();
         }
@@ -247,16 +264,39 @@ public final class BlockMiningOrchestrator {
         return this.blockConfigService.resolveToolAction(definition, player.getInventory().getItemInMainHand(), "block_break") != null;
     }
 
-    private void startAutoProgress(final PlacedBlockModel block, final Player player, final String clickType) {
+    private void startAutoProgress(
+            final PlacedBlockModel block,
+            final Player player,
+            final String clickType,
+            final int targetX,
+            final int targetY,
+            final int targetZ
+    ) {
         final long periodTicks = Math.max(1L, (long) Math.ceil(this.blockConfigService.interactionThrottleMs() / 50.0D) + 1L);
-        startAutoProgress(block, player, clickType, periodTicks);
+        startAutoProgress(block, player, clickType, targetX, targetY, targetZ, periodTicks);
     }
 
-    private void startAutoProgress(final PlacedBlockModel block, final Player player, final String clickType, final long delayTicks) {
+    private void startAutoProgress(
+            final PlacedBlockModel block,
+            final Player player,
+            final String clickType,
+            final int targetX,
+            final int targetY,
+            final int targetZ,
+            final long delayTicks
+    ) {
         final AutoProgressKey key = new AutoProgressKey(block.uniqueId(), player.getUniqueId());
         if (this.autoProgressTasks.containsKey(key)) {
             return;
         }
+        this.autoProgressSessions.computeIfAbsent(key, ignored -> new AutoProgressSession(
+                targetX, targetY, targetZ,
+                player.getInventory().getHeldItemSlot(),
+                player.getInventory().getItemInMainHand().clone(),
+                player.getLocation().clone(),
+                player.getVelocity().clone(),
+                isSlipperySurface(player)
+        ));
         final Location location = blockCenterLocation(block, player.getWorld());
         final SchedulerTask task = this.scheduler.runAtLocationLater(location, () -> runAutoProgressTick(block, player, clickType, key), Math.max(1L, delayTicks));
         this.autoProgressTasks.put(key, task);
@@ -273,7 +313,15 @@ public final class BlockMiningOrchestrator {
             cancelAutoProgress(block.uniqueId(), player.getUniqueId());
             return;
         }
-        processMiningClick(block, player, clickType, true);
+        final AutoProgressSession session = this.autoProgressSessions.get(key);
+        if (session == null || !isAutoProgressContextValid(player, session)) {
+            cancelAutoProgress(block.uniqueId(), player.getUniqueId());
+            return;
+        }
+        processMiningClick(block, player, clickType, true, session.targetX, session.targetY, session.targetZ);
+        if (this.autoProgressSessions.get(key) != session) {
+            return;
+        }
         if (!this.lifecycleSystem.isActive(block)) {
             cancelAutoProgress(block.uniqueId(), player.getUniqueId());
             return;
@@ -286,14 +334,126 @@ public final class BlockMiningOrchestrator {
         }
         final ToolAction action = this.blockConfigService.resolveToolAction(definition, player.getInventory().getItemInMainHand(), clickType);
         if (action != null && action.autoProgress()) {
-            startAutoProgress(block, player, clickType);
+            session.expectedItem = player.getInventory().getItemInMainHand().clone();
+            session.lastLocation = player.getLocation().clone();
+            session.expectedVelocity = player.getVelocity().clone();
+            if (!session.expectedVelocity.isZero() && isSlipperySurface(player)) {
+                session.passiveMotion = true;
+            }
+            startAutoProgress(block, player, clickType, session.targetX, session.targetY, session.targetZ);
+            return;
         }
+        cancelAutoProgress(block.uniqueId(), player.getUniqueId());
+    }
+
+    private boolean isAutoProgressContextValid(final Player player, final AutoProgressSession session) {
+        if (player.getInventory().getHeldItemSlot() != session.heldSlot) {
+            return false;
+        }
+        if (!player.getInventory().getItemInMainHand().isSimilar(session.expectedItem)) {
+            return false;
+        }
+        if (!isLookingAtTarget(player, session)) {
+            return false;
+        }
+        return !hasIntentionalPositionChange(player, session);
+    }
+
+    private boolean isLookingAtTarget(final Player player, final AutoProgressSession session) {
+        final Location eye = player.getEyeLocation();
+        final Vector direction = eye.getDirection();
+        final BoundingBox target = new BoundingBox(
+                session.targetX, session.targetY, session.targetZ,
+                session.targetX + 1.0D, session.targetY + 1.0D, session.targetZ + 1.0D
+        );
+        final double maxDistance = eye.distance(new Location(
+                player.getWorld(),
+                session.targetX + 0.5D,
+                session.targetY + 0.5D,
+                session.targetZ + 0.5D
+        )) + 1.0D;
+        return target.rayTrace(eye.toVector(), direction, maxDistance) != null;
+    }
+
+    private boolean hasIntentionalPositionChange(final Player player, final AutoProgressSession session) {
+        final Location current = player.getLocation();
+        if (current.getWorld() != session.lastLocation.getWorld()) {
+            return true;
+        }
+        final double dx = current.getX() - session.lastLocation.getX();
+        final double dy = current.getY() - session.lastLocation.getY();
+        final double dz = current.getZ() - session.lastLocation.getZ();
+        if ((dx * dx) + (dy * dy) + (dz * dz) <= 0.0004D) {
+            return false;
+        }
+        if (hasCollisionDrivenMovement(player, dx, dy, dz)) {
+            session.passiveMotion = true;
+            return false;
+        }
+        if (session.passiveMotion && followsExpectedMomentum(session.expectedVelocity, dx, dy, dz)) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean followsExpectedMomentum(
+            final Vector expectedVelocity,
+            final double movementX,
+            final double movementY,
+            final double movementZ
+    ) {
+        if (expectedVelocity == null || expectedVelocity.lengthSquared() <= 0.0004D) {
+            return false;
+        }
+        final Vector movement = new Vector(movementX, movementY, movementZ);
+        if (movement.lengthSquared() <= 0.0004D) {
+            return true;
+        }
+        final double alignment = movement.dot(expectedVelocity)
+                / Math.sqrt(movement.lengthSquared() * expectedVelocity.lengthSquared());
+        return alignment >= 0.75D;
+    }
+
+    private boolean isSlipperySurface(final Player player) {
+        final Material below = player.getLocation().subtract(0.0D, 0.2D, 0.0D).getBlock().getType();
+        return below == Material.ICE
+                || below == Material.PACKED_ICE
+                || below == Material.BLUE_ICE
+                || below == Material.FROSTED_ICE;
+    }
+
+    private boolean hasCollisionDrivenMovement(
+            final Player player,
+            final double movementX,
+            final double movementY,
+            final double movementZ
+    ) {
+        final BoundingBox contactArea = player.getBoundingBox().expand(0.15D);
+        for (final org.bukkit.entity.Entity entity : player.getNearbyEntities(1.0D, 1.0D, 1.0D)) {
+            if (entity instanceof LivingEntity living
+                    && living.isCollidable()
+                    && contactArea.overlaps(living.getBoundingBox())) {
+                final Location entityLocation = living.getLocation();
+                final Location playerLocation = player.getLocation();
+                final double awayX = playerLocation.getX() - entityLocation.getX();
+                final double awayY = playerLocation.getY() - entityLocation.getY();
+                final double awayZ = playerLocation.getZ() - entityLocation.getZ();
+                if ((movementX * awayX) + (movementY * awayY) + (movementZ * awayZ) > 0.0D) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private void cancelAutoProgress(final UUID blockId, final UUID playerId) {
-        final SchedulerTask task = this.autoProgressTasks.remove(new AutoProgressKey(blockId, playerId));
+        final AutoProgressKey key = new AutoProgressKey(blockId, playerId);
+        final SchedulerTask task = this.autoProgressTasks.remove(key);
         if (task != null) {
             task.cancel();
+        }
+        if (this.autoProgressSessions.remove(key) != null) {
+            resetCancelledProgress(blockId, playerId);
         }
     }
 
@@ -303,6 +463,9 @@ public final class BlockMiningOrchestrator {
                 return false;
             }
             entry.getValue().cancel();
+            if (this.autoProgressSessions.remove(entry.getKey()) != null) {
+                resetCancelledProgress(entry.getKey().blockUniqueId(), playerId);
+            }
             return true;
         });
     }
@@ -310,6 +473,34 @@ public final class BlockMiningOrchestrator {
     public void cancelAllAutoProgress() {
         this.autoProgressTasks.values().forEach(SchedulerTask::cancel);
         this.autoProgressTasks.clear();
+        for (final AutoProgressKey key : this.autoProgressSessions.keySet()) {
+            this.miningSystem.clearProgress(key.blockUniqueId(), key.playerUniqueId());
+        }
+        this.autoProgressSessions.clear();
+    }
+
+    private void resetCancelledProgress(final UUID blockId, final UUID playerId) {
+        this.miningSystem.clearProgress(blockId, playerId);
+        if (this.miningSystem.hasAnyProgress(blockId)) {
+            return;
+        }
+        final PlacedBlockModel block = this.stateRegistry.getBlock(blockId);
+        if (block == null || !this.lifecycleSystem.isActive(block)) {
+            return;
+        }
+        final BlockDefinitionModel definition = this.blockConfigService.findBlock(block.type());
+        final World world = this.plugin.getServer().getWorld(block.world());
+        if (definition == null || world == null) {
+            return;
+        }
+        this.scheduler.runAtLocation(blockCenterLocation(block, world), () -> {
+            try {
+                this.visualSyncSystem.clearBreakAnimation(world, block);
+                this.hologramRuntimeService.showActive(block, definition);
+            } catch (final RuntimeException ignored) {
+                // The progress state is already reset; visuals can reconcile later.
+            }
+        });
     }
 
     public void playConfiguredSound(final World world, final PlacedBlockModel block, final Sound sound) {
@@ -425,7 +616,6 @@ public final class BlockMiningOrchestrator {
             // block back to its fake visual. The block is now entering the dead state and
             // should stay in that visual until it respawns.
             FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.x()), (int) Math.floor(block.y()), (int) Math.floor(block.z()));
-            FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.originX()), (int) Math.floor(block.originY()), (int) Math.floor(block.originZ()));
             // Apply dead block model if configured, otherwise clear
             if (this.visualSyncSystem.hasDeadBlockModel(definition)) {
                 this.visualSyncSystem.applyDeadBlockModel(block, definition, world);
@@ -443,7 +633,7 @@ public final class BlockMiningOrchestrator {
             this.modelApplier.applySchematicModel(block, definition, world, true);
             this.serverSideFakeBlockService.syncNearbyPlayers(
                     world,
-                    new Location(world, block.originX() + 0.5D, block.originY() + 0.5D, block.originZ() + 0.5D),
+                    new Location(world, block.x() + 0.5D, block.y() + 0.5D, block.z() + 0.5D),
                     this.blockConfigService.realBlockRadiusSquared()
             );
         }
@@ -592,5 +782,36 @@ public final class BlockMiningOrchestrator {
     }
 
     private record AutoProgressKey(UUID blockUniqueId, UUID playerUniqueId) {
+    }
+
+    private static final class AutoProgressSession {
+        private final int targetX;
+        private final int targetY;
+        private final int targetZ;
+        private final int heldSlot;
+        private ItemStack expectedItem;
+        private Location lastLocation;
+        private Vector expectedVelocity;
+        private boolean passiveMotion;
+
+        private AutoProgressSession(
+                final int targetX,
+                final int targetY,
+                final int targetZ,
+                final int heldSlot,
+                final ItemStack expectedItem,
+                final Location lastLocation,
+                final Vector expectedVelocity,
+                final boolean passiveMotion
+        ) {
+            this.targetX = targetX;
+            this.targetY = targetY;
+            this.targetZ = targetZ;
+            this.heldSlot = heldSlot;
+            this.expectedItem = expectedItem;
+            this.lastLocation = lastLocation;
+            this.expectedVelocity = expectedVelocity;
+            this.passiveMotion = passiveMotion;
+        }
     }
 }

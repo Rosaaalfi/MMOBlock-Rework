@@ -104,7 +104,7 @@ public final class HologramRuntimeService {
         if (world == null) {
             return false;
         }
-        final Location center = new Location(world, block.originX() + 0.5D, block.originY() + 0.5D, block.originZ() + 0.5D);
+        final Location center = new Location(world, block.x() + 0.5D, block.y() + 0.5D, block.z() + 0.5D);
         return !world.getNearbyPlayers(center, radius).isEmpty();
     }
 
@@ -198,11 +198,12 @@ public final class HologramRuntimeService {
     }
 
     private Location resolveBaseLocation(final PlacedBlockModel block, final BlockDefinitionModel definition, final HologramRenderState state, final World world) {
-        final boolean dead = state == HologramRenderState.DEAD;
-        final double baseX = dead ? block.originX() : block.x();
-        final double baseY = dead ? block.originY() : block.y();
-        final double baseZ = dead ? block.originZ() : block.z();
-        return new Location(world, baseX + 0.5D, baseY + definition.displayHeight(), baseZ + 0.5D);
+        return new Location(
+                world,
+                block.x() + 0.5D,
+                block.y() + definition.displayHeight(),
+                block.z() + 0.5D
+        );
     }
 
     private HologramBackend chooseBackend() {

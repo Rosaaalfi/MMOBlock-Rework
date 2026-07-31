@@ -1,10 +1,9 @@
+# MMOBlock configuration file version 26.7.31
 debug: false # logging debug info to console
 bStats: true # send anonymous stats to bStats
 updateChecker: true # check for updates on https://voxel.shop/
-interactionThrottleMs: 1000 # throttle interactions with blocks and entities to prevent spamming. Time in milliseconds.
-interaction:
-  real-block-radius: 7     # Radius (blocks) within which PlayerInteractEvent handles MMOBlock clicks. Beyond this, packet-level interception is used.
-  fake-block-radius: 48    # Radius (blocks) within which packet-level click interception works. Beyond this, no click processing.
+
+# Database configuration
 databases:
   mysql:
     enabled: false
@@ -17,11 +16,19 @@ databases:
     enabled: true
     file: .caches/data
 
+# Interaction configuration
+interactionThrottleMs: 1000 # throttle interactions with blocks and entities to prevent spamming. Time in milliseconds.
+interaction:
+  real-block-radius: 12     # Radius (blocks) within which PlayerInteractEvent handles MMOBlock clicks. Beyond this, packet-level interception is used.
+  fake-block-radius: 64    # Radius (blocks) within which packet-level click interception works. Beyond this, no click processing.
+
+# Progress bar configuration
 progressbar:
   progressing: "&a|"
   noprogress: "<gray>|</gray>"
   barlength: 16
 
+# Hologram configuration
 hologram:
   packet:
     maxUpdatesPerTick: 200

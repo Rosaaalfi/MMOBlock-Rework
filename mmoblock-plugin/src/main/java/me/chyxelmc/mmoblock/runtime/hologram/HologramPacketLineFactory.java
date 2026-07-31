@@ -56,6 +56,9 @@ final class HologramPacketLineFactory {
             if (text.contains(HologramRuntimeService.I18N_PREFIX)) {
                 return true;
             }
+            if (text.contains("{node_arg:")) {
+                return true;
+            }
         }
         return false;
     }

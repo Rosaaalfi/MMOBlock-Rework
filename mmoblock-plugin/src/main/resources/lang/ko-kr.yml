@@ -63,7 +63,7 @@ commands:
     get:
       usage: "&e사용법: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&c블록이 활성화되지 않았습니다."
+  not_active: "&c블록이 아직 준비되지 않았습니다."
   too_fast: "&c너무 빠릅니다."
   too_fast_subtitle: "&e잠시 기다려주세요"
   tool_not_allowed: "&c이 블록에 사용할 수 없는 도구입니다."

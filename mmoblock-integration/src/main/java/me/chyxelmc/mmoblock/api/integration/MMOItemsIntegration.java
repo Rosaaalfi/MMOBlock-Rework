@@ -94,8 +94,11 @@ public final class MMOItemsIntegration {
     public static boolean isCustomItem(final ItemStack item) {
         if (!AVAILABLE || item == null || item.getType().isAir()) return false;
         try {
-            return net.Indyuce.mmoitems.MMOItems.getID(item) != null;
-        } catch (final Exception ignored) {
+            final io.lumine.mythic.lib.api.item.NBTItem nbtItem =
+                    io.lumine.mythic.lib.api.item.NBTItem.get(item);
+            return hasText(nbtItem.getString("MMOITEMS_ITEM_TYPE"))
+                    && hasText(nbtItem.getString("MMOITEMS_ITEM_ID"));
+        } catch (final RuntimeException | LinkageError ignored) {
             return false;
         }
     }
@@ -112,12 +115,19 @@ public final class MMOItemsIntegration {
         if (!AVAILABLE || item == null || item.getType().isAir()
                 || mmoItemsId == null || mmoItemsId.isBlank()) return false;
         try {
-            final String id = net.Indyuce.mmoitems.MMOItems.getID(item);
-            return id != null && id.equalsIgnoreCase(mmoItemsId);
-        } catch (final Exception ex) {
+            final io.lumine.mythic.lib.api.item.NBTItem nbtItem =
+                    io.lumine.mythic.lib.api.item.NBTItem.get(item);
+            final String type = nbtItem.getString("MMOITEMS_ITEM_TYPE");
+            final String id = nbtItem.getString("MMOITEMS_ITEM_ID");
+            return hasText(type) && hasText(id) && id.equalsIgnoreCase(mmoItemsId);
+        } catch (final RuntimeException | LinkageError ex) {
             MMOBlockLogger.debug("[MMOItems] Failed to match item '" + mmoItemsId + "': " + ex.getMessage());
             return false;
         }
+    }
+
+    private static boolean hasText(final String value) {
+        return value != null && !value.isBlank();
     }
 
     /**

@@ -62,7 +62,7 @@ commands:
     get:
       usage: "&ePenggunaan: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&cBlock belum aktif."
+  not_active: "&cBlok belum siap."
   too_fast: "&cTerlalu cepat, tunggu sebentar."
   too_fast_subtitle: "&eHarap tunggu beberapa saat"
   tool_not_allowed: "&cAlat tidak diizinkan untuk block ini."

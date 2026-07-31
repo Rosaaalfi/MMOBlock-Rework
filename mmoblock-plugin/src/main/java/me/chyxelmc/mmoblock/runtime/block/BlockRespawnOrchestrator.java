@@ -26,6 +26,7 @@ public final class BlockRespawnOrchestrator {
 
     private static final double DEAD_UPDATE_NEARBY_RADIUS = 16.0D;
     private static final int DEFAULT_VERTICAL_RANGE = 10;
+    private static final long FAILED_LOCATION_RETRY_MILLIS = 1_000L;
 
     private final BlockConfigLoader blockConfigService;
     private final PersistenceSystem persistenceSystem;
@@ -103,7 +104,7 @@ public final class BlockRespawnOrchestrator {
             this.modelApplier.applySchematicModel(block, definition, world, true);
             this.serverSideFakeBlockService.syncNearbyPlayers(
                     world,
-                    new Location(world, block.originX() + 0.5D, block.originY() + 0.5D, block.originZ() + 0.5D),
+                    new Location(world, block.x() + 0.5D, block.y() + 0.5D, block.z() + 0.5D),
                     this.blockConfigService.realBlockRadiusSquared()
             );
         }
@@ -145,34 +146,29 @@ public final class BlockRespawnOrchestrator {
                 && latestDefinition.schematicsDeadFile() != null
                 && !latestDefinition.schematicsDeadFile().isBlank();
 
-        final RespawnTarget respawnTarget = resolveRespawnTarget(block, latestDefinition, world);
-        if (respawnTarget != null) {
-            // Clear the dead block BEFORE moving. The dead block was placed at the
-            // ORIGIN position (where the dead hologram is shown), so we temporarily
-            // set the block's coordinates to origin to clear at the right spot.
-            // After clearing, the original current position is restored immediately.
-            // This is safe because clearRealBlockModel only reads block.x/y/z and
-            // performs no registry mutations.
-            if (hadDeadModel || hadDeadSchematic) {
-                this.serverSideFakeBlockService.demoteBlock(block);
-                // Remove from FakeBlockRegistry so the old dead-state position won't be
-                // re-promoted by the reconcile timer after the block has moved/respawned.
-                FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.originX()), (int) Math.floor(block.originY()), (int) Math.floor(block.originZ()));
-                FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.x()), (int) Math.floor(block.y()), (int) Math.floor(block.z()));
-            }
-            if (hadDeadModel) {
-                final double currX = block.x();
-                final double currY = block.y();
-                final double currZ = block.z();
-                block.setCurrentLocation(block.originX(), block.originY(), block.originZ());
-                this.visualSyncSystem.clearRealBlockModel(block, latestDefinition, world);
-                block.setCurrentLocation(currX, currY, currZ);
-            }
-            if (hadDeadSchematic) {
-                this.modelApplier.clearSchematicModel(block, world);
-            }
-            moveBlockToRespawnTarget(block, respawnTarget);
+        // Remove the old packet hologram before its UUID is reused at another position.
+        // Otherwise a replaced packet session can leave its former display entities behind.
+        this.hologramRuntimeService.remove(block);
+
+        // Clear the dead visual before resolving terrain. A physical dead-state block
+        // must not become the height-map support for its own respawn position.
+        if (hadDeadModel || hadDeadSchematic) {
+            this.serverSideFakeBlockService.demoteBlock(block);
+            FakeBlockRegistry.remove(block.world(), (int) Math.floor(block.x()), (int) Math.floor(block.y()), (int) Math.floor(block.z()));
         }
+        if (hadDeadModel) {
+            this.visualSyncSystem.clearRealBlockModel(block, latestDefinition, world);
+        }
+        if (hadDeadSchematic) {
+            this.modelApplier.clearSchematicModel(block, world);
+        }
+
+        final RespawnTarget respawnTarget = resolveRespawnTarget(block, latestDefinition, world);
+        if (respawnTarget == null) {
+            schedule(block, world, FAILED_LOCATION_RETRY_MILLIS);
+            return;
+        }
+        moveBlockToRespawnTarget(block, respawnTarget);
 
         if (!isChunkLoaded(world, block.x(), block.z())) {
             markActiveAndPersist(block);
@@ -277,11 +273,7 @@ public final class BlockRespawnOrchestrator {
                 }
             }
 
-            // Ultimate fallback: the absolute origin (should rarely happen)
-            return new RespawnTarget(
-                    new Location(world, originBlockX, originBlockY, originBlockZ),
-                    block.facing()
-            );
+            return null;
         }
 
         final int originBlockX = (int) Math.floor(block.originX());
@@ -309,10 +301,7 @@ public final class BlockRespawnOrchestrator {
 
         // Fallback: try the origin
         final Location safeOrigin = this.randomLocationResolver.findSafeBlockLocation(world, originBlockX, originBlockY, originBlockZ, block.uniqueId(), false, DEFAULT_VERTICAL_RANGE);
-        final Location loc = safeOrigin != null
-                ? safeOrigin
-                : new Location(world, originBlockX, originBlockY, originBlockZ);
-        return new RespawnTarget(loc, block.facing());
+        return safeOrigin == null ? null : new RespawnTarget(safeOrigin, block.facing());
     }
 
     private static boolean isChunkLoaded(final World world, final double x, final double z) {

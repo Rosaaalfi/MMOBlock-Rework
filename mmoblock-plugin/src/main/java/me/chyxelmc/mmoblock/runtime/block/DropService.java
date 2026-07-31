@@ -34,6 +34,7 @@ import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.nms.NmsAdapter.HologramLine;
 import me.chyxelmc.mmoblock.platform.scheduler.Scheduler;
+import me.chyxelmc.mmoblock.runtime.hologram.DropPopupSlotAllocator;
 import me.chyxelmc.mmoblock.utils.HologramAnimationUtil;
 import me.chyxelmc.mmoblock.utils.MMOBlockLogger;
 import me.chyxelmc.mmoblock.utils.TextColor;
@@ -52,6 +53,7 @@ public final class DropService implements Listener {
     private final Scheduler scheduler;
     private final NmsAdapter nmsAdapter;
     private final NamespacedKey noMergeKey;
+    private final DropPopupSlotAllocator popupSlotAllocator = new DropPopupSlotAllocator();
 
     public DropService(final MMOBlock plugin, final BlockConfigLoader blockConfigService, final Scheduler scheduler, final NmsAdapter nmsAdapter) {
         this.plugin = plugin;
@@ -538,17 +540,15 @@ public final class DropService implements Listener {
         final String resolvedText = this.plugin.applyHologramPlaceholderApi(player, rawText, 0, 0, 0L);
         final String legacyText = TextColor.toLegacySection(resolvedText);
 
-        final org.bukkit.Location eyeLoc = player.getEyeLocation();
-        final org.bukkit.util.Vector direction = eyeLoc.getDirection().normalize();
-        final org.bukkit.Location loc = eyeLoc.clone().add(direction.multiply(1.8D));
-        loc.add(
-                ThreadLocalRandom.current().nextDouble() * 1.0D - 0.5D,
-                ThreadLocalRandom.current().nextDouble() * 0.8D - 0.1D,
-                ThreadLocalRandom.current().nextDouble() * 1.0D - 0.5D
-        );
+        final UUID playerId = player.getUniqueId();
+        final DropPopupSlotAllocator.Reservation popupSlot = this.popupSlotAllocator.reserve(playerId);
+        final Location loc = popupLocation(player, popupSlot);
 
         final World world = loc.getWorld();
-        if (world == null) return;
+        if (world == null) {
+            this.popupSlotAllocator.release(playerId, popupSlot);
+            return;
+        }
 
         if (this.nmsAdapter.supportsPacketHolograms()) {
             final UUID popupId = UUID.randomUUID();
@@ -560,13 +560,16 @@ public final class DropService implements Listener {
             );
             this.nmsAdapter.upsertPacketHologram(player, popupId, holoLoc, lines);
 
-            this.scheduler.runLater(() ->
-                    this.nmsAdapter.removePacketHologram(player, popupId),
-                    40L
-            );
+            this.scheduler.runLater(() -> {
+                this.nmsAdapter.removePacketHologram(player, popupId);
+                this.popupSlotAllocator.release(playerId, popupSlot);
+            }, 40L);
         } else {
             final org.bukkit.entity.ArmorStand stand = world.spawn(loc, org.bukkit.entity.ArmorStand.class);
-            if (stand == null) return;
+            if (stand == null) {
+                this.popupSlotAllocator.release(playerId, popupSlot);
+                return;
+            }
             stand.setMarker(true);
             stand.setInvisible(true);
             stand.setSmall(true);
@@ -584,7 +587,28 @@ public final class DropService implements Listener {
             } catch (final NoSuchMethodError ignored) {
             }
             this.scheduler.runForEntityLater(stand, stand::remove, null, 40L);
+            this.scheduler.runLater(() -> this.popupSlotAllocator.release(playerId, popupSlot), 40L);
         }
+    }
+
+    private static Location popupLocation(
+            final Player player,
+            final DropPopupSlotAllocator.Reservation popupSlot
+    ) {
+        final Location eyeLocation = player.getEyeLocation();
+        final Vector direction = eyeLocation.getDirection().normalize();
+        Vector right = direction.clone().crossProduct(new Vector(0.0D, 1.0D, 0.0D));
+        if (right.lengthSquared() < 1.0E-6D) {
+            final double yawRadians = Math.toRadians(eyeLocation.getYaw());
+            right = new Vector(Math.cos(yawRadians), 0.0D, Math.sin(yawRadians));
+        } else {
+            right.normalize();
+        }
+        final Vector up = right.clone().crossProduct(direction).normalize();
+        return eyeLocation.clone()
+                .add(direction.clone().multiply(1.8D))
+                .add(right.multiply(popupSlot.horizontalOffset()))
+                .add(up.multiply(popupSlot.verticalOffset()));
     }
 
     private Map<String, String> dropPopupPlaceholders(final DropEntry entry, final int amount, final ItemStack itemStack) {

@@ -11,4 +11,4 @@ languages: #list of languages to register, you can add more languages by adding 
   - "vi-vn" # Vietnamese (Tiếng Việt)
   - "th-th" # Thai (ไทย)
   - "ms-my" # Malay (Bahasa Melayu)
-  - "en-ph" # Filipino
+  - "tl-ph" # Filipino

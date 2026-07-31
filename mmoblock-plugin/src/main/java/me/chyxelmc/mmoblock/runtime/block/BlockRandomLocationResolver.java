@@ -21,7 +21,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class BlockRandomLocationResolver {
 
-    private static final double NODE_RANDOM_MIN_BLOCK_DISTANCE = 1.5D;
+    private static final double NODE_RANDOM_MIN_BLOCK_DISTANCE = 2.0D;
     private static final int RANDOM_LOCATION_MAX_ATTEMPTS = 48;
     private static final int VERTICAL_RANGE_DEFAULT = 5;
     private static final int VERTICAL_RANGE_MIN = 5;

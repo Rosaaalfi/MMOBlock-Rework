@@ -63,7 +63,7 @@ commands:
     get:
       usage: "&eCách dùng: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&cKhối không hoạt động."
+  not_active: "&cKhối vẫn chưa sẵn sàng."
   too_fast: "&cHãy chậm lại một chút."
   too_fast_subtitle: "&eVui lòng đợi một lát"
   tool_not_allowed: "&cCông cụ không được phép cho khối này."

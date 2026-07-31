@@ -12,6 +12,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
 
 import me.chyxelmc.mmoblock.MMOBlock;
 import me.chyxelmc.mmoblock.api.integration.BetterModelIntegration;
@@ -47,8 +48,10 @@ public final class BlockModelApplier {
     // BetterModel collision tracking
     private final Map<UUID, List<CollisionEntry>> betterModelCollisions = new HashMap<>();
 
-    // ModelEngine entity tracking — maps block UUID to Marker entity
-    private final Map<UUID, org.bukkit.entity.Marker> modelEngineEntities = new ConcurrentHashMap<>();
+    // External engine host tracking by block UUID.
+    private final Map<UUID, Interaction> modelEngineEntities = new ConcurrentHashMap<>();
+    private final Map<UUID, Interaction> betterModelEntities = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> betterModelRecoverySequences = new ConcurrentHashMap<>();
 
     public BlockModelApplier(
             final MMOBlock plugin,
@@ -76,9 +79,9 @@ public final class BlockModelApplier {
                     block.uniqueId().toString(),
                     definition,
                     world,
-                    dead ? block.originX() : block.x(),
-                    dead ? block.originY() : block.y(),
-                    dead ? block.originZ() : block.z(),
+                    block.x(),
+                    block.y(),
+                    block.z(),
                     dead
             );
         } catch (final Throwable ignored) {
@@ -141,33 +144,50 @@ public final class BlockModelApplier {
     public void applyModelEngineModel(final PlacedBlockModel block, final BlockDefinitionModel definition, final World world) {
         if (definition == null || !definition.modelEngineEnabled()) return;
         try {
-            if (!ModelEngineIntegration.isAvailable()) return;
-        } catch (final Throwable ignored) {
+            if (!ModelEngineIntegration.isAvailable()) {
+                MMOBlockLogger.warning("[ModelEngine] Cannot apply model '" + definition.modelEngineModelId()
+                        + "' for block " + block.uniqueId() + ": "
+                        + ModelEngineIntegration.availabilityFailure());
+                return;
+            }
+        } catch (final Throwable exception) {
+            MMOBlockLogger.warning("[ModelEngine] Availability check failed for model '"
+                    + definition.modelEngineModelId() + "' and block " + block.uniqueId(), exception);
             return;
         }
 
-        // Remove any existing Marker for this block before creating a new one
+        // Remove any existing engine host for this block before creating a new one.
         clearModelEngineModel(block, world);
 
-        final Location location = new Location(world, block.x() + 0.5D, block.y(), block.z() + 0.5D);
-        final org.bukkit.entity.Marker marker = world.spawn(location, org.bukkit.entity.Marker.class);
+        final Location location = modelLocation(world, block);
+        final Interaction marker = spawnModelHost(location);
         try {
-            ModelEngineIntegration.showModel(
+            final ModelEngineIntegration.ModelApplyResult result = ModelEngineIntegration.applyModel(
                     marker,
                     definition.modelEngineModelId(),
                     definition.modelEngineModelSize()
             );
+            if (!result.applied()) {
+                marker.remove();
+                MMOBlockLogger.warning("[ModelEngine] Model ID '" + definition.modelEngineModelId()
+                        + "' could not be applied for block " + block.uniqueId() + " at "
+                        + formatLocation(location) + ": " + result.detail());
+                return;
+            }
             this.modelEngineEntities.put(block.uniqueId(), marker);
+            MMOBlockLogger.debug("[ModelEngine] Applied model '" + definition.modelEngineModelId()
+                    + "' (size=" + definition.modelEngineModelSize() + ") for block "
+                    + block.uniqueId() + " at " + formatLocation(location) + "; " + result.detail());
         } catch (final Throwable ex) {
             marker.remove();
             MMOBlockLogger.warning("[ModelEngine] Failed to show model '" + definition.modelEngineModelId()
-                    + "' for block " + block.uniqueId() + ": " + ex.getMessage());
+                    + "' for block " + block.uniqueId() + " at " + formatLocation(location), ex);
         }
     }
 
     public void clearModelEngineModel(final PlacedBlockModel block, final World world) {
         if (block == null) return;
-        final org.bukkit.entity.Marker marker = this.modelEngineEntities.remove(block.uniqueId());
+        final Interaction marker = this.modelEngineEntities.remove(block.uniqueId());
         if (marker == null) return;
         try {
             if (ModelEngineIntegration.isAvailable()) {
@@ -184,15 +204,25 @@ public final class BlockModelApplier {
     public void playModelEngineAnimation(final PlacedBlockModel block, final BlockDefinitionModel definition, final String animationName, final double lerpIn, final double lerpOut, final double speed) {
         if (block == null || animationName == null || animationName.isBlank()) return;
         if (definition == null || !definition.modelEngineEnabled()) return;
-        final org.bukkit.entity.Marker marker = this.modelEngineEntities.get(block.uniqueId());
-        if (marker == null || !marker.isValid()) return;
-        try {
-            if (!ModelEngineIntegration.isAvailable()) return;
-        } catch (final Throwable ignored) {
+        final Interaction marker = this.modelEngineEntities.get(block.uniqueId());
+        if (marker == null || !marker.isValid()) {
+            MMOBlockLogger.debug("[ModelEngine] Animation '" + animationName + "' skipped for block "
+                    + block.uniqueId() + ": no valid model host is tracked");
             return;
         }
         try {
-            ModelEngineIntegration.playAnimation(
+            if (!ModelEngineIntegration.isAvailable()) {
+                MMOBlockLogger.warning("[ModelEngine] Animation '" + animationName + "' cannot run: "
+                        + ModelEngineIntegration.availabilityFailure());
+                return;
+            }
+        } catch (final Throwable exception) {
+            MMOBlockLogger.warning("[ModelEngine] Availability check failed before animation '"
+                    + animationName + "' for block " + block.uniqueId(), exception);
+            return;
+        }
+        try {
+            final boolean playing = ModelEngineIntegration.playAnimation(
                     marker,
                     definition.modelEngineModelId(),
                     animationName,
@@ -200,9 +230,14 @@ public final class BlockModelApplier {
                     lerpOut,
                     speed
             );
+            if (!playing) {
+                MMOBlockLogger.warning("[ModelEngine] Animation '" + animationName + "' was not started for model '"
+                        + definition.modelEngineModelId() + "' on block " + block.uniqueId()
+                        + "; the model or animation is not registered");
+            }
         } catch (final Throwable ex) {
             MMOBlockLogger.warning("[ModelEngine] Failed to play animation '" + animationName
-                    + "' for block " + block.uniqueId() + ": " + ex.getMessage());
+                    + "' for block " + block.uniqueId(), ex);
         }
     }
 
@@ -268,16 +303,26 @@ public final class BlockModelApplier {
         } catch (final Throwable ignored) {
             return;
         }
-        final Location location = new Location(world, block.x() + 0.5D, block.y(), block.z() + 0.5D);
+        clearBetterModelModel(block, world);
+        final Location location = modelLocation(world, block);
+        final Interaction modelHost = spawnModelHost(location);
         try {
-            BetterModelIntegration.showModel(
-                    null,
+            final boolean applied = BetterModelIntegration.showModel(
+                    modelHost,
                     location,
                     definition.betterModelModelId(),
                     block.uniqueId(),
                     definition.betterModelModelSize()
             );
+            if (!applied) {
+                modelHost.remove();
+                MMOBlockLogger.warning("[BetterModel] Model ID '" + definition.betterModelModelId()
+                        + "' was not found or could not be attached for block " + block.uniqueId());
+                return;
+            }
+            this.betterModelEntities.put(block.uniqueId(), modelHost);
         } catch (final Throwable ex) {
+            modelHost.remove();
             MMOBlockLogger.warning("[BetterModel] Failed to show model '" + definition.betterModelModelId()
                     + FOR_BLOCK_SUFFIX + block.uniqueId() + ": " + ex.getMessage());
         }
@@ -285,16 +330,17 @@ public final class BlockModelApplier {
 
     public void clearBetterModelModel(final PlacedBlockModel block, final World world) {
         if (block == null) return;
+        this.betterModelRecoverySequences.remove(block.uniqueId());
+        final Interaction modelHost = this.betterModelEntities.remove(block.uniqueId());
         try {
-            if (!BetterModelIntegration.isAvailable()) return;
+            if (BetterModelIntegration.isAvailable()) {
+                BetterModelIntegration.removeModel(block.uniqueId());
+            }
         } catch (final Throwable ignored) {
-            return;
+            // BetterModel can disappear during reload; the Bukkit host still needs cleanup.
         }
-        try {
-            BetterModelIntegration.removeModel(block.uniqueId());
-        } catch (final Throwable ex) {
-            MMOBlockLogger.warning("[BetterModel] Failed to remove model for block "
-                    + block.uniqueId() + ": " + ex.getMessage());
+        if (modelHost != null && modelHost.isValid()) {
+            modelHost.remove();
         }
     }
 
@@ -314,11 +360,74 @@ public final class BlockModelApplier {
                 MMOBlockLogger.warning("[BetterModel] Could not play animation '"
                         + animationName + FOR_BLOCK_SUFFIX + block.uniqueId()
                         + " — model '" + definition.betterModelModelId() + "' may not be attached");
+                return;
             }
+            scheduleBetterModelRestPoseRecovery(block, definition, animationName);
         } catch (final Throwable ex) {
             MMOBlockLogger.warning("[BetterModel] Failed to play animation '" + animationName
                     + FOR_BLOCK_SUFFIX + block.uniqueId() + ": " + ex.getMessage());
         }
+    }
+
+    private void scheduleBetterModelRestPoseRecovery(
+            final PlacedBlockModel block,
+            final BlockDefinitionModel definition,
+            final String animationName
+    ) {
+        final Interaction expectedHost = this.betterModelEntities.get(block.uniqueId());
+        if (expectedHost == null || !expectedHost.isValid()) {
+            return;
+        }
+        final long sequence = this.betterModelRecoverySequences.merge(block.uniqueId(), 1L, Long::sum);
+        final double duration = BetterModelIntegration.animationDurationSeconds(
+                definition.betterModelModelId(),
+                animationName
+        );
+        final double recoverySeconds = duration > 0.0D ? duration : 5.0D;
+        final long delayTicks = Math.max(4L, (long) Math.ceil(recoverySeconds * 20.0D) + 4L);
+        final Location location = modelLocation(expectedHost.getWorld(), block);
+        this.plugin.scheduler().runAtLocationLater(location, () -> {
+            if (!Long.valueOf(sequence).equals(this.betterModelRecoverySequences.get(block.uniqueId()))
+                    || this.betterModelEntities.get(block.uniqueId()) != expectedHost) {
+                return;
+            }
+            final PlacedBlockModel current = this.stateRegistry.getBlock(block.uniqueId());
+            if (current == null || !expectedHost.isValid()) {
+                return;
+            }
+            applyBetterModelModel(current, definition, expectedHost.getWorld());
+            final Location refreshLocation = modelLocation(expectedHost.getWorld(), current);
+            this.plugin.scheduler().runAtLocationLater(
+                    refreshLocation,
+                    () -> BetterModelIntegration.refreshViewers(current.uniqueId()),
+                    2L
+            );
+        }, delayTicks);
+    }
+
+    private static Location modelLocation(final World world, final PlacedBlockModel block) {
+        final Location location = new Location(world, block.x() + 0.5D, block.y(), block.z() + 0.5D);
+        location.setYaw(BetterModelIntegration.facingToYaw(block.facing()));
+        return location;
+    }
+
+    private static String formatLocation(final Location location) {
+        return location.getWorld().getName() + "["
+                + location.getBlockX() + ","
+                + location.getBlockY() + ","
+                + location.getBlockZ() + "]";
+    }
+
+    private static Interaction spawnModelHost(final Location location) {
+        final Interaction interaction = location.getWorld().spawn(location, Interaction.class);
+        interaction.setInteractionWidth(0.1F);
+        interaction.setInteractionHeight(0.1F);
+        interaction.setResponsive(false);
+        interaction.setGravity(false);
+        interaction.setInvulnerable(true);
+        interaction.setSilent(true);
+        interaction.setPersistent(false);
+        return interaction;
     }
 
     // -------------------------------------------------------------

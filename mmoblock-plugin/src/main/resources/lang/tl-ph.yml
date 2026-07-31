@@ -63,7 +63,7 @@ commands:
     get:
       usage: "&ePag Gamit: /mmoblock block get <blockId|remover>"
 blocks:
-  not_active: "&cAng block ay hindi aktibo."
+  not_active: "&cHindi pa handa ang block."
   too_fast: "&c Medyo mabagal lang."
   too_fast_subtitle: "&eMangyaring maghintay ng ilang sandali"
   tool_not_allowed: "&cAng gamit ay hindi pinapayagan para sa block na ito."

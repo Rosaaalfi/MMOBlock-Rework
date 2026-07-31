@@ -21,7 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class BlockStateRegistry {
 
     private final Map<UUID, PlacedBlockModel> blocks = new ConcurrentHashMap<>();
-    private final Map<PositionKey, UUID> blockIdByOriginPosition = new ConcurrentHashMap<>();
     private final Map<PositionKey, UUID> blockIdByCurrentPosition = new ConcurrentHashMap<>();
     private final Map<ChunkKey, Set<UUID>> blocksByChunk = new ConcurrentHashMap<>();
     /** Additional positions for multi-block structures (collision barriers, schematics, etc.) */
@@ -35,11 +34,9 @@ public final class BlockStateRegistry {
         final PlacedBlockModel previous = this.blocks.put(block.uniqueId(), block);
         if (previous != null) {
             removeFromChunkIndex(previous);
-            this.blockIdByOriginPosition.remove(positionKeyFor(previous.originX(), previous.originY(), previous.originZ(), previous.world()));
             this.blockIdByCurrentPosition.remove(positionKeyFor(previous.x(), previous.y(), previous.z(), previous.world()));
         }
         addToChunkIndex(block);
-        this.blockIdByOriginPosition.put(positionKeyFor(block.originX(), block.originY(), block.originZ(), block.world()), block.uniqueId());
         this.blockIdByCurrentPosition.put(positionKeyFor(block.x(), block.y(), block.z(), block.world()), block.uniqueId());
         // MiningProgressComponent, ClickThrottleComponent, and RespawnTimerComponent are
         // created lazily on first access via mining(), throttle(), and respawn() — no
@@ -66,7 +63,6 @@ public final class BlockStateRegistry {
         final PlacedBlockModel removed = this.blocks.remove(uniqueId);
         if (removed != null) {
             removeFromChunkIndex(removed);
-            this.blockIdByOriginPosition.remove(positionKeyFor(removed.originX(), removed.originY(), removed.originZ(), removed.world()));
             this.blockIdByCurrentPosition.remove(positionKeyFor(removed.x(), removed.y(), removed.z(), removed.world()));
         }
         // Remove all additional positions for this block
@@ -86,10 +82,7 @@ public final class BlockStateRegistry {
 
     public PlacedBlockModel blockAt(final String worldName, final double x, final double y, final double z) {
         final PositionKey key = new PositionKey(worldName, toPositionBits(x), toPositionBits(y), toPositionBits(z));
-        UUID id = this.blockIdByOriginPosition.get(key);
-        if (id == null) {
-            id = this.blockIdByCurrentPosition.get(key);
-        }
+        UUID id = this.blockIdByCurrentPosition.get(key);
         if (id == null) {
             id = this.additionalPositions.get(key);
         }
@@ -98,8 +91,7 @@ public final class BlockStateRegistry {
 
     public boolean containsAt(final String worldName, final double x, final double y, final double z) {
         final PositionKey key = new PositionKey(worldName, toPositionBits(x), toPositionBits(y), toPositionBits(z));
-        return this.blockIdByOriginPosition.containsKey(key)
-                || this.blockIdByCurrentPosition.containsKey(key)
+        return this.blockIdByCurrentPosition.containsKey(key)
                 || this.additionalPositions.containsKey(key);
     }
 
@@ -188,7 +180,7 @@ public final class BlockStateRegistry {
 
     /**
      * Check whether the given position is an additional (multi-block) position rather than
-     * the block's origin or current position. Used by {@code ServerSideFakeBlockService}
+     * the block's primary current position. Used by {@code ServerSideFakeBlockService}
      * to avoid promoting schematic/collision positions through the fake-block system.
      */
     public boolean isAdditionalPosition(final String worldName, final int x, final int y, final int z) {
@@ -197,7 +189,6 @@ public final class BlockStateRegistry {
 
     public void clear() {
         this.blocks.clear();
-        this.blockIdByOriginPosition.clear();
         this.blockIdByCurrentPosition.clear();
         this.blocksByChunk.clear();
         this.additionalPositions.clear();

@@ -206,6 +206,7 @@ public final class BlockServiceFactory {
                 this.plugin.translationService(),
                 this.persistenceSystem,
                 this.miningSystem,
+                this.stateRegistry,
                 this.dropSystem,
                 this.lifecycleSystem,
                 this.visualSyncSystem,

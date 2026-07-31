@@ -97,9 +97,17 @@ final class PacketNmsBackend implements HologramRuntimeService.HologramBackend {
                     definition
             );
 
-            // Clear old caches when creating new session
+            // Destroy the old packet entities before replacing a session with the same
+            // block UUID. Merely replacing the map entry loses the former viewer set and
+            // can strand the old hologram at the block's previous respawn position.
             final HologramPacketSession oldSession = this.sessions.get(block.uniqueId());
-            if (oldSession != null) {
+            if (oldSession != null && hasMoved(oldSession, baseLocation)) {
+                final World oldWorld = this.plugin.getServer().getWorld(oldSession.worldName());
+                if (oldWorld != null) {
+                    for (final Player viewer : oldWorld.getPlayers()) {
+                        this.nmsAdapter.removePacketHologram(viewer, block.uniqueId());
+                    }
+                }
                 oldSession.lastSentState().clear();
                 oldSession.lastSentResolvedLines().clear();
             }
@@ -115,6 +123,14 @@ final class PacketNmsBackend implements HologramRuntimeService.HologramBackend {
             }
 
             this.packetLineResolver.resolveInitial(block.uniqueId(), revision, session);
+        }
+
+        private static boolean hasMoved(final HologramPacketSession oldSession, final Location newLocation) {
+            final Location oldLocation = oldSession.baseLocation();
+            return oldLocation.getWorld() == null
+                    || newLocation.getWorld() == null
+                    || !oldLocation.getWorld().getUID().equals(newLocation.getWorld().getUID())
+                    || oldLocation.distanceSquared(newLocation) > 0.000_001D;
         }
 
         @Override

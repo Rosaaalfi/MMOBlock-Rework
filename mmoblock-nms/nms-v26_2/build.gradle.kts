@@ -5,7 +5,7 @@ plugins {
 
 dependencies {
     api(project(":nms-common"))
-    paperweight.paperDevBundle("26.2.build.60-beta")
+    paperweight.paperDevBundle("26.2.build.87-stable")
 }
 
 java {

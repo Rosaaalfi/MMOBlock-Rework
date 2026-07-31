@@ -1,7 +1,9 @@
 package me.chyxelmc.mmoblock.runtime;
 
 import me.chyxelmc.mmoblock.runtime.block.RandomLocationContext;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -339,62 +341,22 @@ public final class NodeRuntimeService {
                 continue;
             }
             final BlockDefinitionModel blockDefinition = this.blockConfigService.findBlock(entry.blockType());
-            final String blockName = blockDefinition != null
-                    ? blockDefinition.itemName() != null ? blockDefinition.itemName() : blockDefinition.displayName()
-                    : entry.blockType();
+            final String localizedBlockName = this.blockConfigService.blockListName(entry.blockType());
+            final String blockName = localizedBlockName != null
+                    ? localizedBlockName
+                    : blockDefinition != null
+                            ? blockDefinition.itemName() != null ? blockDefinition.itemName() : blockDefinition.displayName()
+                            : entry.blockType();
             final boolean active = BlockLifecycleState.STATUS_ACTIVE.equalsIgnoreCase(placedBlock.status());
             final String template = active ? activeTemplate : deadTemplate;
             final long remaining = resolveRemainingSeconds(placedBlock, blockDefinition, now);
             final Map<String, String> placeholders = Map.of(
-                    "{block_name}", blockName,
-                    "{respawn_times}", String.valueOf(remaining)
+                    "{block_name}", encodeViewerArgument("block_name", blockName),
+                    "{respawn_times}", encodeViewerArgument("respawn_times", String.valueOf(remaining))
             );
-            lines.add(replacePlaceholders(
-                    resolveI18n(null, template, placeholders),
-                    placeholders
-            ));
+            lines.add(replacePlaceholders(template, placeholders));
         }
         return lines;
-    }
-
-    private String resolveI18n(final Player player, final String text, final Map<String, String> placeholders) {
-        if (text == null || !text.contains("{i18n:")) {
-            return text;
-        }
-        final StringBuilder sb = new StringBuilder(text.length() + 64);
-        int cursor = 0;
-        while (true) {
-            final int start = text.indexOf("{i18n:", cursor);
-            if (start < 0) {
-                sb.append(text, cursor, text.length());
-                break;
-            }
-            sb.append(text, cursor, start);
-            int depth = 0;
-            int end = start;
-            for (; end < text.length(); end++) {
-                final char c = text.charAt(end);
-                if (c == '{') {
-                    depth++;
-                } else if (c == '}') {
-                    depth--;
-                    if (depth == 0) {
-                        break;
-                    }
-                }
-            }
-            if (depth != 0 || end >= text.length()) {
-                sb.append(text, start, text.length());
-                break;
-            }
-            final String content = text.substring(start + "{i18n:".length(), end);
-            final String[] parts = content.split("\\|\\|\\|", 2);
-            final String key = parts[0].trim();
-            final String defaultText = parts.length > 1 ? parts[1].trim() : "";
-            sb.append(this.plugin.translationService().translate(player, key, defaultText, placeholders));
-            cursor = end + 1;
-        }
-        return sb.toString();
     }
 
     private static String replacePlaceholders(String text, final Map<String, String> placeholders) {
@@ -405,6 +367,12 @@ public final class NodeRuntimeService {
             text = text.replace(placeholder.getKey(), placeholder.getValue());
         }
         return text;
+    }
+
+    private static String encodeViewerArgument(final String name, final String value) {
+        final String encoded = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(value.getBytes(StandardCharsets.UTF_8));
+        return "{node_arg:" + name + ':' + encoded + '}';
     }
 
     private long resolveRemainingSeconds(final PlacedBlockModel placedBlock, final BlockDefinitionModel blockDefinition, final long now) {
@@ -487,7 +455,6 @@ public final class NodeRuntimeService {
                 definition.randomLocationClosest(),
                 definition.randomLocationCenterDistance()
         );
-        java.util.UUID lastPlacedBlockId = null;
         int spawned = 0;
         for (int i = 0; i < targetCount; i++) {
             final String blockId = pickBlockId(definition.listBlocks());
@@ -496,10 +463,9 @@ public final class NodeRuntimeService {
                     world,
                     FACING_NORTH,
                     randomLocationContext,
-                    lastPlacedBlockId
+                    null
             );
             if (result.success()) {
-                lastPlacedBlockId = result.placedBlock().uniqueId();
                 node.blocks().add(new PlacedNodeModel.NodeBlockEntryModel(result.placedBlock().uniqueId(), blockId));
                 spawned++;
             } else if (MMOBlockLogger.isDebugEnabled()) {

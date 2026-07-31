@@ -364,6 +364,8 @@ public final class MMOBlock extends JavaPlugin{
         registerCommands(commandExecutor);
         registerListeners();
 
+        me.chyxelmc.mmoblock.runtime.FakeBlockRegistry.restoreOrphanedBlocks(getDataFolder(), this.scheduler);
+
         this.runtimeCoordinator.restoreFromPersistence();
 
         setupEcs();

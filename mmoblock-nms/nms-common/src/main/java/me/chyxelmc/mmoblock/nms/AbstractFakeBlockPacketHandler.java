@@ -178,7 +178,9 @@ public abstract class AbstractFakeBlockPacketHandler extends ChannelDuplexHandle
 
     @Override
     public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
-        if (isInteractPacket(msg)) handleInterceptedPacket(msg);
+        if (isInteractPacket(msg) && handleInterceptedPacket(msg)) {
+            return;
+        }
         super.channelRead(ctx, msg);
     }
 
@@ -186,11 +188,17 @@ public abstract class AbstractFakeBlockPacketHandler extends ChannelDuplexHandle
         return isServerBoundPlayerAction(msg) || isServerBoundUseItemOn(msg) || isServerBoundUseItem(msg);
     }
 
-    private void handleInterceptedPacket(final Object msg) {
+    /**
+     * Handles interaction with a registered client-side block.
+     *
+     * @return {@code true} when the packet targets a fake block and must not
+     *         reach vanilla block handling
+     */
+    private boolean handleInterceptedPacket(final Object msg) {
         final Player player = this.playerRef.get();
-        if (player == null) return;
+        if (player == null) return false;
         final Object pos = extractBlockPos(msg);
-        if (pos == null) return;
+        if (pos == null) return false;
         try {
             if (isFakeBlockOrContains(player, pos)) {
                 sendFakeRefreshToPlayer(player, getServerLevel(player.getWorld()), pos);
@@ -212,12 +220,16 @@ public abstract class AbstractFakeBlockPacketHandler extends ChannelDuplexHandle
                         }
                     }
                 }
+                // A schematic/fake block can cover a real world block. Forwarding the
+                // packet would let vanilla bypass MMOBlock's configured mining rules.
+                return true;
             } else if (isServerBoundUseItem(msg)) {
                 handleUseItemPacket(player);
             }
         } catch (final Exception t) {
             NmsLogger.warning("Error handling intercepted packet for " + player.getName(), t);
         }
+        return false;
     }
 
     // ============================================================
