@@ -7,6 +7,7 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/Rosaaalfi/MMOBlock-Rework/gradle.yml?style=for-the-badge&label=Build&labelColor=1A1B26&color=2EA043&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/actions)
 [![CodeFactor](https://img.shields.io/codefactor/grade/github/rosaaalfi/mmoblock-rework/main?style=for-the-badge&label=CodeFactor&labelColor=1A1B26&logo=codefactor)](https://www.codefactor.io/repository/github/rosaaalfi/mmoblock-rework/overview/main)
 [![Issues](https://img.shields.io/github/issues/Rosaaalfi/MMOBlock-Rework?style=for-the-badge&label=Issues&labelColor=1A1B26&color=D15794&logo=github)](https://github.com/Rosaaalfi/MMOBlock-Rework/issues)
+[![Ask DeepWiki](https://img.shields.io/badge/DeepWiki-MMOBlock-2563EB?style=for-the-badge&labelColor=1A1B26&logo=developmentcontainers&logoColor=white)](https://deepwiki.com/Rosaaalfi/MMOBlock-Rework)
 [![Chyxel Repo](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Frepo.chyxelmc.me%2Frepository%2Findex.json&query=%24.artifacts%5B0%5D.latestVersion&prefix=mmoblock-api%20-%20v&style=for-the-badge&logo=apachemaven&label=Chyxel%20Repo&labelColor=1A1B26)](https://repo.chyxelmc.me)
 
 </div>
