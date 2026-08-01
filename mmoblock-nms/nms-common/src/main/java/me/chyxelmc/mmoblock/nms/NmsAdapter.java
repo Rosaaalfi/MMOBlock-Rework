@@ -14,6 +14,8 @@ import org.bukkit.entity.Player;
 
 public interface NmsAdapter {
 
+    me.chyxelmc.mmoblock.nms.gui.GuiInventoryAccess guiInventoryAccess();
+
     String targetMinecraftVersion();
 
     void validateNms();

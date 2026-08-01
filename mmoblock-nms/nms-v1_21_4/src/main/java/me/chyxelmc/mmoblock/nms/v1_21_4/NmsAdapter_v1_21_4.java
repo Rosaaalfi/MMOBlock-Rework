@@ -66,6 +66,8 @@ import java.util.UUID;
  */
 @SuppressWarnings("java:S101")
 public final class NmsAdapter_v1_21_4 extends AbstractPacketBasedNmsAdapter {
+    private final me.chyxelmc.mmoblock.nms.gui.GuiInventoryAccess guiInventoryAccess = new GuiInventoryAccessImpl();
+    @Override public me.chyxelmc.mmoblock.nms.gui.GuiInventoryAccess guiInventoryAccess() { return this.guiInventoryAccess; }
 
         // ============================================================
     // Core metadata

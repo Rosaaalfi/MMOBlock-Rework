@@ -28,4 +28,4 @@ permissions:
 commands:
   mmoblock:
     description: Manage MMOBlock interaction entities
-    usage: /<command> place <blockid> x y z world facing | /<command> remove <blockid> x y z world | /<command> reload [config|blocks|nodes|drops|lang|tools] | /<command> block list | /<command> node [place|remove|list] <nodeId> x y z world facing
+    usage: /<command> block | /<command> block <place|remove|get|list> | /<command> reload [config|blocks|nodes|drops|lang|tools] | /<command> node [place|remove|list] <nodeId> x y z world facing

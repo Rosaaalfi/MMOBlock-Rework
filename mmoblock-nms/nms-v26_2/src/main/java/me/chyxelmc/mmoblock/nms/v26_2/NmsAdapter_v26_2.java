@@ -57,6 +57,8 @@ import java.util.*;
 
 @SuppressWarnings({"java:S101", "unchecked", "rawtypes"})
 public final class NmsAdapter_v26_2 extends AbstractPacketBasedNmsAdapter {
+    private final me.chyxelmc.mmoblock.nms.gui.GuiInventoryAccess guiInventoryAccess = new GuiInventoryAccessImpl();
+    @Override public me.chyxelmc.mmoblock.nms.gui.GuiInventoryAccess guiInventoryAccess() { return this.guiInventoryAccess; }
 
         @Override
     public String targetMinecraftVersion() {

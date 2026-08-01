@@ -28,6 +28,7 @@ import me.chyxelmc.mmoblock.listener.ChunkLifecycleListener;
 import me.chyxelmc.mmoblock.listener.HologramCleanupListener;
 import me.chyxelmc.mmoblock.listener.InteractionListener;
 import me.chyxelmc.mmoblock.listener.PlatformSyncListener;
+import me.chyxelmc.mmoblock.gui.GuiEngine;
 import me.chyxelmc.mmoblock.nms.NmsAdapter;
 import me.chyxelmc.mmoblock.nms.NmsAdapterRegistry;
 import me.chyxelmc.mmoblock.persistence.BlockRepository;
@@ -55,6 +56,7 @@ public final class MMOBlock extends JavaPlugin{
     private SystemManager systemManager;
     private Scheduler scheduler;
     private SchedulerTask ecsTask;
+    private GuiEngine guiEngine;
     private BlockConfigLoader blockConfigService;
     private me.chyxelmc.mmoblock.config.NodeConfigLoader nodeConfigService;
     private DatabaseUtils databaseUtils;
@@ -151,6 +153,7 @@ public final class MMOBlock extends JavaPlugin{
         this.scheduler = PlatformSchedulerProvider.createScheduler(this);
         this.nmsAdapter = NmsAdapterRegistry.resolveCurrent();
         this.nmsAdapter.validateNms();
+        this.guiEngine = new GuiEngine(this, this.scheduler, this.nmsAdapter.guiInventoryAccess());
     }
 
     private void loadConfigs() {
@@ -165,6 +168,10 @@ public final class MMOBlock extends JavaPlugin{
     private void initI18n() {
         this.translationService = new me.chyxelmc.mmoblock.i18n.TranslationService(this);
         this.translationService.reload();
+        if (this.guiEngine != null) {
+            this.guiEngine.localization().setResolver((player, key, fallback, placeholders) ->
+                    this.translationService.translate(player, key, fallback, placeholders));
+        }
         // Wire MMOBlockLogger translator for console i18n logging
         MMOBlockLogger.setTranslator((key, defaultMessage, placeholders) ->
                 this.translationService.translateConsole(key, defaultMessage, placeholders));
@@ -483,6 +490,10 @@ public final class MMOBlock extends JavaPlugin{
 
     @Override
     public void onDisable() {
+        if (this.guiEngine != null) {
+            this.guiEngine.close();
+            this.guiEngine = null;
+        }
         shutdownPlaceholders();
         shutdownRuntime();
         shutdownEcs();
@@ -737,6 +748,10 @@ public final class MMOBlock extends JavaPlugin{
 
     public Scheduler scheduler() {
         return this.scheduler;
+    }
+
+    public GuiEngine guiEngine() {
+        return this.guiEngine;
     }
 
     public me.chyxelmc.mmoblock.runtime.BlockRuntimeService blockRuntimeService() {

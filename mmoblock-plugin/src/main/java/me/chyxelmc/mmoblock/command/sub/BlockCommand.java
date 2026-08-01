@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import me.chyxelmc.mmoblock.command.CommandArgs;
 import me.chyxelmc.mmoblock.command.CommandContext;
 import me.chyxelmc.mmoblock.command.SubCommand;
+import me.chyxelmc.mmoblock.gui.management.BlockManagementGui;
 import me.chyxelmc.mmoblock.model.PlacedBlockModel;
 import me.chyxelmc.mmoblock.runtime.block.PlaceResult;
 import me.chyxelmc.mmoblock.utils.TextColor;
@@ -25,16 +26,21 @@ public final class BlockCommand implements SubCommand {
     private static final List<String> ACTIONS = List.of("place", "remove", "get", "list");
 
     private final CommandContext ctx;
+    private final BlockManagementGui managementGui;
 
     public BlockCommand(final CommandContext ctx) {
         this.ctx = ctx;
+        this.managementGui = new BlockManagementGui(ctx.plugin(), ctx.configService(), ctx.customItemUtil());
     }
 
     @Override
     public boolean execute(@NotNull final CommandSender sender, @NotNull final String[] args) {
         if (args.length < 2) {
-            this.ctx.sendMessage(sender, "commands.block.usage",
-                    "Usage: /mmoblock block <place|remove|get|list> <blockId> x y z [world] [facing]");
+            if (sender instanceof Player player) {
+                this.managementGui.open(player);
+            } else {
+                this.ctx.sendMessage(sender, "commands.player_only", "&cPlayer only command.");
+            }
             return true;
         }
         final String action = args[1].toLowerCase(Locale.ROOT);

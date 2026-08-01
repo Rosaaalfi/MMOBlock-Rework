@@ -181,6 +181,54 @@ public final class TranslationService {
         return TextColor.toComponent(translateConsole(key, defaultMessage, placeholders));
     }
 
+    /** Resolves embedded {@code {i18n:key|||fallback}} tokens for one viewer. */
+    @NotNull
+    public String resolveInline(@Nullable final Player player, @Nullable final String input) {
+        return resolveInline(player, input, Map.of());
+    }
+
+    /** Resolves embedded i18n tokens while forwarding placeholders to the translated value. */
+    @NotNull
+    public String resolveInline(@Nullable final Player player, @Nullable final String input,
+                                @NotNull final Map<String, String> placeholders) {
+        if (input == null || !input.contains("{i18n:")) return input == null ? "" : input;
+        final StringBuilder resolved = new StringBuilder(input.length() + 32);
+        int cursor = 0;
+        while (true) {
+            final int start = input.indexOf("{i18n:", cursor);
+            if (start < 0) {
+                resolved.append(input, cursor, input.length());
+                break;
+            }
+            resolved.append(input, cursor, start);
+            final int end = findTokenEnd(input, start);
+            if (end < 0) {
+                resolved.append(input, start, input.length());
+                break;
+            }
+            final String token = input.substring(start + "{i18n:".length(), end);
+            final int separator = token.indexOf("|||");
+            final String key = (separator < 0 ? token : token.substring(0, separator)).trim();
+            final String fallback = separator < 0 ? "" : token.substring(separator + 3).trim();
+            resolved.append(translate(player, key, fallback, placeholders));
+            cursor = end + 1;
+        }
+        final String value = resolved.toString();
+        return value.contains("{i18n:") && !value.equals(input)
+                ? resolveInline(player, value, placeholders)
+                : value;
+    }
+
+    private static int findTokenEnd(final String input, final int start) {
+        int depth = 0;
+        for (int index = start; index < input.length(); index++) {
+            final char current = input.charAt(index);
+            if (current == '{') depth++;
+            if (current == '}' && --depth == 0) return index;
+        }
+        return -1;
+    }
+
     /**
      * Resolve a localized block/display name from config using dual-mode support.
      */

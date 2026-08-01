@@ -18,6 +18,9 @@ databases:
 
 # Interaction configuration
 interactionThrottleMs: 1000 # throttle interactions with blocks and entities to prevent spamming. Time in milliseconds.
+gui:
+  block-management:
+    cancel-keyword: "cancel"
 interaction:
   real-block-radius: 12     # Radius (blocks) within which PlayerInteractEvent handles MMOBlock clicks. Beyond this, packet-level interception is used.
   fake-block-radius: 64    # Radius (blocks) within which packet-level click interception works. Beyond this, no click processing.

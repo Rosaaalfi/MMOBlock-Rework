@@ -67,6 +67,10 @@ import java.util.UUID;
 @SuppressWarnings({"java:S101", "deprecation"})
 public final class NmsAdapter_v1_19_4 extends AbstractPacketBasedNmsAdapter {
 
+    private final me.chyxelmc.mmoblock.nms.gui.GuiInventoryAccess guiInventoryAccess = new GuiInventoryAccessImpl();
+
+    @Override public me.chyxelmc.mmoblock.nms.gui.GuiInventoryAccess guiInventoryAccess() { return this.guiInventoryAccess; }
+
     // In 1.19.4, ItemEntity visual center on legacy clients is ~0.08 above Y (vs 0.16 on modern)
     private static final double ITEM_ENTITY_Y_OFFSET_LEGACY_1_19 = 0.08D;
 
